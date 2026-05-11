@@ -1,53 +1,45 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Navbar from "@/components/layouts/Navbar";
 import { Lock, User, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [role, setRole] = useState<"admin" | "manager">("manager");
-  const [phone, setPhone] = useState("");
+  const { login } = useAuth();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // Minimal validation to mimic a real experience
-    if (!phone) {
-      setError("Le numéro de téléphone est requis.");
+    if (!username || !password) {
+      setError("Veuillez remplir tous les champs.");
       setLoading(false);
       return;
     }
 
-    if (!password) {
-      setError("Le mot de passe est requis.");
+    try {
+      await login({ username, password });
+      // La redirection est gérée dans le hook useAuth
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err.response?.data?.message || "Identifiants invalides ou erreur serveur.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Success simulation
-    setTimeout(() => {
-      setLoading(false);
-      if (role === "admin") {
-        router.push("/admin");
-      } else {
-        router.push("/super");
-      }
-    }, 1000);
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-50 dark:bg-zinc-950 select-none">
-      <Navbar title="StockIvoire Pro" subtitle="Connexion sécurisée" backUrl="/" />
+      <Navbar title="SP SERVICES Stock" subtitle="Connexion sécurisée" backUrl="/" />
       <main className="flex-1 max-w-md mx-auto px-4 py-12 w-full flex flex-col justify-center">
         <Card className="p-6 sm:p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl flex flex-col gap-6">
           <div className="text-center">
@@ -55,39 +47,15 @@ export default function LoginPage() {
               Identifiez-vous
             </h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Accédez à votre espace de travail
+              Accédez à votre espace de gestion
             </p>
           </div>
 
-          {/* Role selector switches */}
-          <div className="flex bg-zinc-100 dark:bg-zinc-800/80 p-1.5 rounded-xl gap-1">
-            <button
-              type="button"
-              onClick={() => setRole("manager")}
-              className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${role === "manager"
-                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-50 shadow-sm"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700"
-                }`}
-            >
-              Manager
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("admin")}
-              className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${role === "admin"
-                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-50 shadow-sm"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-700"
-                }`}
-            >
-              Administrateur
-            </button>
-          </div>
-
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
-            {/* Phone/Username input */}
+            {/* Username input */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-bold text-zinc-800 dark:text-zinc-300">
-                Téléphone (MoMo / Moov)
+                Nom d'utilisateur ou Téléphone
               </label>
               <div className="relative flex items-center">
                 <span className="absolute left-4 text-zinc-400">
@@ -95,10 +63,10 @@ export default function LoginPage() {
                 </span>
                 <input
                   type="text"
-                  placeholder="Ex: 07 00 00 00 00"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:border-emerald-500 focus:ring-emerald-500/10 rounded-xl pl-12 pr-4 py-3.5 text-base text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none transition-all"
+                  placeholder="Ex: admin"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:border-primary focus:ring-primary/10 rounded-xl pl-12 pr-4 py-3.5 text-base text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none transition-all"
                 />
               </div>
             </div>
@@ -117,7 +85,7 @@ export default function LoginPage() {
                   placeholder="Ex: 1234"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:border-emerald-500 focus:ring-emerald-500/10 rounded-xl pl-12 pr-12 py-3.5 text-base text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none transition-all"
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:border-primary focus:ring-primary/10 rounded-xl pl-12 pr-12 py-3.5 text-base text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none transition-all"
                 />
                 <button
                   type="button"
@@ -131,21 +99,42 @@ export default function LoginPage() {
 
             {/* Error message */}
             {error && (
-              <span className="text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/40 p-3 rounded-xl border border-red-200/50 dark:border-red-800/40 animate-pulse">
+              <span className="text-xs font-semibold text-red-600 bg-red-50 dark:bg-red-950/40 p-3 rounded-xl border border-red-200/50 dark:border-red-800/40">
                 {error}
               </span>
             )}
 
             {/* Login CTA */}
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              loading={loading}
-              className="w-full mt-2 font-black tracking-wide bg-emerald-600 hover:bg-emerald-500"
-            >
-              Se connecter
-            </Button>
+            <div className="flex flex-col gap-3 mt-2">
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                loading={loading}
+                className="w-full font-black tracking-wide"
+              >
+                Se connecter
+              </Button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setLoading(true);
+                  setError("");
+                  // Simulation d'un login admin pour le test UI
+                  setTimeout(() => {
+                    localStorage.setItem("token", "demo-token");
+                    localStorage.setItem("userRole", "admin");
+                    document.cookie = "token=demo-token; path=/";
+                    document.cookie = "userRole=admin; path=/";
+                    window.location.href = "/admin";
+                  }, 800);
+                }}
+                className="text-xs font-bold text-zinc-400 hover:text-primary transition-colors py-2"
+              >
+                Accéder en Mode Démo (Test UI uniquement)
+              </button>
+            </div>
           </form>
         </Card>
       </main>

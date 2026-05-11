@@ -18,22 +18,22 @@ export default function Button({
   ...props
 }: ButtonProps) {
   const baseClasses =
-    "inline-flex items-center justify-center font-semibold rounded-xl transition-all active:scale-98 focus:outline-none focus:ring-2 focus:ring-emerald-400 select-none cursor-pointer";
+    "inline-flex items-center justify-center font-bold rounded-xl transition-all active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/20 select-none cursor-pointer";
 
   const variantClasses = {
     primary:
-      "bg-emerald-600 text-white hover:bg-emerald-500 shadow-md shadow-emerald-500/10",
+      "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20",
     secondary:
-      "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-50 dark:hover:bg-zinc-700",
-    danger: "bg-red-600 text-white hover:bg-red-500 shadow-md shadow-red-500/10",
+      "bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-lg shadow-secondary/20",
+    danger: "bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-500/20",
     outline:
-      "border border-zinc-200 text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800",
+      "border-2 border-zinc-200 text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800",
   };
 
   const sizeClasses = {
-    sm: "px-3 py-1.5 text-xs",
-    md: "px-5 py-2.5 text-sm",
-    lg: "px-6 py-3.5 text-base rounded-2xl",
+    sm: "px-4 py-2 text-xs",
+    md: "px-6 py-3 text-sm",
+    lg: "px-8 py-4 text-base rounded-2xl",
   };
 
   const disabledClasses =

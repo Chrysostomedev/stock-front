@@ -13,7 +13,7 @@ interface NavbarProps {
 
 export default function Navbar({ title, subtitle, backUrl, rightElement }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-40 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/60 dark:border-zinc-800/60 h-16 shrink-0 w-full flex items-center select-none">
+    <header className="sticky top-0 z-30 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/60 dark:border-zinc-800/60 h-16 shrink-0 w-full flex items-center select-none">
       <div className="max-w-7xl mx-auto px-4 flex items-center justify-between w-full h-full gap-4">
         {/* Left Part: Title or Back Button */}
         <div className="flex items-center gap-3 shrink-0">
@@ -31,7 +31,7 @@ export default function Navbar({ title, subtitle, backUrl, rightElement }: Navba
               {title}
             </h1>
             {subtitle && (
-              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="text-xs font-bold text-primary">
                 {subtitle}
               </span>
             )}

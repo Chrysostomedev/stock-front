@@ -4,26 +4,34 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
-  --primary: #10b981;
+  --primary: #003b95;
   --primary-foreground: #ffffff;
+  --secondary: #ef3340;
+  --secondary-foreground: #ffffff;
+  --accent: #00a3e0;
+  --accent-foreground: #ffffff;
   --card: #ffffff;
   --card-foreground: #0f172a;
   --border: #e2e8f0;
   --input: #f1f5f9;
-  --ring: #34d399;
+  --ring: #003b95;
 }
 
 /* Clear the default prefers-color-scheme to make it Light by default */
 .dark {
   --background: #09090b;
   --foreground: #f8fafc;
-  --primary: #10b981;
-  --primary-foreground: #09090b;
+  --primary: #003b95;
+  --primary-foreground: #ffffff;
+  --secondary: #ef3340;
+  --secondary-foreground: #ffffff;
+  --accent: #00a3e0;
+  --accent-foreground: #ffffff;
   --card: #18181b;
   --card-foreground: #f8fafc;
   --border: #27272a;
   --input: #27272a;
-  --ring: #34d399;
+  --ring: #003b95;
 }
 
 @theme inline {
@@ -31,6 +39,10 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-border: var(--border);

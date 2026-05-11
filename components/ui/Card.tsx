@@ -14,9 +14,9 @@ export default function Card({
   hoverable = false,
 }: CardProps) {
   const baseClasses =
-    "bg-card text-card-foreground p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all";
+    "bg-card text-card-foreground p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300";
   const hoverClasses = hoverable
-    ? "hover:shadow-md hover:border-emerald-500/40 dark:hover:border-emerald-500/40 cursor-pointer active:scale-[0.99]"
+    ? "hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 dark:hover:border-primary/40 cursor-pointer active:scale-[0.98]"
     : "";
 
   return (
