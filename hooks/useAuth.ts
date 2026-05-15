@@ -22,7 +22,14 @@ export function useAuth() {
 
       try {
         const profile = await AuthService.getProfile();
-        setUser(profile);
+        
+        let finalUser = profile;
+        // Compatibilité Multi-boutique: si shopId n'est pas direct, on prend le premier accès
+        if (!profile.shopId && (profile as any).shopAccesses?.length > 0) {
+          finalUser = { ...profile, shopId: (profile as any).shopAccesses[0].shopId };
+        }
+        
+        setUser(finalUser);
         setIsAuthenticated(true);
       } catch (error) {
         console.error("Auth check failed:", error);
@@ -38,7 +45,13 @@ export function useAuth() {
 
   const login = async (credentials: any) => {
     const response = await AuthService.login(credentials);
-    const { accessToken, user } = response;
+    // Le back renvoie { user, token: { accessToken, refreshToken } }
+    const accessToken = response.accessToken || response.token?.accessToken;
+    const user = response.user;
+
+    if (!accessToken) {
+      throw new Error("Erreur d'authentification : Token manquant");
+    }
 
     // Stockage dans Cookies pour le Middleware
     Cookies.set("token", accessToken, { expires: 7 });
@@ -49,13 +62,19 @@ export function useAuth() {
     localStorage.setItem("user", JSON.stringify(user));
     localStorage.setItem("userRole", user.role);
 
-    setUser(user);
+    // Compatibilité Multi-boutique
+    let finalUser = user;
+    if (!user.shopId && (user.shopAccesses?.length || 0) > 0) {
+      finalUser = { ...user, shopId: user.shopAccesses![0].shopId };
+    }
+
+    setUser(finalUser);
     setIsAuthenticated(true);
 
     // Redirection automatique selon le rôle
-    if (user.role === "admin") router.push("/admin");
-    else if (user.role === "caissiere") router.push("/super");
-    else if (user.role === "gerant") router.push("/quinc");
+    if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") router.push("/admin");
+    else if (user.role === "CASHIER") router.push("/super");
+    else if (user.role === "MANAGER") router.push("/quinc");
 
     return user;
   };

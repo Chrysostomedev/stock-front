@@ -21,64 +21,57 @@ import {
   CheckCircle2,
   Wallet,
   AlertCircle,
+  Tag,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { UserRole } from "@/types/auth";
 
+import { useSidebar } from "@/contexts/SidebarContext";
 import ConfirmModal from "../ui/ConfirmModal";
 
-type Role = "admin" | "caissiere" | "gerant" | "manager_gaz";
+type Role = UserRole;
 
 export default function Sidebar() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { logout, role: userRole } = useAuth();
+  const { isOpen, close } = useSidebar();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const pathname = usePathname();
-  const [userRole, setUserRole] = useState<Role>("admin");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedRole = localStorage.getItem("userRole") as Role;
-      if (storedRole) {
-        setUserRole(storedRole);
-      }
-    }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("userRole");
-    window.location.href = "/login";
+  const handleLogout = async () => {
+    await logout();
   };
-
-  const toggleSidebar = () => setIsOpen(!isOpen);
 
   // Full available link list
   const allLinks = [
-    { href: "/admin", label: "Administration", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["admin"] },
-    { href: "/admin/boutiques", label: "Boutiques", icon: <Building2 className="h-5 w-5" />, roles: ["admin"] },
-    { href: "/admin/utilisateurs", label: "Utilisateurs", icon: <Users className="h-5 w-5" />, roles: ["admin"] },
+    { href: "/admin", label: "Administration", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
+    { href: "/admin/boutiques", label: "Boutiques", icon: <Building2 className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
+    { href: "/admin/utilisateurs", label: "Utilisateurs", icon: <Users className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
+    { href: "/admin/produits", label: "Catalogue Produits", icon: <Package className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
+    { href: "/admin/categories", label: "Catégories", icon: <Tag className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
 
     // Caissière Superette
-    { href: "/super", label: "Dashboard Super.", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["admin", "caissiere"] },
-    { href: "/super/caisse", label: "Caisse Super.", icon: <ShoppingCart className="h-5 w-5" />, roles: ["admin", "caissiere"] },
-    { href: "/super/produits", label: "Stocks Produits", icon: <Package className="h-5 w-5" />, roles: ["admin", "caissiere"] },
-    { href: "/super/commandes", label: "Historique Ventes", icon: <FileText className="h-5 w-5" />, roles: ["admin", "caissiere"] },
-    { href: "/super/perimes", label: "Pertes & Périmés", icon: <AlertCircle className="h-5 w-5" />, roles: ["admin", "caissiere"] },
-    { href: "/super/fidelite", label: "Fidélité Clients", icon: <Users className="h-5 w-5" />, roles: ["admin", "caissiere"] },
-    { href: "/super/depenses", label: "Dépenses Boutique", icon: <Wallet className="h-5 w-5" />, roles: ["admin", "caissiere"] },
-    { href: "/super/inventaire", label: "Inventaire Tournant", icon: <CheckCircle2 className="h-5 w-5" />, roles: ["admin", "caissiere"] },
+    { href: "/super", label: "Dashboard Super.", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER"] },
+    { href: "/super/caisse", label: "Caisse Super.", icon: <ShoppingCart className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER"] },
+    { href: "/super/produits", label: "Stocks Produits", icon: <Package className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER"] },
+    { href: "/super/commandes", label: "Historique Ventes", icon: <FileText className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER"] },
+    { href: "/super/perimes", label: "Pertes & Périmés", icon: <AlertCircle className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER"] },
+    { href: "/super/fidelite", label: "Fidélité Clients", icon: <Users className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER"] },
+    { href: "/super/depenses", label: "Dépenses Boutique", icon: <Wallet className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER"] },
+    { href: "/super/inventaire", label: "Inventaire Tournant", icon: <CheckCircle2 className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER"] },
 
     // Gérant Quincaillerie
-    { href: "/quinc", label: "Dashboard Quinc.", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["admin", "gerant"] },
-    { href: "/quinc/caisse", label: "Caisse Quinc.", icon: <ShoppingCart className="h-5 w-5" />, roles: ["admin", "gerant"] },
-    { href: "/quinc/produits", label: "Stock Matériaux", icon: <Package className="h-5 w-5" />, roles: ["admin", "gerant"] },
-    { href: "/quinc/devis", label: "Devis & Factures", icon: <FileText className="h-5 w-5" />, roles: ["admin", "gerant"] },
-    { href: "/quinc/credits", label: "Clients & Crédits", icon: <Users className="h-5 w-5" />, roles: ["admin", "gerant"] },
-    { href: "/quinc/fournisseurs", label: "Fournisseurs", icon: <Building2 className="h-5 w-5" />, roles: ["admin", "gerant"] },
-    { href: "/quinc/livraisons", label: "Livraisons", icon: <Layers className="h-5 w-5" />, roles: ["admin", "gerant"] },
-    { href: "/quinc/depenses", label: "Dépenses/Charges", icon: <Wallet className="h-5 w-5" />, roles: ["admin", "gerant"] },
-    { href: "/quinc/inventaire", label: "Inventaire", icon: <CheckCircle2 className="h-5 w-5" />, roles: ["admin", "gerant"] },
+    { href: "/quinc", label: "Dashboard Quinc.", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "MANAGER"] },
+    { href: "/quinc/caisse", label: "Caisse Quinc.", icon: <ShoppingCart className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "MANAGER"] },
+    { href: "/quinc/produits", label: "Stock Matériaux", icon: <Package className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "MANAGER"] },
+    { href: "/quinc/devis", label: "Devis & Factures", icon: <FileText className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "MANAGER"] },
+    { href: "/quinc/credits", label: "Clients & Crédits", icon: <Users className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "MANAGER"] },
+    { href: "/quinc/fournisseurs", label: "Fournisseurs", icon: <Building2 className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "MANAGER"] },
+    { href: "/quinc/livraisons", label: "Livraisons", icon: <Layers className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "MANAGER"] },
+    { href: "/quinc/depenses", label: "Dépenses/Charges", icon: <Wallet className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "MANAGER"] },
+    { href: "/quinc/inventaire", label: "Inventaire", icon: <CheckCircle2 className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "MANAGER"] },
 
-
-    { href: "/profile", label: "Mon Profil", icon: <UserCircle className="h-5 w-5" />, roles: ["admin", "caissiere", "gerant", "manager_gaz"] },
-    { href: "/admin/settings", label: "Paramètres", icon: <Settings className="h-5 w-5" />, roles: ["admin"] },
+    { href: "/profile", label: "Mon Profil", icon: <UserCircle className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER", "MANAGER", "AUDITOR"] },
+    { href: "/admin/settings", label: "Paramètres", icon: <Settings className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
   ];
 
   // Filter links by userRole
@@ -86,25 +79,10 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile Menu Trigger & Navbar Top Header */}
-      <div className="flex sm:hidden h-16 bg-card border-b border-border px-4 items-center justify-between w-full z-40 sticky top-0 select-none transition-colors duration-300">
-        <Link href={userRole === "admin" ? "/admin" : `/${userRole === "caissiere" ? "super" : "quinc"}`} className="flex items-center gap-2">
-          <span className="text-base font-black tracking-tighter text-primary">
-            SP SERVICES Stock
-          </span>
-        </Link>
-        <button
-          onClick={toggleSidebar}
-          className="p-2 rounded-xl text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all select-none cursor-pointer"
-        >
-          {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
-      </div>
-
       {/* Overlay for mobile sidebar */}
       {isOpen && (
         <div
-          onClick={toggleSidebar}
+          onClick={close}
           className="sm:hidden fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm transition-all"
         />
       )}
@@ -116,11 +94,21 @@ export default function Sidebar() {
       >
         <div className="flex flex-col gap-6">
           {/* Logo */}
-          <Link href={userRole === "admin" ? "/admin" : `/${userRole === "caissiere" ? "super" : "quinc"}`} onClick={() => setIsOpen(false)} className="hidden sm:flex items-center gap-2 px-2.5">
+          <Link href={userRole === "ADMIN" || userRole === "SUPER_ADMIN" ? "/admin" : `/${userRole === "CASHIER" ? "super" : "quinc"}`} onClick={close} className="hidden sm:flex items-center gap-2 px-2.5">
             <span className="text-xl font-black tracking-tighter text-primary">
               SP SERVICES Stock
             </span>
           </Link>
+
+          {/* Close button for mobile */}
+          <div className="flex sm:hidden items-center justify-between px-2.5 mb-2">
+            <span className="text-lg font-black tracking-tighter text-primary">
+              SP SERVICES
+            </span>
+            <button onClick={close} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
 
           {/* Navigation links */}
           <nav className="flex flex-col gap-1">
@@ -130,7 +118,7 @@ export default function Sidebar() {
                 <Link
                   key={idx}
                   href={link.href}
-                  onClick={() => setIsOpen(false)}
+                  onClick={close}
                   className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl font-bold text-sm transition-all select-none cursor-pointer ${isActive
                     ? "bg-primary/10 text-primary shadow-sm"
                     : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200"

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SP Services Stock</string>
+    <string name="title_activity_main">SP Services Stock</string>
+    <string name="package_name">com.spservices.stock</string>
+    <string name="custom_url_scheme">com.spservices.stock</string>
+</resources>

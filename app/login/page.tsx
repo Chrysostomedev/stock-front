@@ -9,7 +9,7 @@ import { Lock, User, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,14 +20,14 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    if (!username || !password) {
+    if (!phone || !password) {
       setError("Veuillez remplir tous les champs.");
       setLoading(false);
       return;
     }
-
+ 
     try {
-      await login({ username, password });
+      await login({ phone, password });
       // La redirection est gérée dans le hook useAuth
     } catch (err: any) {
       console.error("Login error:", err);
@@ -55,7 +55,7 @@ export default function LoginPage() {
             {/* Username input */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-bold text-zinc-800 dark:text-zinc-300">
-                Nom d'utilisateur ou Téléphone
+                Numéro de téléphone
               </label>
               <div className="relative flex items-center">
                 <span className="absolute left-4 text-zinc-400">
@@ -63,9 +63,9 @@ export default function LoginPage() {
                 </span>
                 <input
                   type="text"
-                  placeholder="Ex: admin"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Ex: +2250701020304"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                   className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:border-primary focus:ring-primary/10 rounded-xl pl-12 pr-4 py-3.5 text-base text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none transition-all"
                 />
               </div>
@@ -124,9 +124,9 @@ export default function LoginPage() {
                   // Simulation d'un login admin pour le test UI
                   setTimeout(() => {
                     localStorage.setItem("token", "demo-token");
-                    localStorage.setItem("userRole", "admin");
+                    localStorage.setItem("userRole", "ADMIN");
                     document.cookie = "token=demo-token; path=/";
-                    document.cookie = "userRole=admin; path=/";
+                    document.cookie = "userRole=ADMIN; path=/";
                     window.location.href = "/admin";
                   }, 800);
                 }}

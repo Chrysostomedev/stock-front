@@ -1,70 +1,75 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import DataTable from "@/components/ui/DataTable";
-import Modal from "@/components/ui/Modal";
-import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useToast } from "@/contexts/ToastContext";
+import ProductService, { Product } from "@/services/product.service";
+import CategoryService, { Category } from "@/services/category.service";
+import { useAuth } from "@/hooks/useAuth";
 import {
-  Plus,
   Search,
-  Box,
+  Package,
   Tag,
   AlertTriangle,
-  Edit2,
-  Trash2,
-  Filter,
-  Download,
   Barcode,
   Layers,
+  RefreshCw
 } from "lucide-react";
 
-interface Product {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  stock: number;
-  unit: string;
-  sku: string; // Barcode
-}
-
-const mockProducts: Product[] = [
-  { id: 1, name: "Riz Maman 5kg", category: "Alimentation", price: 3500, stock: 15, unit: "Sac", sku: "7613036" },
-  { id: 2, name: "Huile Dinor 1.5L", category: "Alimentation", price: 1750, stock: 24, unit: "Bouteille", sku: "6181100" },
-  { id: 3, name: "Sachet d'Eau Kirene", category: "Boissons", price: 100, stock: 120, unit: "Sachet", sku: "1234567" },
-  { id: 4, name: "Lait Bonnet Rouge", category: "Produits laitiers", price: 650, stock: 45, unit: "Boîte", sku: "8901234" },
-  { id: 5, name: "Spaghetti Maman", category: "Alimentation", price: 400, stock: 8, unit: "Paquet", sku: "5678901" },
-];
-
+/**
+ * Page de visualisation des stocks pour la caissière / gérant de boutique
+ * Version synchronisée avec le backend
+ */
 export default function SuperProduitsPage() {
   const { showToast } = useToast();
+  const { user } = useAuth();
+  
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [products, setProducts] = useState<Product[]>(mockProducts);
-  const [selectedCategory, setSelectedCategory] = useState("Toutes");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const categories = ["Toutes", "Alimentation", "Boissons", "Produits laitiers", "Hygiène", "Boucherie"];
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [prodRes, catRes] = await Promise.all([
+        ProductService.getAll({ shopId: user?.shopId, limit: 1000 }), // Uniquement les produits de sa boutique
+        CategoryService.getAll({ limit: 100 })
+      ]);
+      
+      const prodList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
+      const catList = catRes?.data && Array.isArray(catRes.data) ? catRes.data : (Array.isArray(catRes) ? catRes : []);
+      
+      setProducts(prodList);
+      setCategories(catList);
+    } catch (error) {
+      showToast("Erreur lors du chargement des stocks", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.shopId) loadData();
+  }, [user]);
 
   const filteredProducts = products.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.includes(search);
-    const matchesCategory = selectedCategory === "Toutes" || p.category === selectedCategory;
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || (p.barcode && p.barcode.includes(search));
+    const matchesCategory = !selectedCategory || p.categoryId === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const columns = [
+  const columns: { header: string; accessor: keyof Product | ((item: Product) => React.ReactNode); className?: string }[] = [
     {
-      header: "Code-barres / SKU",
+      header: "Code-barres",
       accessor: (p: Product) => (
         <div className="flex items-center gap-2">
           <Barcode className="h-4 w-4 text-zinc-400" />
-          <span className="font-mono text-[11px]">{p.sku}</span>
+          <span className="font-mono text-[11px] font-bold text-zinc-500">{p.barcode || "N/A"}</span>
         </div>
       ),
     },
@@ -72,25 +77,29 @@ export default function SuperProduitsPage() {
       header: "Produit",
       accessor: (p: Product) => (
         <div className="flex flex-col">
-          <span className="text-sm font-black text-foreground">{p.name}</span>
-          <span className="text-[10px] text-zinc-400 font-bold uppercase">{p.category}</span>
+          <span className="text-sm font-black text-zinc-900 dark:text-zinc-50">{p.name}</span>
+          <span className="text-[10px] text-zinc-400 font-black uppercase tracking-tighter">
+            {p.category?.name || "Général"}
+          </span>
         </div>
       ),
     },
     {
-      header: "Prix (FCFA)",
+      header: "Prix Vente",
       accessor: (p: Product) => (
-        <span className="text-primary font-black">{p.price.toLocaleString()}</span>
+        <span className="text-primary font-black">
+          {new Intl.NumberFormat('fr-FR').format(p.sellingPrice)} XOF
+        </span>
       ),
     },
     {
-      header: "Stock",
+      header: "Stock Disponible",
       accessor: (p: Product) => (
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-bold ${p.stock < 10 ? "text-red-600" : "text-foreground"}`}>
-            {p.stock} {p.unit}s
+          <span className={`text-sm font-black ${p.stockQty <= p.minStockQty ? "text-red-600" : "text-emerald-600"}`}>
+            {p.stockQty}
           </span>
-          {p.stock < 10 && (
+          {p.stockQty <= p.minStockQty && (
             <Badge variant="danger" className="animate-pulse">
               Critique
             </Badge>
@@ -99,184 +108,105 @@ export default function SuperProduitsPage() {
       ),
     },
     {
-      header: "Actions",
+      header: "Statut",
       accessor: (p: Product) => (
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => { setProductToEdit(p); setIsModalOpen(true); }}
-            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-primary transition-all"
-          >
-            <Edit2 className="h-4 w-4" />
-          </button>
-          <button 
-            onClick={() => { setProductToEdit(p); setIsConfirmOpen(true); }}
-            className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg text-zinc-400 hover:text-red-600 transition-all"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      ),
-      className: "text-right",
-    },
+        <Badge variant={p.isActive ? "success" : "outline"}>
+          {p.isActive ? "En vente" : "Retiré"}
+        </Badge>
+      )
+    }
   ];
 
   return (
     <AppLayout
-      title="Catalogue Produits"
-      subtitle="Gestion centralisée des stocks du supermarché"
+      title="Gestion des Stocks"
+      subtitle="Visualisation en temps réel de votre inventaire boutique"
       rightElement={
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="hidden sm:flex">
-            <Download className="h-4 w-4 mr-2" />
-            Exporter
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => { setProductToEdit(null); setIsModalOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouveau Produit
-          </Button>
-        </div>
+        <button 
+          onClick={loadData}
+          className="p-3 bg-zinc-100 dark:bg-zinc-800 rounded-2xl hover:bg-primary/10 hover:text-primary transition-all group"
+        >
+          <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : "group-hover:rotate-180 transition-transform duration-500"}`} />
+        </button>
       }
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12">
         {/* Stats Section */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="p-5 flex items-center gap-4">
-            <div className="p-3 bg-primary/10 text-primary rounded-2xl">
+          <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-4 shadow-sm">
+            <div className="p-4 bg-primary/10 text-primary rounded-2xl">
               <Layers className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Total Produits</p>
-              <h4 className="text-2xl font-black text-foreground">{products.length}</h4>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Articles</p>
+              <h4 className="text-2xl font-black text-zinc-900 dark:text-zinc-50">{products.length}</h4>
             </div>
-          </Card>
-          <Card className="p-5 flex items-center gap-4">
-            <div className="p-3 bg-red-500/10 text-red-600 rounded-2xl">
+          </div>
+          
+          <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-4 shadow-sm">
+            <div className="p-4 bg-red-500/10 text-red-600 rounded-2xl">
               <AlertTriangle className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Stock Critique</p>
-              <h4 className="text-2xl font-black text-foreground">
-                {products.filter((p) => p.stock < 10).length}
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Alertes Stock</p>
+              <h4 className="text-2xl font-black text-red-600">
+                {products.filter((p) => p.stockQty <= p.minStockQty).length}
               </h4>
             </div>
-          </Card>
-          <Card className="p-5 flex items-center gap-4">
-            <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-2xl">
-              <Tag className="h-6 w-6" />
+          </div>
+
+          <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-4 shadow-sm">
+            <div className="p-4 bg-emerald-500/10 text-emerald-600 rounded-2xl">
+              <Package className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Catégories</p>
-              <h4 className="text-2xl font-black text-foreground">{categories.length - 1}</h4>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valeur Stock</p>
+              <h4 className="text-2xl font-black text-emerald-600">
+                {new Intl.NumberFormat('fr-FR').format(products.reduce((acc, p) => acc + (p.stockQty * p.buyingPrice), 0))}
+              </h4>
             </div>
-          </Card>
+          </div>
         </div>
 
         {/* Filters and Table */}
-        <Card className="p-6 flex flex-col gap-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <Card className="p-0 overflow-hidden border-none shadow-xl">
+          <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-4 top-3 h-4 w-4 text-zinc-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
               <input
                 type="text"
                 placeholder="Rechercher par nom ou code-barres..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+                className="w-full pl-12 pr-4 py-3.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl text-xs font-bold outline-none focus:border-primary transition-all"
               />
             </div>
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              <button 
+                onClick={() => setSelectedCategory(null)}
+                className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${!selectedCategory ? "bg-primary text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"}`}
+              >
+                Tous
+              </button>
               {categories.map((cat) => (
                 <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-xl text-xs font-black transition-all shrink-0 ${
-                    selectedCategory === cat
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${
+                    selectedCategory === cat.id
                       ? "bg-primary text-white"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-primary/5 hover:text-primary"
                   }`}
                 >
-                  {cat}
+                  {cat.name}
                 </button>
               ))}
             </div>
           </div>
 
-          <DataTable columns={columns} data={filteredProducts} />
+          <DataTable columns={columns} data={filteredProducts} isLoading={loading} />
         </Card>
       </div>
-
-      {/* Product Form Modal */}
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        title={productToEdit ? "Modifier Produit" : "Nouveau Produit"}
-      >
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-black text-zinc-500 uppercase">Nom du produit</label>
-            <input 
-              type="text" 
-              defaultValue={productToEdit?.name}
-              placeholder="Ex: Riz Maman 5kg"
-              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Code-barres / SKU</label>
-              <input 
-                type="text" 
-                defaultValue={productToEdit?.sku}
-                placeholder="Ex: 7613036"
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Catégorie</label>
-              <select 
-                defaultValue={productToEdit?.category}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-              >
-                {categories.filter(c => c !== "Toutes").map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Prix (FCFA)</label>
-              <input 
-                type="number" 
-                defaultValue={productToEdit?.price}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Unité</label>
-              <input 
-                type="text" 
-                defaultValue={productToEdit?.unit}
-                placeholder="Ex: Sac, Bouteille..."
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-              />
-            </div>
-          </div>
-          <Button variant="primary" className="mt-2" onClick={() => setIsModalOpen(false)}>
-            {productToEdit ? "Mettre à jour" : "Ajouter au catalogue"}
-          </Button>
-        </div>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        isOpen={isConfirmOpen}
-        onClose={() => setIsConfirmOpen(false)}
-        onConfirm={() => {
-          setProducts(products.filter(p => p.id !== productToEdit?.id));
-          showToast("Produit supprimé", "success");
-        }}
-        title="Supprimer le produit"
-        message={`Êtes-vous sûr de vouloir supprimer "${productToEdit?.name}" ? Cette action est irréversible.`}
-      />
     </AppLayout>
   );
 }

@@ -1,12 +1,15 @@
-export type UserRole = "admin" | "caissiere" | "gerant";
+export type UserRole = "ADMIN" | "SUPER_ADMIN" | "MANAGER" | "CASHIER" | "AUDITOR";
 
 export interface User {
   id: string;
   name: string;
-  username: string;
+  email?: string;
+  username?: string;
+  phone?: string;
   role: UserRole;
   shopId?: string;
   shopName?: string;
+  shopAccesses?: { shopId: string; role: string }[];
 }
 
 export interface AuthResponse {
@@ -15,7 +18,11 @@ export interface AuthResponse {
 }
 
 export interface LoginResponse {
-  accessToken: string;
+  accessToken?: string;
   refreshToken?: string;
   user: User;
+  token?: {
+    accessToken: string;
+    refreshToken: string;
+  };
 }

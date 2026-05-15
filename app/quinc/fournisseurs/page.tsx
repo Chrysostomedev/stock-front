@@ -40,7 +40,7 @@ export default function QuincFournisseursPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState("");
 
-  const columns = [
+  const columns: { header: string; accessor: keyof Supplier | ((item: Supplier) => React.ReactNode); className?: string }[] = [
     {
       header: "Fournisseur",
       accessor: (s: Supplier) => (

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { SidebarProvider } from "@/contexts/SidebarContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StockIvoire Pro",
-  description: "Application de gestion et de suivi des stocks pour les commerçants",
+  title: "SP Management Services",
+  description: "Application globale de gestion et de suivi des stocks pour les commerçants",
 };
 
 export default function RootLayout({
@@ -33,7 +34,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
         <ThemeProvider>
           <ToastProvider>
-            {children}
+            <SidebarProvider>
+              {children}
+            </SidebarProvider>
           </ToastProvider>
         </ThemeProvider>
       </body>

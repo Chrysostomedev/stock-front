@@ -41,7 +41,7 @@ export default function QuincDevisPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState<"Devis" | "Facture">("Devis");
 
-    const columns = [
+    const columns: { header: string; accessor: keyof Document | ((item: Document) => React.ReactNode); className?: string }[] = [
         {
             header: "N° Document",
             accessor: (d: Document) => (

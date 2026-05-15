@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -13,41 +13,104 @@ import {
   Search, 
   User, 
   Edit2, 
-  Trash2, 
-  Lock, 
-  Building2,
   Power,
-  Key
+  Key,
+  Phone,
+  ShieldCheck,
+  Building2,
+  Trash2
 } from "lucide-react";
-
-interface UserAccount {
-  id: number;
-  name: string;
-  username: string;
-  role: "admin" | "caissiere" | "gerant";
-  shop: string;
-  status: "actif" | "inactif";
-}
-
-const mockUsers: UserAccount[] = [
-  { id: 1, name: "Koné Fatou", username: "fatou.kone", role: "caissiere", shop: "Boutique Marcory", status: "actif" },
-  { id: 2, name: "Yao Koffi", username: "koffi.yao", role: "gerant", shop: "Dépôt Angré", status: "actif" },
-  { id: 3, name: "Admin Principal", username: "admin", role: "admin", shop: "Toutes", status: "actif" },
-];
+import { useUsers } from "@/hooks/admin/useUsers";
+import AdminShopService from "@/services/admin/shop.service";
+import { UserAccount, Shop } from "@/types/admin";
+import { UserRole } from "@/types/auth";
 
 export default function AdminUtilisateursPage() {
+  const { users, loading, error, addUser, updateUser, deleteUser, toggleStatus, refresh } = useUsers();
+  const [shops, setShops] = useState<Shop[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserAccount | null>(null);
-  const [users, setUsers] = useState<UserAccount[]>(mockUsers);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const columns = [
+  // Form state
+  const [formData, setFormData] = useState<Partial<UserAccount>>({
+    name: "",
+    username: "",
+    phone: "",
+    role: "CASHIER",
+    pin: "1234",
+    isActive: true,
+    shopId: ""
+  });
+
+  useEffect(() => {
+    const loadShops = async () => {
+      try {
+        const response = await AdminShopService.getAllShops();
+        const res = response as any;
+        const list = Array.isArray(res) ? res : (res.data || []);
+        setShops(list);
+      } catch (err) {
+        console.error("Failed to load shops", err);
+      }
+    };
+    loadShops();
+  }, []);
+
+  useEffect(() => {
+    if (selectedUser) {
+      setFormData({
+        name: selectedUser.name,
+        username: selectedUser.username,
+        phone: selectedUser.phone,
+        role: selectedUser.role,
+        pin: selectedUser.pin,
+        isActive: selectedUser.isActive,
+        shopId: selectedUser.shopId
+      });
+    } else {
+      setFormData({
+        name: "",
+        username: "",
+        phone: "",
+        role: "CASHIER",
+        pin: "1234",
+        isActive: true,
+        shopId: ""
+      });
+    }
+  }, [selectedUser, isModalOpen]);
+
+  const handleSubmit = async () => {
+    try {
+      if (selectedUser) {
+        await updateUser(selectedUser.id, formData);
+      } else {
+        await addUser(formData);
+      }
+      setIsModalOpen(false);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const filteredUsers = Array.isArray(users) ? users.filter(u => {
+    if (!u) return false;
+    const nameMatch = u.name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const usernameMatch = u.username?.toLowerCase().includes(searchTerm.toLowerCase());
+    const phoneMatch = u.phone?.includes(searchTerm);
+    return nameMatch || usernameMatch || phoneMatch;
+  }) : [];
+
+  const columns: { header: string; accessor: keyof UserAccount | ((item: UserAccount) => React.ReactNode); className?: string }[] = [
     {
       header: "Utilisateur",
       accessor: (u: UserAccount) => (
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary">
-            {u.name[0]}
+            {u.name ? u.name[0] : u.username[0]}
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-black text-foreground">{u.name}</span>
@@ -59,22 +122,29 @@ export default function AdminUtilisateursPage() {
     {
       header: "Rôle",
       accessor: (u: UserAccount) => (
-        <Badge variant={u.role === "admin" ? "secondary" : "outline"}>{u.role}</Badge>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-3 w-3 text-zinc-400" />
+          <Badge variant={u.role === "ADMIN" || u.role === "SUPER_ADMIN" ? "secondary" : "outline"}>
+            {u.role}
+          </Badge>
+        </div>
       ),
     },
     {
-      header: "Boutique Assignée",
+      header: "Contact",
       accessor: (u: UserAccount) => (
         <div className="flex items-center gap-2">
-          <Building2 className="h-3 w-3 text-zinc-400" />
-          <span className="text-xs font-bold">{u.shop}</span>
+          <Phone className="h-3 w-3 text-zinc-400" />
+          <span className="text-xs font-bold">{u.phone || "N/A"}</span>
         </div>
       ),
     },
     {
       header: "Statut",
       accessor: (u: UserAccount) => (
-        <Badge variant={u.status === "actif" ? "success" : "outline"}>{u.status}</Badge>
+        <Badge variant={u.isActive ? "success" : "outline"}>
+          {u.isActive ? "Actif" : "Inactif"}
+        </Badge>
       ),
     },
     {
@@ -90,10 +160,17 @@ export default function AdminUtilisateursPage() {
           </button>
           <button 
             onClick={() => { setSelectedUser(u); setIsConfirmOpen(true); }}
-            className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg text-zinc-400 hover:text-red-600 transition-all"
-            title={u.status === 'actif' ? "Désactiver" : "Activer"}
+            className={`p-2 rounded-lg transition-all ${u.isActive ? 'hover:bg-red-50 text-zinc-400 hover:text-red-600' : 'hover:bg-green-50 text-zinc-400 hover:text-green-600'}`}
+            title={u.isActive ? "Désactiver" : "Activer"}
           >
             <Power className="h-4 w-4" />
+          </button>
+          <button 
+            onClick={() => { setSelectedUser(u); setIsDeleteConfirmOpen(true); }}
+            className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg text-zinc-400 hover:text-red-600 transition-all"
+            title="Supprimer"
+          >
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       ),
@@ -113,16 +190,32 @@ export default function AdminUtilisateursPage() {
       }
     >
       <div className="flex flex-col gap-6">
+        {error && (
+          <div className="p-4 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100">
+            {error}
+            <button onClick={refresh} className="ml-4 underline">Réessayer</button>
+          </div>
+        )}
+        
         <Card className="p-6">
           <div className="relative max-w-md mb-6">
             <Search className="absolute left-4 top-3 h-4 w-4 text-zinc-400" />
             <input
               type="text"
-              placeholder="Rechercher un utilisateur..."
+              placeholder="Rechercher par nom, identifiant ou téléphone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-11 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
             />
           </div>
-          <DataTable columns={columns} data={users} />
+          
+          {loading ? (
+            <div className="py-20 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+              Chargement des utilisateurs...
+            </div>
+          ) : (
+            <DataTable columns={columns} data={filteredUsers} />
+          )}
         </Card>
       </div>
 
@@ -137,42 +230,75 @@ export default function AdminUtilisateursPage() {
             <label className="text-xs font-black text-zinc-500 uppercase">Nom complet</label>
             <input 
               type="text" 
-              defaultValue={selectedUser?.name}
-              placeholder="Ex: Koné Fatou"
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              placeholder="Ex: Jean Dupont"
               className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
             />
           </div>
+          
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-black text-zinc-500 uppercase">Identifiant (Login)</label>
               <input 
                 type="text" 
-                defaultValue={selectedUser?.username}
-                placeholder="Ex: fatou.kone"
+                value={formData.username}
+                onChange={(e) => setFormData({...formData, username: e.target.value})}
+                placeholder="Ex: j.dupont"
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Rôle</label>
-              <select 
-                defaultValue={selectedUser?.role}
+              <label className="text-xs font-black text-zinc-500 uppercase">Téléphone</label>
+              <input 
+                type="text" 
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                placeholder="Ex: 0701020304"
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-              >
-                <option value="caissiere">Caissière (Superette)</option>
-                <option value="gerant">Gérant (Quincaillerie)</option>
-                <option value="admin">Administrateur</option>
-              </select>
+              />
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-black text-zinc-500 uppercase">Rôle</label>
+              <select 
+                value={formData.role}
+                onChange={(e) => setFormData({...formData, role: e.target.value as UserRole})}
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+              >
+                <option value="CASHIER">Caissière (Superette)</option>
+                <option value="MANAGER">Gérant (Quincaillerie)</option>
+                <option value="ADMIN">Administrateur</option>
+                <option value="SUPER_ADMIN">Super Administrateur</option>
+                <option value="AUDITOR">Auditeur</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-black text-zinc-500 uppercase">Code PIN (4 chiffres)</label>
+              <input 
+                type="text" 
+                maxLength={4}
+                value={formData.pin}
+                onChange={(e) => setFormData({...formData, pin: e.target.value})}
+                placeholder="Ex: 1234"
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all tracking-[0.5em]"
+              />
+            </div>
+          </div>
+
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-black text-zinc-500 uppercase">Assigner à une boutique</label>
             <select 
-              defaultValue={selectedUser?.shop}
+              value={formData.shopId}
+              onChange={(e) => setFormData({...formData, shopId: e.target.value})}
               className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
             >
-              <option value="Boutique Marcory">Boutique Marcory</option>
-              <option value="Dépôt Angré">Dépôt Angré</option>
-              <option value="Toutes">Toutes les boutiques</option>
+              <option value="">-- Choisir une boutique --</option>
+              {shops.map(shop => (
+                <option key={shop.id} value={shop.id}>{shop.name} ({shop.type})</option>
+              ))}
             </select>
           </div>
           
@@ -182,29 +308,53 @@ export default function AdminUtilisateursPage() {
                 <Key className="h-4 w-4" />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Mot de passe par défaut</span>
-                <span className="text-xs font-bold text-foreground tracking-widest">1234</span>
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Information</span>
+                <span className="text-xs font-bold text-foreground tracking-tight">Le mot de passe initial sera identique au PIN.</span>
               </div>
             </div>
           )}
 
-          <Button variant="primary" className="mt-2" onClick={() => setIsModalOpen(false)}>
+          <Button 
+            variant="primary" 
+            className="mt-2" 
+            onClick={handleSubmit}
+            disabled={!formData.name || !formData.username || !formData.pin || formData.pin.length !== 4}
+          >
             {selectedUser ? "Mettre à jour l'accès" : "Créer le compte"}
           </Button>
         </div>
       </Modal>
 
+      {/* Activation/Deactivation Confirm Modal */}
       <ConfirmModal
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
-        onConfirm={() => {
-          setUsers(users.map(u => u.id === selectedUser?.id ? { ...u, status: u.status === 'actif' ? 'inactif' : 'actif' } : u));
-          setIsConfirmOpen(false);
+        onConfirm={async () => {
+          if (selectedUser) {
+            await toggleStatus(selectedUser.id, selectedUser.isActive);
+            setIsConfirmOpen(false);
+          }
         }}
-        title={selectedUser?.status === 'actif' ? "Désactiver l'utilisateur" : "Activer l'utilisateur"}
-        message={`Voulez-vous vraiment ${selectedUser?.status === 'actif' ? 'désactiver' : 'activer'} le compte de "${selectedUser?.name}" ?`}
-        confirmLabel={selectedUser?.status === 'actif' ? "Désactiver" : "Activer"}
-        variant={selectedUser?.status === 'actif' ? "danger" : "primary"}
+        title={selectedUser?.isActive ? "Désactiver l'utilisateur" : "Activer l'utilisateur"}
+        message={`Voulez-vous vraiment ${selectedUser?.isActive ? 'désactiver' : 'activer'} le compte de "${selectedUser?.name}" ?`}
+        confirmLabel={selectedUser?.isActive ? "Désactiver" : "Activer"}
+        variant={selectedUser?.isActive ? "danger" : "primary"}
+      />
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={async () => {
+          if (selectedUser) {
+            await deleteUser(selectedUser.id);
+            setIsDeleteConfirmOpen(false);
+          }
+        }}
+        title="Supprimer l'utilisateur"
+        message={`Attention: Cette action est irréversible. Voulez-vous vraiment supprimer définitivement le compte de "${selectedUser?.name}" ?`}
+        confirmLabel="Supprimer définitivement"
+        variant="danger"
       />
     </AppLayout>
   );

@@ -1,17 +1,26 @@
+import { UserRole } from "./auth";
+
 export interface Shop {
-  id: number;
+  id: string;
   name: string;
   type: "superette" | "quincaillerie";
-  location: string;
-  manager: string;
-  status: "actif" | "inactif";
+  address: string;
+  phone: string;
+  email?: string;
+  taxId?: string;
+  currency: string;
+  isActive: boolean;
 }
 
 export interface UserAccount {
-  id: number;
+  id: string;
   name: string;
   username: string;
-  role: "admin" | "caissiere" | "gerant";
-  shop: string;
-  status: "actif" | "inactif";
+  phone?: string;
+  role: UserRole;
+  pin: string;
+  isActive: boolean;
+  shopId?: string;
+  localId?: string;
+  lastLoginAt?: string;
 }

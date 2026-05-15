@@ -14,21 +14,21 @@ export function middleware(request: NextRequest) {
   // 2. Rediriger vers le dashboard approprié si on est sur / ou déjà loggé sur /login
   if (token) {
     if (pathname === '/' || pathname === '/login') {
-      if (userRole === 'admin') return NextResponse.redirect(new URL('/admin', request.url));
-      if (userRole === 'caissiere') return NextResponse.redirect(new URL('/super', request.url));
-      if (userRole === 'gerant') return NextResponse.redirect(new URL('/quinc', request.url));
+      if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') return NextResponse.redirect(new URL('/admin', request.url));
+      if (userRole === 'CASHIER') return NextResponse.redirect(new URL('/super', request.url));
+      if (userRole === 'MANAGER') return NextResponse.redirect(new URL('/quinc', request.url));
     }
 
     // 3. Protection stricte des routes par rôle
-    if (pathname.startsWith('/admin') && userRole !== 'admin') {
-      return NextResponse.redirect(new URL(userRole === 'caissiere' ? '/super' : '/quinc', request.url));
+    if (pathname.startsWith('/admin') && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+      return NextResponse.redirect(new URL(userRole === 'CASHIER' ? '/super' : '/quinc', request.url));
     }
     
-    if (pathname.startsWith('/super') && userRole !== 'caissiere' && userRole !== 'admin') {
+    if (pathname.startsWith('/super') && userRole !== 'CASHIER' && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
       return NextResponse.redirect(new URL('/login', request.url));
     }
-
-    if (pathname.startsWith('/quinc') && userRole !== 'gerant' && userRole !== 'admin') {
+ 
+    if (pathname.startsWith('/quinc') && userRole !== 'MANAGER' && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }
