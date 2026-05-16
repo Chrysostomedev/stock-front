@@ -18,7 +18,11 @@ const AuthService = {
   },
 
   async logout() {
-    await axiosInstance.post("/auth/logout");
+    try {
+      await axiosInstance.post("/auth/logout");
+    } catch (error) {
+      console.warn("Backend logout failed, continuing with local logout", error);
+    }
     if (typeof window !== "undefined") {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
