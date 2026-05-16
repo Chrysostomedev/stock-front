@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
@@ -26,14 +25,15 @@ import { UserAccount, Shop } from "@/types/admin";
 import { UserRole } from "@/types/auth";
 
 export default function AdminUtilisateursPage() {
-  const { users, loading, error, addUser, updateUser, deleteUser, toggleStatus, refresh } = useUsers();
+  const { users, loading, error, shopAccesses, addUser, updateUser, deleteUser, toggleStatus, refresh, fetchShopAccesses } = useUsers();
   const [shops, setShops] = useState<Shop[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isShopsModalOpen, setIsShopsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserAccount | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-
+console.log("shopAccesses",shopAccesses)
   // Form state
   const [formData, setFormData] = useState<Partial<UserAccount>>({
     name: "",
@@ -159,6 +159,17 @@ export default function AdminUtilisateursPage() {
             <Edit2 className="h-4 w-4" />
           </button>
           <button 
+            onClick={() => { 
+              setSelectedUser(u); 
+              setIsShopsModalOpen(true); 
+              if (u.id) fetchShopAccesses(u.id); 
+            }}
+            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-blue-500 transition-all"
+            title="Voir les boutiques"
+          >
+            <Building2 className="h-4 w-4" />
+          </button>
+          <button 
             onClick={() => { setSelectedUser(u); setIsConfirmOpen(true); }}
             className={`p-2 rounded-lg transition-all ${u.isActive ? 'hover:bg-red-50 text-zinc-400 hover:text-red-600' : 'hover:bg-green-50 text-zinc-400 hover:text-green-600'}`}
             title={u.isActive ? "Désactiver" : "Activer"}
@@ -177,7 +188,6 @@ export default function AdminUtilisateursPage() {
       className: "text-right",
     },
   ];
-
   return (
     <AppLayout
       title="Gestion des Utilisateurs"
@@ -325,6 +335,36 @@ export default function AdminUtilisateursPage() {
         </div>
       </Modal>
 
+      {/* Shops Access Modal */}
+      <Modal
+        isOpen={isShopsModalOpen}
+        onClose={() => setIsShopsModalOpen(false)}
+        title={`Boutiques assignées à ${selectedUser?.name}`}
+      >
+        <div className="flex flex-col gap-4">
+          {loading ? (
+            <div className="flex justify-center p-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            </div>
+          ) : shopAccesses && shopAccesses.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {shopAccesses.map((access: any) => (
+                <div key={access.shopId} className="p-3 border rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 flex justify-between items-center">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm text-foreground">{access.shop?.name}</span>
+                    <span className="text-xs text-zinc-500">{access.shop?.address}</span>
+                  </div>
+                  <Badge variant="outline">{access.shop?.type === "superette" ? "Supérette" : "Quincaillerie"}</Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 text-center text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700">
+              Aucune boutique n'est assignée à cet utilisateur.
+            </div>
+          )}
+        </div>
+      </Modal>
       {/* Activation/Deactivation Confirm Modal */}
       <ConfirmModal
         isOpen={isConfirmOpen}

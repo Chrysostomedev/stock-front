@@ -1,5 +1,12 @@
-export type UserRole = "ADMIN" | "SUPER_ADMIN" | "MANAGER" | "CASHIER" | "AUDITOR";
+import { Shop } from "./admin";
 
+export type UserRole = "ADMIN" | "SUPER_ADMIN" | "MANAGER" | "CASHIER" | "AUDITOR";
+ export interface shopAccesses{
+         shopId:string,
+         shop:Shop,
+        
+        }
+      
 export interface User {
   id: string;
   name: string;
@@ -9,9 +16,8 @@ export interface User {
   role: UserRole;
   shopId?: string;
   shopName?: string;
-  shopAccesses?: { shopId: string; role: string }[];
+  shopAccesses?:shopAccesses[];
 }
-
 export interface AuthResponse {
   accessToken: string;
   user: User;

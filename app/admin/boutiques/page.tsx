@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
@@ -39,7 +38,6 @@ export default function AdminBoutiquesPage() {
     currency: "XOF",
     isActive: true
   });
-
   useEffect(() => {
     if (selectedShop) {
       setFormData({
