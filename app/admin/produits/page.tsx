@@ -88,7 +88,7 @@ export default function AdminProduitsPage() {
       const catList = catRes.data && Array.isArray(catRes.data) ? catRes.data : [];
       const shopList = Array.isArray(shopRes) ? shopRes : (shopRes.data || []);
       const unitList = unitRes.data && Array.isArray(unitRes.data) ? unitRes.data : [];
-
+      console.log("les produits",prodList);
       setProducts(prodList);
       setCategories(catList);
       setShops(shopList);
@@ -233,7 +233,7 @@ export default function AdminProduitsPage() {
       accessor: (item: Product) => (
         <div className="flex items-center gap-2">
           <Building2 className="h-3 w-3 text-zinc-400" />
-          <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">{item.shop?.name || "Inconnue"}</span>
+          <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400">{shops.find(s => s.id === item.shopId)?.name}</span>
         </div>
       )
     },
@@ -280,7 +280,6 @@ export default function AdminProduitsPage() {
       )
     }
   ];
-
   return (
     <AppLayout title="Gestion du Catalogue" subtitle="Produits, prix et inventaire global">
       <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12">
@@ -307,7 +306,6 @@ export default function AdminProduitsPage() {
                 <option value="">Toutes les boutiques</option>
                 {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-              
               <select 
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
@@ -393,7 +391,6 @@ export default function AdminProduitsPage() {
                 />
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Boutique Assignée <span className="text-red-500">*</span></label>
@@ -419,13 +416,11 @@ export default function AdminProduitsPage() {
               </div>
             </div>
           </div>
-
           {/* Section Prix et Stock */}
           <div className="flex flex-col gap-4">
             <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
               <DollarSign className="h-3 w-3" /> Prix et Inventaire
             </h4>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Prix d'Achat (XOF)</label>

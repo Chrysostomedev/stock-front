@@ -9,6 +9,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useToast } from "@/contexts/ToastContext";
 import CategoryService, { Category } from "@/services/category.service";
+import UnitService, { Unit } from "@/services/unit.service";
 import { 
   Plus, 
   Edit2, 
@@ -20,6 +21,7 @@ import {
   Search,
   Filter
 } from "lucide-react";
+import Badge from "@/components/ui/Badge";
 
 /**
  * Page de gestion des Catégories et Sous-catégories
@@ -30,12 +32,15 @@ export default function AdminCategoriesPage() {
   
   // États pour les données
   const [categories, setCategories] = useState<Category[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingUnits, setLoadingUnits] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   
   // États pour les modales
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   
   // États pour le formulaire
@@ -45,6 +50,10 @@ export default function AdminCategoriesPage() {
     parentId: "", // Si vide, c'est une catégorie racine
     colorHex: "#3b82f6"
   });
+  const [unitFormData, setUnitFormData] = useState({
+    name: "",
+    abbreviation: ""
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Chargement initial des catégories
@@ -52,6 +61,7 @@ export default function AdminCategoriesPage() {
     setLoading(true);
     try {
       const response = await CategoryService.getAll();
+      console.log("les catégories",response.data);
       // Le backend NestJS renvoie un objet paginé { data: [...], total: ... }
       const list = response?.data && Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
       setCategories(list);
@@ -63,9 +73,45 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const fetchUnits = async () => {
+    setLoadingUnits(true);
+    try {
+      const response = await UnitService.getAll();
+      const list = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
+      setUnits(list);
+    } catch (error) {
+      console.error("Erreur chargement unités:", error);
+    } finally {
+      setLoadingUnits(false);
+    }
+  };
+
   useEffect(() => {
     fetchCategories();
+    fetchUnits();
   }, []);
+
+  // Soumission de l'unité
+  const handleUnitSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unitFormData.name || !unitFormData.abbreviation) {
+      showToast("Le nom et l'abréviation sont obligatoires", "error");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await UnitService.create(unitFormData);
+      showToast("Unité créée avec succès", "success");
+      setIsUnitModalOpen(false);
+      setUnitFormData({ name: "", abbreviation: "" });
+      fetchUnits();
+    } catch (error) {
+      console.error("Erreur création unité:", error);
+      showToast("Impossible de créer l'unité", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Gestion de l'ouverture de la modale (Ajout ou Édition)
   const handleOpenModal = (category: Category | null = null) => {
@@ -229,20 +275,63 @@ export default function AdminCategoriesPage() {
             />
           </div>
           
-          <Button onClick={() => handleOpenModal()} variant="primary" className="h-12 px-6">
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle Catégorie
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => handleOpenModal()} variant="primary" className="h-12 px-6">
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle Catégorie
+            </Button>
+          </div>
         </div>
 
-        {/* Tableau des données */}
-        <Card className="overflow-hidden border-none shadow-xl">
-          <DataTable 
-            columns={columns} 
-            data={filteredCategories} 
-            isLoading={loading}
-          />
-        </Card>
+        {/* Layout Grid : Tableau des catégories (gauche) / Unités (droite) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <Card className="overflow-hidden border-none shadow-xl h-full">
+              <DataTable 
+                columns={columns} 
+                data={filteredCategories} 
+                isLoading={loading}
+              />
+            </Card>
+          </div>
+
+          <div className="lg:col-span-1">
+            <Card className="p-5 border-none shadow-xl h-full flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-black text-md text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+                  <Tag className="h-5 w-5 text-primary" />
+                  Unités de mesure
+                </h3>
+                <Button onClick={() => setIsUnitModalOpen(true)} variant="outline" size="sm" className="h-9">
+                  <Plus className="h-3 w-3 mr-1" /> Ajouter
+                </Button>
+              </div>
+
+              {loadingUnits ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                </div>
+              ) : units.length > 0 ? (
+                <div className="flex flex-col gap-3 overflow-y-auto pr-1 custom-scrollbar">
+                  {units.map((u) => (
+                    <div key={u.id} className="p-3.5 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl flex justify-between items-center border border-zinc-100 dark:border-zinc-700/50 hover:border-primary/30 transition-all group">
+                      <span className="font-bold text-sm text-zinc-700 dark:text-zinc-200">{u.name}</span>
+                      <Badge variant="secondary" className="group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                        {u.abbreviation}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl">
+                  <Tag className="h-8 w-8 text-zinc-300 dark:text-zinc-600 mb-2" />
+                  <span className="text-sm font-bold text-zinc-500">Aucune unité</span>
+                  <span className="text-xs text-zinc-400 mt-1">Créez votre première unité de mesure</span>
+                </div>
+              )}
+            </Card>
+          </div>
+        </div>
 
         {/* Statistiques rapides / Aide contextuelle */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -282,7 +371,48 @@ export default function AdminCategoriesPage() {
         </div>
       </div>
 
-      {/* Modale d'ajout/édition */}
+      {/* Modale d'ajout/édition Unité */}
+      <Modal
+        isOpen={isUnitModalOpen}
+        onClose={() => setIsUnitModalOpen(false)}
+        title="Ajouter une nouvelle unité"
+      >
+        <form onSubmit={handleUnitSubmit} className="flex flex-col gap-5 p-1">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+              Nom de l'unité <span className="text-red-500">*</span>
+            </label>
+            <input 
+              type="text"
+              placeholder="Ex: Kilogramme, Litre, Pièce..."
+              value={unitFormData.name}
+              onChange={(e) => setUnitFormData({...unitFormData, name: e.target.value})}
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold outline-none focus:border-primary transition-all"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+              Abréviation <span className="text-red-500">*</span>
+            </label>
+            <input 
+              type="text"
+              placeholder="Ex: kg, L, pcs..."
+              value={unitFormData.abbreviation}
+              onChange={(e) => setUnitFormData({...unitFormData, abbreviation: e.target.value})}
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold outline-none focus:border-primary transition-all"
+            />
+          </div>
+          <Button 
+            variant="primary" 
+            className="mt-2" 
+            disabled={isSubmitting || !unitFormData.name || !unitFormData.abbreviation}
+          >
+            {isSubmitting ? "Création..." : "Créer l'unité"}
+          </Button>
+        </form>
+      </Modal>
+
+      {/* Modale d'ajout/édition Catégorie */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
