@@ -352,7 +352,6 @@ console.log("shopAccesses",shopAccesses)
       <Modal
         isOpen={isShopsModalOpen}
         onClose={() => setIsShopsModalOpen(false)}
-<<<<<<< HEAD
         title={`Boutiques assignées — ${selectedUser?.name}`}
       >
         <div className="flex flex-col gap-4">
@@ -360,11 +359,6 @@ console.log("shopAccesses",shopAccesses)
             <Clock className="h-4 w-4" />
             <span>Dernière connexion : <span className="font-black text-blue-900 dark:text-blue-200">{formatDate(selectedUser?.lastLoginAt)}</span></span>
           </div>
-=======
-        title={`Boutiques assignées à ${selectedUser?.name}`}
-      >
-        <div className="flex flex-col gap-4">
->>>>>>> 708c712647dbef968b1e01a9fb4ead77c04e6e70
           {loading ? (
             <div className="flex justify-center p-4">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
