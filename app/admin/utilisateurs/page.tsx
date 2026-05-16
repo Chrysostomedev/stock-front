@@ -10,14 +10,14 @@ import ConfirmModal from "@/components/ui/ConfirmModal";
 import { 
   Plus, 
   Search, 
-  User, 
   Edit2, 
   Power,
   Key,
   Phone,
   ShieldCheck,
   Building2,
-  Trash2
+  Trash2,
+  Clock
 } from "lucide-react";
 import { useUsers } from "@/hooks/admin/useUsers";
 import AdminShopService from "@/services/admin/shop.service";
@@ -26,6 +26,19 @@ import { UserRole } from "@/types/auth";
 
 export default function AdminUtilisateursPage() {
   const { users, loading, error, shopAccesses, addUser, updateUser, deleteUser, toggleStatus, refresh, fetchShopAccesses } = useUsers();
+<<<<<<< HEAD
+  
+  const formatDate = (dateString?: string | Date) => {
+    if (!dateString) return "Jamais";
+    try {
+      return new Date(dateString).toLocaleString("fr-FR");
+    } catch (e) {
+      return "Jamais";
+    }
+  };
+
+=======
+>>>>>>> 708c712647dbef968b1e01a9fb4ead77c04e6e70
   const [shops, setShops] = useState<Shop[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -339,9 +352,19 @@ console.log("shopAccesses",shopAccesses)
       <Modal
         isOpen={isShopsModalOpen}
         onClose={() => setIsShopsModalOpen(false)}
+<<<<<<< HEAD
+        title={`Boutiques assignées — ${selectedUser?.name}`}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2 px-3.5 py-2.5 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-100/50 dark:border-blue-900/30 rounded-xl text-xs font-bold self-start">
+            <Clock className="h-4 w-4" />
+            <span>Dernière connexion : <span className="font-black text-blue-900 dark:text-blue-200">{formatDate(selectedUser?.lastLoginAt)}</span></span>
+          </div>
+=======
         title={`Boutiques assignées à ${selectedUser?.name}`}
       >
         <div className="flex flex-col gap-4">
+>>>>>>> 708c712647dbef968b1e01a9fb4ead77c04e6e70
           {loading ? (
             <div className="flex justify-center p-4">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
