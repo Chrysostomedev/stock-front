@@ -26,7 +26,6 @@ import { UserRole } from "@/types/auth";
 
 export default function AdminUtilisateursPage() {
   const { users, loading, error, shopAccesses, addUser, updateUser, deleteUser, toggleStatus, refresh, fetchShopAccesses } = useUsers();
-<<<<<<< HEAD
   
   const formatDate = (dateString?: string | Date) => {
     if (!dateString) return "Jamais";
@@ -37,8 +36,6 @@ export default function AdminUtilisateursPage() {
     }
   };
 
-=======
->>>>>>> 708c712647dbef968b1e01a9fb4ead77c04e6e70
   const [shops, setShops] = useState<Shop[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
