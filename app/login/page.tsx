@@ -30,7 +30,7 @@ export default function LoginPage() {
       await login({ phone, password });
       // La redirection est gérée dans le hook useAuth
     } catch (err: any) {
-      console.error("Login error:", err);
+      console.error("Login error:", err.message || err);
       setError(err.response?.data?.message || "Identifiants invalides ou erreur serveur.");
     } finally {
       setLoading(false);

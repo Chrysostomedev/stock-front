@@ -5,64 +5,67 @@ import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { Lock, User, Eye, EyeOff } from "lucide-react";
+import { useAuth } from "./context/useContext";
 
-type Role = "admin" | "manager_super" | "manager_gaz" | "manager_quinc";
-
+const ROLE_ROUTES: Record<string, string> = {
+  SUPER_ADMIN: "/super",
+  ADMIN: "/admin",
+  CASHIER: "/caisse",
+};
 export default function Home() {
   const router = useRouter();
-  const [role, setRole] = useState<Role>("admin");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { login } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    if (!phone) {
+    if (!phone.trim()) {
       setError("Le numéro de téléphone est requis.");
       setLoading(false);
       return;
     }
 
-    if (!password) {
+    if (!password.trim()) {
       setError("Le mot de passe est requis.");
       setLoading(false);
       return;
     }
 
-    // Redirect based on selected role
-    setTimeout(() => {
-      setLoading(false);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("userRole", role);
-        localStorage.setItem("userPhone", phone);
-      }
+    setTimeout(async () => {
+      try {
+        const res = await login(phone, password);
+        const role = res.user.role as string;
+        const route = ROLE_ROUTES[role];
 
-      if (role === "admin") {
-        router.push("/admin");
-      } else if (role === "manager_super") {
-        router.push("/super");
-      } else if (role === "manager_gaz") {
-        router.push("/gaz");
-      } else {
-        router.push("/quinc");
+        if (!route) {
+          setError("Rôle non reconnu. Contactez l'administrateur.");
+          setLoading(false);
+          return;
+        }
+
+        router.push(route);
+      } catch (err: unknown) {
+        setLoading(false);
+        if (err instanceof Error) {
+          setError(err.message || "Erreur de connexion");
+        } else {
+          setError("Erreur de connexion");
+        }
+      } finally {
+        setLoading(false);
       }
-    }, 800);
+    }, 500);
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground select-none transition-colors duration-300">
-      <header className="border-b border-border bg-card h-16 w-full flex items-center justify-between px-6 z-30 select-none">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight leading-none">
-            StockIvoire Pro
-          </h1>
-        </div>
-      </header>
       <main className="flex-1 max-w-md mx-auto px-4 py-12 w-full flex flex-col justify-center">
         <Card className="p-6 sm:p-8 bg-card border border-border rounded-2xl shadow-xl flex flex-col gap-6">
           <div className="text-center">
@@ -72,59 +75,6 @@ export default function Home() {
             <p className="mt-1 text-sm opacity-75">
               Accédez à votre espace de travail StockIvoire Pro
             </p>
-          </div>
-
-          {/* Role selector switches */}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold text-foreground opacity-90">
-              Type de compte
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setRole("admin")}
-                className={`p-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                  role === "admin"
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-extrabold shadow-sm"
-                    : "border-border bg-zinc-50 dark:bg-zinc-800/40 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100"
-                }`}
-              >
-                Administrateur
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("manager_super")}
-                className={`p-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                  role === "manager_super"
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-extrabold shadow-sm"
-                    : "border-border bg-zinc-50 dark:bg-zinc-800/40 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100"
-                }`}
-              >
-                Manager Supérette
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("manager_gaz")}
-                className={`p-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                  role === "manager_gaz"
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-extrabold shadow-sm"
-                    : "border-border bg-zinc-50 dark:bg-zinc-800/40 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100"
-                }`}
-              >
-                Manager Gaz
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("manager_quinc")}
-                className={`p-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                  role === "manager_quinc"
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-extrabold shadow-sm"
-                    : "border-border bg-zinc-50 dark:bg-zinc-800/40 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100"
-                }`}
-              >
-                Manager Quinc
-              </button>
-            </div>
           </div>
 
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
@@ -168,7 +118,11 @@ export default function Home() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors select-none cursor-pointer"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -179,6 +133,22 @@ export default function Home() {
                 {error}
               </span>
             )}
+
+            {/* Role indicator */}
+            <div className="flex gap-2 justify-center flex-wrap">
+              {Object.keys(ROLE_ROUTES).map((r) => (
+                <span
+                  key={r}
+                  className="text-xs px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-medium border border-zinc-200 dark:border-zinc-700"
+                >
+                  {r === "SUPER_ADMIN"
+                    ? "Super Admin"
+                    : r === "ADMIN"
+                      ? "Admin"
+                      : "Caissier"}
+                </span>
+              ))}
+            </div>
 
             {/* CTA button */}
             <Button
