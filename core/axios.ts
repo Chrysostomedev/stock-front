@@ -2,7 +2,7 @@ import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
-const axiosInstance = axios.create({
+const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
@@ -10,7 +10,7 @@ const axiosInstance = axios.create({
 });
 
 // Intercepteur pour ajouter le token à chaque requête
-axiosInstance.interceptors.request.use(
+api.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("token");
@@ -26,7 +26,7 @@ axiosInstance.interceptors.request.use(
 );
 
 // Intercepteur pour gérer les erreurs globales (ex: 401 Unauthorized)
-axiosInstance.interceptors.response.use(
+api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
@@ -41,4 +41,4 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-export default axiosInstance;
+export default api;
