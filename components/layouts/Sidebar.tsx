@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
   X,
@@ -23,22 +23,24 @@ import {
   AlertCircle,
   Tag,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@/types/auth";
 
 import { useSidebar } from "@/contexts/SidebarContext";
 import ConfirmModal from "../ui/ConfirmModal";
+import { useAuth } from "@/hooks/useAuth";
 
-type Role = UserRole;
+type user = UserRole;
 
 export default function Sidebar() {
-  const { logout, role: userRole } = useAuth();
+  const { user, logout } = useAuth();
   const { isOpen, close } = useSidebar();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   const handleLogout = async () => {
     await logout();
+    router.push("/login");
   };
 
   // Full available link list
@@ -73,9 +75,9 @@ export default function Sidebar() {
     { href: "/profile", label: "Mon Profil", icon: <UserCircle className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER", "MANAGER", "AUDITOR"] },
     { href: "/admin/settings", label: "Paramètres", icon: <Settings className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
   ];
-
   // Filter links by userRole
-  const links = allLinks.filter((link) => link.roles.includes(userRole));
+  const userRole = user?.role as UserRole;
+  const links = allLinks.filter((link) => userRole && link.roles.includes(userRole));
 
   return (
     <>
@@ -99,7 +101,6 @@ export default function Sidebar() {
               SP SERVICES Stock
             </span>
           </Link>
-
           {/* Close button for mobile */}
           <div className="flex sm:hidden items-center justify-between px-2.5 mb-2">
             <span className="text-lg font-black tracking-tighter text-primary">
@@ -109,7 +110,6 @@ export default function Sidebar() {
               <X className="h-5 w-5" />
             </button>
           </div>
-
           {/* Navigation links */}
           <nav className="flex flex-col gap-1">
             {links.map((link, idx) => {
@@ -133,7 +133,6 @@ export default function Sidebar() {
             })}
           </nav>
         </div>
-
         {/* Footer actions */}
         <div className="flex flex-col gap-2">
           <button
@@ -145,7 +144,6 @@ export default function Sidebar() {
           </button>
         </div>
       </aside>
-
       <ConfirmModal
         isOpen={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}

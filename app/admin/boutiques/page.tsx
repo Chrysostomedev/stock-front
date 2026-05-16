@@ -81,7 +81,6 @@ export default function AdminBoutiquesPage() {
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.address.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
   const columns: { header: string; accessor: keyof Shop | ((item: Shop) => React.ReactNode); className?: string }[] = [
     {
       header: "Boutique",
