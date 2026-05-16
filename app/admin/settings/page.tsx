@@ -5,13 +5,19 @@ import Sidebar from "@/components/layouts/Sidebar";
 import Card from "@/components/ui/Card";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useToast } from "@/contexts/ToastContext";
-import { Bell, Moon, Sun, Lock } from "lucide-react";
+import { Bell, Moon, Sun, Lock, ShieldCheck, ArrowRight, Activity } from "lucide-react";
+import UserShopAccessManager from "./components/UserShopAccessManager";
+import AuditLogsViewer from "./components/AuditLogsViewer";
+
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { showToast } = useToast();
   const [notifications, setNotifications] = useState(true);
   const [sound, setSound] = useState(true);
+  const [isShopAccessOpen, setIsShopAccessOpen] = useState(false);
+  const [isAuditLogsOpen, setIsAuditLogsOpen] = useState(false);
+
 
   const handleSetTheme = (newTheme: "light" | "dark") => {
     setTheme(newTheme);
@@ -135,7 +141,75 @@ export default function SettingsPage() {
             Toutes les transactions effectuées au comptoir (Espèces, MTN MoMo, Moov Money, Crédits) sont stockées dans nos bases sécurisées. Les managers n'ont pas accès aux configurations globales et rapports financiers généraux de l'administrateur.
           </p>
         </Card>
+
+        {/* Permissions & Multi-boutiques */}
+        <Card className="p-6 bg-card border border-border rounded-2xl flex flex-col gap-4 transition-colors duration-300">
+          <div className="flex items-center gap-3">
+            <span className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl">
+              <ShieldCheck className="h-5 w-5" />
+            </span>
+            <div className="flex flex-col">
+              <h3 className="text-base font-bold text-foreground">Accès & Permissions Multi-Boutiques</h3>
+              <span className="text-xs opacity-75">
+                Gérez les assignations et rôles des utilisateurs pour vos différentes boutiques
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-2 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800/60 p-4 rounded-xl flex items-center justify-between">
+            <p className="text-xs opacity-75 leading-relaxed max-w-[70%]">
+              Assignez vos employés à des succursales spécifiques avec des rôles distincts (Caissier, Manager, Admin) pour cloisonner l'accès aux données.
+            </p>
+            <button 
+              onClick={() => setIsShopAccessOpen(true)}
+              className="flex items-center justify-center px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 active:scale-95 group"
+            >
+              Gérer les accès
+              <ArrowRight className="ml-1.5 h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+        </Card>
+        
+        {/* Journal d'Audit */}
+        <Card className="p-6 bg-card border border-border rounded-2xl flex flex-col gap-4 transition-colors duration-300">
+          <div className="flex items-center gap-3">
+            <span className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl">
+              <Activity className="h-5 w-5" />
+            </span>
+            <div className="flex flex-col">
+              <h3 className="text-base font-bold text-foreground">Journal d'Audit Système</h3>
+              <span className="text-xs opacity-75">
+                Consultez l'historique complet des actions effectuées sur la plateforme
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-2 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800/60 p-4 rounded-xl flex items-center justify-between">
+            <p className="text-xs opacity-75 leading-relaxed max-w-[70%]">
+              Suivez les créations, modifications et suppressions pour assurer la traçabilité des opérations de gestion.
+            </p>
+            <button 
+              onClick={() => setIsAuditLogsOpen(true)}
+              className="flex items-center justify-center px-4 py-2.5 bg-zinc-800 hover:bg-zinc-900 text-white rounded-xl text-xs font-bold transition-all shadow-lg active:scale-95 group"
+            >
+              Voir les logs
+              <ArrowRight className="ml-1.5 h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+        </Card>
       </main>
+
+
+      <UserShopAccessManager 
+        isOpen={isShopAccessOpen} 
+        onClose={() => setIsShopAccessOpen(false)} 
+      />
+
+      <AuditLogsViewer 
+        isOpen={isAuditLogsOpen} 
+        onClose={() => setIsAuditLogsOpen(false)} 
+      />
+
     </div>
   );
 }

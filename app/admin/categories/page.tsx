@@ -294,7 +294,6 @@ export default function AdminCategoriesPage() {
               />
             </Card>
           </div>
-
           <div className="lg:col-span-1">
             <Card className="p-5 border-none shadow-xl h-full flex flex-col">
               <div className="flex justify-between items-center mb-6">

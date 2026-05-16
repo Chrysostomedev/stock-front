@@ -24,3 +24,14 @@ export interface UserAccount {
   localId?: string;
   lastLoginAt?: string;
 }
+
+export interface UserShopAccess {
+  id: string;
+  userId: string;
+  shopId: string;
+  roleInShop: UserRole;
+  user?: UserAccount;
+  shop?: Shop;
+  createdAt?: string;
+  updatedAt?: string;
+}
