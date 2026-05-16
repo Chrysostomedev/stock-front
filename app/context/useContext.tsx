@@ -10,7 +10,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { User } from "@/types/auth";
 import { ApiErrorResponse } from "@/types/global";
-import api from "@/core/axios";
+import axiosInstance from "@/core/axios";
 
 // Structure de la réponse de login renvoyée par ton API
 interface LoginResponse {
@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     password: string,
   ): Promise<{ user: User; accessToken: string; refreshToken: string }> => {
     try {
-      const res = await api.post<LoginResponse>(`/auth/login`, {
+      const res = await axiosInstance.post<LoginResponse>(`/auth/login`, {
         phone,
         password,
       });
@@ -152,7 +152,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       // Appel /auth/me — le token est envoyé automatiquement par l'intercepteur Axios
-      const res = await api.get<User>(`/auth/me`);
+      const res = await axiosInstance.get<User>(`/auth/me`);
       if (isMounted.current) {
         setUser(res.data);
         setIsAuthenticated(true);
@@ -171,7 +171,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (storedRefreshToken && userId) {
           try {
-            const refreshRes = await api.post<RefreshResponse>(
+            const refreshRes = await axiosInstance.post<RefreshResponse>(
               `/auth/refresh/${userId}`,
               { refreshToken: storedRefreshToken },
             );
@@ -191,7 +191,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               console.log("✅ Tokens rafraîchis avec succès.");
               saveTokens(newAccessToken, newRefreshToken);
               // Retry de /auth/me avec le nouveau token
-              const retryRes = await api.get<User>(`/auth/me`);
+              const retryRes = await axiosInstance.get<User>(`/auth/me`);
               if (isMounted.current) {
                 setUser(retryRes.data);
                 setIsAuthenticated(true);

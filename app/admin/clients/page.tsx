@@ -11,7 +11,6 @@ import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/hooks/useAuth";
 import CustomerService, { Customer } from "@/services/customer.service";
 import { 
-  Users, 
   UserPlus, 
   Search, 
   Phone, 
@@ -87,7 +86,6 @@ export default function AdminClientsPage() {
     }
     setIsModalOpen(true);
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) return;
@@ -106,7 +104,6 @@ export default function AdminClientsPage() {
       showToast("Erreur lors de l'enregistrement", "error");
     }
   };
-
   const filteredCustomers = customers.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     c.phone?.includes(searchTerm)
