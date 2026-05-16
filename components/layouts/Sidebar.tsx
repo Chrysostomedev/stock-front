@@ -4,12 +4,9 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Menu,
   X,
   LayoutDashboard,
   ShoppingCart,
-  Flame,
-  Wrench,
   Settings,
   UserCircle,
   Users,
@@ -42,7 +39,6 @@ export default function Sidebar() {
     await logout();
     router.push("/login");
   };
-
   // Full available link list
   const allLinks = [
     { href: "/admin", label: "Administration", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
@@ -88,7 +84,6 @@ export default function Sidebar() {
           className="sm:hidden fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm transition-all"
         />
       )}
-
       {/* Sidebar Navigation */}
       <aside
         className={`fixed sm:static top-0 bottom-0 left-0 z-[70] w-64 bg-card border-r border-border p-4 flex flex-col justify-between transition-all duration-300 select-none transform ${isOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0"

@@ -1,3 +1,4 @@
+import { User } from "@/types/auth";
 import axiosInstance from "../../core/axios";
 import { UserAccount } from "../../types/admin";
 
@@ -15,6 +16,10 @@ const AdminUserService = {
     };
     const response = await axiosInstance.post("/auth/register", payload);
     return response.data.user;
+  },
+  async getShopAccesses(userId: string): Promise<User[]> {
+    const response = await axiosInstance.get(`/users/${userId}`);
+    return response.data.data || response.data;
   },
 
   async updateUser(id: string, userData: Partial<UserAccount>): Promise<UserAccount> {
