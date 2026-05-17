@@ -43,7 +43,7 @@ export default function SuperProduitsPage() {
       
       const prodList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
       const catList = catRes?.data && Array.isArray(catRes.data) ? catRes.data : (Array.isArray(catRes) ? catRes : []);
-      
+      console.log("prodlist:",prodList)
       setProducts(prodList);
       setCategories(catList);
     } catch (error) {

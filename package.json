@@ -28,6 +28,7 @@
     "react-dom": "19.2.4",
     "react-hot-toast": "^2.6.0",
     "react-to-print": "^3.3.0",
+    "recharts": "^3.8.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
