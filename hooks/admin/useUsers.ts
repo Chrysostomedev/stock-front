@@ -12,10 +12,15 @@ export function useUsers() {
     try {
       setLoading(true);
       const response = await AdminUserService.getAllUsers();
-      // Le backend peut renvoyer un tableau direct ou un objet paginé { data: [...] }
-      const list = (response as any).data && Array.isArray((response as any).data) 
+      let list = (response as any).data && Array.isArray((response as any).data) 
         ? (response as any).data 
         : (Array.isArray(response) ? response : []);
+        
+      list = list.map((u: any) => ({
+        ...u,
+        shopId: u.shopAccesses?.length > 0 ? u.shopAccesses[0].shopId : u.shopId
+      }));
+
       setUsers(list);
       setError(null);
     } catch (err: any) {
@@ -56,7 +61,10 @@ export function useUsers() {
   const addUser = async (userData: Partial<UserAccount>) => {
     try {
       const newUser = await AdminUserService.createUser(userData);
-      setUsers((prev) => [...prev, newUser]);
+      if (userData.shopId && newUser.id) {
+        await AdminUserService.assignShopToUser(newUser.id, userData.shopId, userData.role || 'CASHIER');
+      }
+      setUsers((prev) => [...prev, { ...newUser, shopId: userData.shopId }]);
       return newUser;
     } catch (err: any) {
       throw new Error(err.response?.data?.message || "Erreur lors de la création");
@@ -66,7 +74,10 @@ export function useUsers() {
   const updateUser = async (id: string, userData: Partial<UserAccount>) => {
     try {
       const updatedUser = await AdminUserService.updateUser(id, userData);
-      setUsers((prev) => prev.map((u) => (u.id === id ? updatedUser : u)));
+      if (userData.shopId) {
+        await AdminUserService.assignShopToUser(id, userData.shopId, userData.role || 'CASHIER');
+      }
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...updatedUser, shopId: userData.shopId } : u)));
       return updatedUser;
     } catch (err: any) {
       throw new Error(err.response?.data?.message || "Erreur lors de la mise à jour");

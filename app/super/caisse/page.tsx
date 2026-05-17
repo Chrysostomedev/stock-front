@@ -12,8 +12,6 @@ import CategoryService, { Category } from "@/services/category.service";
 import ShopService, { Shop } from "@/services/shop.service";
 import CustomerService, { Customer } from "@/services/customer.service";
 import SaleService from "@/services/sale.service";
-// import CashSessionService from "@/services/super/cash_session.service";
-import { CashSession } from "@/types/super";
 import { useAuth } from "@/hooks/useAuth";
 import {
   ShoppingCart,
@@ -85,28 +83,10 @@ export default function SuperCaissePage() {
     }
     setLoading(true);
     try {
-      const fetchProducts = async () => {
-        try {
-          return await ProductService.getAll({ shopId: user.shopId, limit: 1000 });
-        } catch (err) {
-          console.warn("Retrying ProductService.getAll without limit due to backend error:", err);
-          return await ProductService.getAll({ shopId: user.shopId });
-        }
-      };
-
-      const fetchCategories = async () => {
-        try {
-          return await CategoryService.getAll({ limit: 1000 });
-        } catch (err) {
-          console.warn("Retrying CategoryService.getAll without limit due to backend error:", err);
-          return await CategoryService.getAll();
-        }
-      };
-
       const [prodRes, catRes, shopRes, custRes] = await Promise.all([
-        fetchProducts(),
-        fetchCategories(),
-        user.shopId ? ShopService.getById(user.shopId) : ShopService.getAll().then(res => res.data?.[0] || res?.[0]),
+        ProductService.getAll({ isActive: true, shopId: user.shopId, limit: 1000 }),
+        CategoryService.getAll({ limit: 100 }),
+        ShopService.getById(user.shopId),
         CustomerService.getAll()
       ]);
 

@@ -10,6 +10,7 @@ export interface Category {
   colorHex?: string;
   iconName?: string;
   parentId?: string;
+  shopId?: string;
   parent?: Category;
   children?: Category[];
   createdAt: string;
@@ -25,6 +26,7 @@ export interface CreateCategoryDto {
   colorHex?: string;
   iconName?: string;
   parentId?: string;
+  shopId?: string;
 }
 
 const CategoryService = {

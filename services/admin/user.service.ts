@@ -27,6 +27,19 @@ const AdminUserService = {
     return response.data;
   },
 
+  async assignShopToUser(userId: string, shopId: string, roleInShop: string): Promise<void> {
+    try {
+      await axiosInstance.post(`/shops/${shopId}/users/${userId}`, { roleInShop });
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        // Déjà assigné, on met à jour le rôle
+        await axiosInstance.patch(`/shops/${shopId}/users/${userId}`, { roleInShop });
+      } else {
+        throw error;
+      }
+    }
+  },
+
   async deleteUser(id: string): Promise<void> {
     await axiosInstance.delete(`/users/${id}`);
   },

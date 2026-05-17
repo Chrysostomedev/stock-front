@@ -37,8 +37,8 @@ export default function SuperProduitsPage() {
     setLoading(true);
     try {
       const [prodRes, catRes] = await Promise.all([
-        ProductService.getAll({ shopId: user?.shopId, limit: 1000 }), // Uniquement les produits de sa boutique
-        CategoryService.getAll({ limit: 100 })
+        ProductService.getAll({ shopId: user?.shopId }), // Uniquement les produits de sa boutique
+        CategoryService.getAll({ shopId: user?.shopId })
       ]);
       
       const prodList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);

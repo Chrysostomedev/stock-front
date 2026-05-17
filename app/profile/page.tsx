@@ -6,31 +6,52 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { useToast } from "@/contexts/ToastContext";
 import { 
-  User, 
-  Mail, 
-  Shield, 
   Phone, 
-  Key, 
+  Shield, 
   ShieldCheck, 
   Building, 
   Activity,
   ChevronRight,
   LogOut,
-  Camera
+  Camera,
+  AlertCircle,
+  Lock
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import AuthService from "@/services/auth.service";
 
+/**
+ * ============================================================================
+ * PAGE : PROFIL UTILISATEUR
+ * ============================================================================
+ * 
+ * Permet à l'utilisateur de :
+ *   1. Voir ses informations (nom, téléphone, rôle)
+ *   2. Modifier son nom et téléphone
+ *   3. Changer son mot de passe (le passwordHash)
+ * 
+ * ⚠️ Le backend n'utilise que le "passwordHash" pour l'authentification.
+ *    Le PIN n'est pas utilisé pour le login, on ne l'expose pas ici.
+ * 
+ * Endpoint : PATCH /api/v1/auth/update/:id
+ * Le backend hash automatiquement le passwordHash avec bcrypt.
+ * 
+ * @see back-spservice/src/modules/auth/users/application/usecases/update-user.usecase.ts
+ * ============================================================================
+ */
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const { showToast } = useToast();
   
-  // States for editable fields
+  // === États pour les champs éditables ===
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // === États pour le changement de mot de passe ===
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -39,6 +60,9 @@ export default function ProfilePage() {
     }
   }, [user]);
 
+  /**
+   * Mise à jour des informations personnelles (nom + téléphone).
+   */
   const handleInfoUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
@@ -54,26 +78,41 @@ export default function ProfilePage() {
     }
   };
 
+  /**
+   * Changement du mot de passe.
+   * 
+   * C'est le champ "passwordHash" du backend.
+   * Le backend hash automatiquement avec bcrypt via UpdateUserUseCase.
+   */
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
-    if (!oldPassword || !newPassword) {
-      showToast("Veuillez remplir tous les champs de mot de passe", "error");
+
+    if (!newPassword) {
+      showToast("Veuillez saisir un nouveau mot de passe", "error");
       return;
     }
     if (newPassword.length < 6) {
-      showToast("Le nouveau mot de passe doit contenir au moins 6 caractères", "error");
+      showToast("Le mot de passe doit contenir au moins 6 caractères", "error");
       return;
     }
+    if (newPassword !== confirmPassword) {
+      showToast("Les mots de passe ne correspondent pas", "error");
+      return;
+    }
+
+    setIsChangingPassword(true);
     try {
-      // Le backend hash automatiquement le passwordHash dans UpdateUserUseCase
+      // Le backend reçoit passwordHash en clair et le hash avec bcrypt
       await AuthService.updateUser(user.id, { passwordHash: newPassword });
       showToast("Mot de passe mis à jour avec succès !", "success");
-      setOldPassword("");
       setNewPassword("");
+      setConfirmPassword("");
     } catch (err: any) {
       console.error("Password update error:", err);
       showToast(err.response?.data?.message || "Échec du changement de mot de passe", "error");
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -106,8 +145,8 @@ export default function ProfilePage() {
               </Badge>
             </div>
             <p className="text-zinc-500 font-bold text-sm mt-1 flex items-center gap-2">
-              <Mail className="h-3.5 w-3.5" />
-              {user.email || "Aucun email configuré"}
+              <Phone className="h-3.5 w-3.5" />
+              {user.phone || "Aucun téléphone configuré"}
             </p>
           </div>
 
@@ -121,10 +160,10 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Main Info Column */}
+          {/* Colonne principale */}
           <div className="lg:col-span-2 flex flex-col gap-6">
             
-            {/* General Info Form */}
+            {/* Formulaire infos générales */}
             <Card className="p-6">
               <h3 className="text-base font-black text-foreground mb-6 flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-primary" />
@@ -153,14 +192,14 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="md:col-span-2 flex justify-end mt-2">
-                  <Button type="submit" variant="primary" disabled={isUpdating}>
-                    {isUpdating ? "Enregistrement..." : "Enregistrer les modifications"}
+                  <Button type="submit" variant="primary" loading={isUpdating}>
+                    Enregistrer les modifications
                   </Button>
                 </div>
               </form>
             </Card>
 
-            {/* Admin Specific Sections */}
+            {/* Section Admin */}
             {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
               <Card className="p-6 bg-primary/[0.02] border-primary/10">
                 <h3 className="text-base font-black text-foreground mb-6 flex items-center gap-2">
@@ -193,55 +232,64 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Sidebar Info Column */}
+          {/* Sidebar — Sécurité */}
           <div className="flex flex-col gap-6">
             
-            {/* Security Card */}
+            {/* Changement de Mot de Passe uniquement */}
             <Card className="p-6">
-              <h3 className="text-base font-black text-foreground mb-6 flex items-center gap-2">
-                <Key className="h-5 w-5 text-primary" />
-                Sécurité
+              <h3 className="text-base font-black text-foreground mb-4 flex items-center gap-2">
+                <Lock className="h-5 w-5 text-primary" />
+                Mot de Passe
               </h3>
               
               <form onSubmit={handlePasswordUpdate} className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Ancien PIN</label>
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                    Nouveau mot de passe
+                  </label>
                   <input
                     type="password"
-                    placeholder="••••"
-                    maxLength={4}
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all tracking-[0.5em]"
+                    placeholder="Minimum 6 caractères"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
                   />
                 </div>
                 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Nouveau PIN</label>
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                    Confirmer le mot de passe
+                  </label>
                   <input
                     type="password"
-                    placeholder="••••"
-                    maxLength={4}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all tracking-[0.5em]"
+                    placeholder="Retapez le mot de passe"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
                   />
                 </div>
 
-                <Button type="submit" variant="outline" className="mt-2">
-                  Changer le PIN
+                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-xl">
+                  <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-amber-600 font-bold">
+                    Ce mot de passe est celui utilisé pour vous connecter.
+                  </p>
+                </div>
+
+                <Button type="submit" variant="outline" className="mt-1" loading={isChangingPassword}>
+                  Changer le mot de passe
                 </Button>
               </form>
             </Card>
 
-            {/* Quick Links / Help */}
+            {/* Quick Links */}
             <div className="flex flex-col gap-2">
               <button className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/40 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl transition-all text-left">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 rounded-lg">
                     <ShieldCheck className="h-4 w-4" />
                   </div>
-                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Journal d'activité</span>
+                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Journal d&apos;activité</span>
                 </div>
                 <ChevronRight className="h-4 w-4 text-zinc-400" />
               </button>

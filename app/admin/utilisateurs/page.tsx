@@ -7,6 +7,7 @@ import Badge from "@/components/ui/Badge";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
+import { useToast } from "@/contexts/ToastContext";
 import { 
   Plus, 
   Search, 
@@ -26,7 +27,7 @@ import { UserRole } from "@/types/auth";
 
 export default function AdminUtilisateursPage() {
   const { users, loading, error, shopAccesses, addUser, updateUser, deleteUser, toggleStatus, refresh, fetchShopAccesses } = useUsers();
-  
+
   const formatDate = (dateString?: string | Date) => {
     if (!dateString) return "Jamais";
     try {
@@ -36,6 +37,7 @@ export default function AdminUtilisateursPage() {
     }
   };
 
+  const { showToast } = useToast();
   const [shops, setShops] = useState<Shop[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -97,12 +99,14 @@ console.log("shopAccesses",shopAccesses)
     try {
       if (selectedUser) {
         await updateUser(selectedUser.id, formData);
+        showToast("Utilisateur mis à jour avec succès !", "success");
       } else {
         await addUser(formData);
+        showToast("Utilisateur créé et assigné avec succès !", "success");
       }
       setIsModalOpen(false);
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || "Une erreur est survenue", "error");
     }
   };
 
@@ -295,17 +299,19 @@ console.log("shopAccesses",shopAccesses)
                 <option value="AUDITOR">Auditeur</option>
               </select>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Code PIN (4 chiffres)</label>
-              <input 
-                type="text" 
-                maxLength={4}
-                value={formData.pin}
-                onChange={(e) => setFormData({...formData, pin: e.target.value})}
-                placeholder="Ex: 1234"
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all tracking-[0.5em]"
-              />
-            </div>
+            {!selectedUser && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-zinc-500 uppercase">Code PIN (4 chiffres)</label>
+                <input 
+                  type="text" 
+                  maxLength={4}
+                  value={formData.pin}
+                  onChange={(e) => setFormData({...formData, pin: e.target.value})}
+                  placeholder="Ex: 1234"
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all tracking-[0.5em]"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -338,7 +344,7 @@ console.log("shopAccesses",shopAccesses)
             variant="primary" 
             className="mt-2" 
             onClick={handleSubmit}
-            disabled={!formData.name || !formData.username || !formData.pin || formData.pin.length !== 4}
+            disabled={!formData.name || !formData.username || (!selectedUser && (!formData.pin || formData.pin.length !== 4))}
           >
             {selectedUser ? "Mettre à jour l'accès" : "Créer le compte"}
           </Button>

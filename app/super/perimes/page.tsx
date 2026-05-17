@@ -1,164 +1,309 @@
+/**
+ * ============================================================================
+ * PAGE : PERTES & PÉRIMÉS SUPERETTE
+ * ============================================================================
+ * 
+ * Affiche les lots de produits arrivant à expiration, permettant au
+ * manager de prendre des mesures (retrait, promotion, destruction).
+ * 
+ * Connecté au backend via :
+ *   - ProductBatchService.getExpiring(shopId, days) → Lots expirant bientôt
+ *   - ProductBatchService.update(id, dto) → Mettre à jour la quantité (perte)
+ * 
+ * Le backend filtre automatiquement les lots dont la date d'expiration
+ * est comprise dans les N prochains jours.
+ * 
+ * @see back-spservice/src/modules/product-batch
+ * ============================================================================
+ */
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import DataTable from "@/components/ui/DataTable";
-import Modal from "@/components/ui/Modal";
+import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/hooks/useAuth";
+import ProductBatchService from "@/services/super/productBatch.service";
+import { ProductBatch } from "@/types/super";
 import {
   AlertCircle,
-  Plus,
   Search,
-  Trash2,
   Calendar,
   Package,
   TrendingDown,
+  RefreshCw,
+  Clock,
 } from "lucide-react";
 
-interface ExpiredProduct {
-  id: number;
-  name: string;
-  expiryDate: string;
-  quantity: number;
-  value: number;
-  reason: "Périmé" | "Casse" | "Vol";
-}
-
-const mockExpired: ExpiredProduct[] = [
-  { id: 1, name: "Yaourt Brassé x4", expiryDate: "05/05/2026", quantity: 5, value: 4250, reason: "Périmé" },
-  { id: 2, name: "Bouteille Coca 1.5L", expiryDate: "10/12/2026", quantity: 2, value: 1600, reason: "Casse" },
-  { id: 3, name: "Lait Bonnet Rouge", expiryDate: "01/05/2026", quantity: 3, value: 1500, reason: "Périmé" },
-];
-
 export default function SuperPerimesPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const { showToast } = useToast();
+  const { user } = useAuth();
 
-  const columns = [
+  // === État du composant ===
+  const [batches, setBatches] = useState<ProductBatch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [daysFilter, setDaysFilter] = useState(30); // Nombre de jours avant expiration
+
+  /**
+   * Charge les lots expirant dans les N prochains jours.
+   * 
+   * Le backend filtre côté serveur :
+   *   GET /product-batches/expiring/:shopId?days=30
+   * 
+   * Retourne uniquement les lots avec une date d'expiration définie
+   * et qui expire dans la fenêtre de temps demandée.
+   */
+  const loadExpiring = async () => {
+    if (!user?.shopId) return;
+    setLoading(true);
+    try {
+      const data = await ProductBatchService.getExpiring(user.shopId, daysFilter);
+      // Extraction robuste — le backend peut renvoyer un tableau ou un objet
+      const list = Array.isArray(data) ? data : (data as any)?.data || [];
+      setBatches(list);
+    } catch (error) {
+      showToast("Erreur lors du chargement des lots expirables", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Recharger quand l'utilisateur ou le filtre de jours change
+  useEffect(() => {
+    loadExpiring();
+  }, [user, daysFilter]);
+
+  // === Filtrage côté client (recherche textuelle) ===
+  const filteredBatches = batches.filter((b) => {
+    const productName = b.product?.name || "";
+    const batchNum = b.batchNumber || "";
+    return (
+      productName.toLowerCase().includes(search.toLowerCase()) ||
+      batchNum.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+
+  // === KPIs calculés ===
+  const totalLots = batches.length;
+  const totalQuantity = batches.reduce((acc, b) => acc + b.quantity, 0);
+  const totalValue = batches.reduce(
+    (acc, b) => acc + b.quantity * b.buyingPrice,
+    0
+  );
+  // Lots déjà expirés (date passée)
+  const expiredCount = batches.filter(
+    (b) => b.expiresAt && new Date(b.expiresAt) < new Date()
+  ).length;
+
+  /**
+   * Calcule le nombre de jours restants avant expiration.
+   * Retourne un nombre négatif si le lot est déjà expiré.
+   */
+  const getDaysUntilExpiry = (expiresAt?: string): number | null => {
+    if (!expiresAt) return null;
+    const now = new Date();
+    const expiry = new Date(expiresAt);
+    return Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  // === Colonnes du tableau ===
+  const columns: {
+    header: string;
+    accessor: (item: ProductBatch) => React.ReactNode;
+    className?: string;
+  }[] = [
     {
-      header: "Produit",
-      accessor: (p: ExpiredProduct) => (
+      header: "Produit / Lot",
+      accessor: (b: ProductBatch) => (
         <div className="flex flex-col">
-          <span className="text-sm font-black text-foreground">{p.name}</span>
-          <span className="text-[10px] text-zinc-400 font-bold uppercase">{p.reason}</span>
+          <span className="text-sm font-black text-zinc-900 dark:text-zinc-50">
+            {b.product?.name || "Produit inconnu"}
+          </span>
+          <span className="text-[10px] text-zinc-400 font-bold">
+            Lot: {b.batchNumber}
+          </span>
         </div>
       ),
     },
     {
-      header: "Date Limite",
-      accessor: (p: ExpiredProduct) => (
-        <div className="flex items-center gap-2">
-          <Calendar className="h-3 w-3 text-zinc-400" />
-          <span className="text-xs font-bold text-zinc-500">{p.expiryDate}</span>
-        </div>
-      ),
+      header: "Date Expiration",
+      accessor: (b: ProductBatch) => {
+        const days = getDaysUntilExpiry(b.expiresAt);
+        return (
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-3 w-3 text-zinc-400" />
+              <span className="text-xs font-bold text-zinc-500">
+                {b.expiresAt
+                  ? new Date(b.expiresAt).toLocaleDateString("fr-FR")
+                  : "N/A"}
+              </span>
+            </div>
+            {days !== null && (
+              <span
+                className={`text-[10px] font-black ${
+                  days < 0
+                    ? "text-red-600"
+                    : days <= 7
+                    ? "text-amber-600"
+                    : "text-zinc-400"
+                }`}
+              >
+                {days < 0
+                  ? `Expiré depuis ${Math.abs(days)}j`
+                  : `${days}j restants`}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: "Quantité",
-      accessor: (p: ExpiredProduct) => <span className="text-sm font-black text-foreground">{p.quantity}</span>,
-    },
-    {
-      header: "Valeur Perte",
-      accessor: (p: ExpiredProduct) => (
-        <span className="text-sm font-black text-red-600">
-          {p.value.toLocaleString()} FCFA
+      accessor: (b: ProductBatch) => (
+        <span className="text-sm font-black text-zinc-900 dark:text-zinc-50">
+          {b.quantity}
         </span>
       ),
     },
     {
-      header: "Actions",
-      accessor: (p: ExpiredProduct) => (
-        <Button variant="outline" size="sm" className="h-8 px-2 text-red-500">
-          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-          Retirer
-        </Button>
+      header: "Valeur Perte",
+      accessor: (b: ProductBatch) => (
+        <span className="text-sm font-black text-red-600">
+          {new Intl.NumberFormat("fr-FR").format(b.quantity * b.buyingPrice)} XOF
+        </span>
       ),
-      className: "text-right",
+    },
+    {
+      header: "Statut",
+      accessor: (b: ProductBatch) => {
+        const days = getDaysUntilExpiry(b.expiresAt);
+        if (days === null) return <Badge variant="outline">N/A</Badge>;
+        if (days < 0) return <Badge variant="danger">EXPIRÉ</Badge>;
+        if (days <= 7) return <Badge variant="outline" className="text-amber-600 border-amber-300">URGENT</Badge>;
+        return <Badge variant="outline" className="text-zinc-500">À SURVEILLER</Badge>;
+      },
     },
   ];
 
   return (
     <AppLayout
       title="Pertes & Périmés"
-      subtitle="Gestion des produits impropres à la vente"
+      subtitle="Lots de produits arrivant à expiration — données en temps réel"
       rightElement={
-        <Button variant="primary" size="sm" onClick={() => setIsModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Déclarer une Perte
-        </Button>
+        <button
+          onClick={loadExpiring}
+          className="p-3 bg-zinc-100 dark:bg-zinc-800 rounded-2xl hover:bg-primary/10 hover:text-primary transition-all"
+        >
+          <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
+        </button>
       }
     >
-      <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-5 flex items-center gap-4 border-l-4 border-l-red-500">
-            <div className="p-3 bg-red-500/10 text-red-600 rounded-2xl">
-              <TrendingDown className="h-6 w-6" />
+      <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12">
+        {/* === KPIs dynamiques === */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Lots concernés */}
+          <div className="p-5 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-amber-500/10 text-amber-600 rounded-xl">
+                <Clock className="h-5 w-5" />
+              </div>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                Lots à surveiller
+              </p>
             </div>
-            <div>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Perte Totale Mois</p>
-              <h4 className="text-xl font-black text-foreground">12,450 FCFA</h4>
+            <h4 className="text-2xl font-black text-zinc-900 dark:text-zinc-50">
+              {totalLots}
+            </h4>
+          </div>
+
+          {/* Déjà expirés */}
+          <div className="p-5 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-red-500/10 text-red-600 rounded-xl">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                Déjà expirés
+              </p>
             </div>
-          </Card>
-          <Card className="p-5 flex items-center gap-4 border-l-4 border-l-amber-500">
-            <div className="p-3 bg-amber-500/10 text-amber-600 rounded-2xl">
-              <AlertCircle className="h-6 w-6" />
+            <h4 className="text-2xl font-black text-red-600">{expiredCount}</h4>
+          </div>
+
+          {/* Quantité totale */}
+          <div className="p-5 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-primary/10 text-primary rounded-xl">
+                <Package className="h-5 w-5" />
+              </div>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                Unités à retirer
+              </p>
             </div>
-            <div>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Produits à Retirer</p>
-              <h4 className="text-xl font-black text-foreground">8 articles</h4>
+            <h4 className="text-2xl font-black text-zinc-900 dark:text-zinc-50">
+              {totalQuantity}
+            </h4>
+          </div>
+
+          {/* Valeur perte */}
+          <div className="p-5 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-red-500/10 text-red-600 rounded-xl">
+                <TrendingDown className="h-5 w-5" />
+              </div>
+              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                Valeur perte
+              </p>
             </div>
-          </Card>
-          <Card className="p-5 flex items-center gap-4 border-l-4 border-l-primary">
-            <div className="p-3 bg-primary/10 text-primary rounded-2xl">
-              <Package className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Déclarations</p>
-              <h4 className="text-xl font-black text-foreground">{mockExpired.length}</h4>
-            </div>
-          </Card>
+            <h4 className="text-lg font-black text-red-600">
+              {new Intl.NumberFormat("fr-FR").format(totalValue)} XOF
+            </h4>
+          </div>
         </div>
 
-        <Card className="p-6">
-          <div className="relative max-w-md mb-6">
-            <Search className="absolute left-4 top-3 h-4 w-4 text-zinc-400" />
-            <input
-              type="text"
-              placeholder="Rechercher un produit..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-            />
+        {/* === Tableau des lots === */}
+        <Card className="p-0 overflow-hidden shadow-xl border-none">
+          <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800">
+            {/* Barre de recherche */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Rechercher par produit ou numéro de lot..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-12 pr-4 py-3.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl text-xs font-bold outline-none focus:border-primary transition-all"
+              />
+            </div>
+
+            {/* Sélecteur de fenêtre temporelle */}
+            <div className="flex items-center gap-2">
+              {[7, 14, 30, 60, 90].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setDaysFilter(d)}
+                  className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    daysFilter === d
+                      ? "bg-primary text-white shadow-lg shadow-primary/20"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-primary/10 hover:text-primary"
+                  }`}
+                >
+                  {d}j
+                </button>
+              ))}
+            </div>
           </div>
-          <DataTable columns={columns} data={mockExpired} />
+
+          <DataTable
+            columns={columns}
+            data={filteredBatches}
+            isLoading={loading}
+          />
         </Card>
       </div>
-
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Déclarer une Perte">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-black text-zinc-500 uppercase">Produit</label>
-            <input type="text" placeholder="Nom du produit ou code barre" className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Quantité</label>
-              <input type="number" className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Raison</label>
-              <select className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none">
-                <option>Périmé</option>
-                <option>Casse / Dommage</option>
-                <option>Vol constaté</option>
-              </select>
-            </div>
-          </div>
-          <Button variant="primary" className="mt-2" onClick={() => setIsModalOpen(false)}>Enregistrer la perte</Button>
-        </div>
-      </Modal>
     </AppLayout>
   );
 }

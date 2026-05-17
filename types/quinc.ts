@@ -1,46 +1,115 @@
-export interface Material {
-  id: number;
+export interface Category {
+  id: string;
   name: string;
-  category: string;
-  price: number;
-  stock: number;
+  description?: string;
+  shopId: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  sku?: string;
+  barcode?: string;
+  description?: string;
+  
+  categoryId: string;
+  category?: Category;
+  shopId: string;
+  
+  buyingPrice: number;
+  sellingPrice: number;
+  wholesalePrice?: number;
+  
+  stockQuantity: number;
+  minStockAlert: number;
+  
+  // Unités courantes en quincaillerie (Sac, Barre, Paquet, etc.)
   unit: string;
+  
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export interface Supplier {
-  id: number;
-  name: string;
-  category: string;
-  contact: string;
-  phone: string;
-  debt: number;
-  lastDelivery: string;
+export interface CashSession {
+  id: string;
+  shopId: string;
+  userId: string;
+  openingBalance: number;
+  closingBalance?: number;
+  status: "OPEN" | "CLOSED";
+  notes?: string;
+  openedAt: string;
+  closedAt?: string;
 }
 
-export interface Credit {
-  id: number;
-  customer: string;
+export interface SaleItem {
+  id?: string;
+  productId: string;
+  productName?: string;
+  quantity: number;
+  unitPrice: number;
+  discount?: number;
+  totalPrice?: number;
+}
+
+export interface SalePayment {
+  id?: string;
+  method: "CASH" | "MOBILE_MONEY" | "BANK_CARD" | "CREDIT";
+  amount: number;
+  reference?: string;
+}
+
+export interface Sale {
+  id: string;
+  saleNumber: string;
+  shopId: string;
+  userId: string;
+  cashSessionId?: string;
+  customerId?: string;
+  
+  totalAmount: number;
+  discountAmount: number;
+  finalAmount: number;
+  paidAmount: number;
+  
+  status: "COMPLETED" | "PARTIALLY_PAID" | "VOIDED" | "REFUNDED" | "DRAFT";
+  
+  items: SaleItem[];
+  payments: SalePayment[];
+  
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Customer {
+  id: string;
+  shopId: string;
+  firstName: string;
+  lastName?: string;
   phone: string;
-  totalDebt: number;
-  lastPayment: string;
-  status: "Sain" | "Risqué" | "Contentieux";
+  email?: string;
+  address?: string;
+  loyaltyPoints: number;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Expense {
-  id: number;
-  label: string;
-  category: "Logistique" | "Loyer" | "Utilités" | "Divers";
+  id: string;
+  shopId: string;
+  userId: string;
+  title: string;
   amount: number;
+  category: "RENT" | "UTILITIES" | "SALARY" | "SUPPLIES" | "TRANSPORT" | "MAINTENANCE" | "TAXES" | "MARKETING" | "OTHER";
+  paymentMethod: "CASH" | "MOBILE_MONEY" | "BANK_TRANSFER" | "CHECK";
+  reference?: string;
+  notes?: string;
   date: string;
-  status: "Payé" | "En attente";
-}
-
-export interface Delivery {
-  id: number;
-  orderId: string;
-  customer: string;
-  destination: string;
-  driver: string;
-  vehicle: "Tricycle" | "Camion 5T" | "Camion 10T";
-  status: "En attente" | "En cours" | "Livré" | "Annulé";
+  createdAt?: string;
+  updatedAt?: string;
 }

@@ -1,6 +1,5 @@
 "use client";
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -8,6 +7,10 @@ import Badge from "@/components/ui/Badge";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/hooks/useAuth";
+import QuincCustomerService from "@/services/quinc/customer.service";
+import QuincSaleService from "@/services/quinc/sale.service";
+import { Customer, Sale } from "@/types/quinc";
 import {
   Users,
   Search,
@@ -19,47 +22,121 @@ import {
   UserPlus,
 } from "lucide-react";
 
-interface Credit {
-  id: number;
-  customer: string;
-  phone: string;
+interface CustomerWithDebt extends Customer {
   totalDebt: number;
   lastPayment: string;
   status: "Sain" | "Risqué" | "Contentieux";
 }
 
-const mockCredits: Credit[] = [
-  { id: 1, customer: "M. Kouadio Bakayoko", phone: "0708091011", totalDebt: 450000, lastPayment: "02/05/2026", status: "Risqué" },
-  { id: 2, customer: "Chantier Riviera 3", phone: "0505050505", totalDebt: 1250000, lastPayment: "10/05/2026", status: "Contentieux" },
-  { id: 3, customer: "Mme Yao Flore", phone: "0102030405", totalDebt: 85000, lastPayment: "09/05/2026", status: "Sain" },
-];
-
 export default function QuincCreditsPage() {
+  const { user } = useAuth();
   const { showToast } = useToast();
+
+  const [customers, setCustomers] = useState<CustomerWithDebt[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState("");
+
+  const [formData, setFormData] = useState<Partial<Customer>>({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    email: "",
+    address: "",
+    isActive: true
+  });
+
+  const loadData = async () => {
+    if (!user?.shopId) return;
+    try {
+      setLoading(true);
+      const [custList, salesList] = await Promise.all([
+        QuincCustomerService.getAll(user.shopId),
+        QuincSaleService.getAll(user.shopId)
+      ]);
+
+      // Map debts from sales
+      const mapped: CustomerWithDebt[] = custList.map(c => {
+        const cSales = salesList.filter(s => s.customerId === c.id && s.status === "PARTIALLY_PAID");
+        const debt = cSales.reduce((acc, s) => acc + (s.finalAmount - s.paidAmount), 0);
+
+        // Simuler un statut basé sur la dette
+        let status: "Sain" | "Risqué" | "Contentieux" = "Sain";
+        if (debt > 500000) status = "Contentieux";
+        else if (debt > 100000) status = "Risqué";
+
+        return {
+          ...c,
+          totalDebt: debt,
+          lastPayment: cSales.length > 0 && cSales[0].updatedAt ? new Date(cSales[0].updatedAt).toLocaleDateString() : "Aucun",
+          status
+        };
+      });
+
+      setCustomers(mapped);
+    } catch (error) {
+      showToast("Erreur lors du chargement des clients", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [user]);
+
+  const handleSubmit = async () => {
+    if (!user?.shopId) return;
+    try {
+      await QuincCustomerService.create({
+        ...formData,
+        shopId: user.shopId
+      });
+      showToast("Client enregistré", "success");
+      setIsModalOpen(false);
+      setFormData({
+        firstName: "",
+        lastName: "",
+        phone: "",
+        email: "",
+        address: "",
+        isActive: true
+      });
+      loadData();
+    } catch (error) {
+      showToast("Erreur lors de la création", "error");
+    }
+  };
+
+  const filtered = customers.filter((c) =>
+    c.firstName.toLowerCase().includes(search.toLowerCase()) ||
+    (c.lastName && c.lastName.toLowerCase().includes(search.toLowerCase())) ||
+    c.phone.includes(search)
+  );
+
+  const totalDebts = customers.reduce((acc, c) => acc + c.totalDebt, 0);
 
   const columns = [
     {
       header: "Client / Chantier",
-      accessor: (c: Credit) => (
+      accessor: (c: CustomerWithDebt) => (
         <div className="flex flex-col">
-          <span className="text-sm font-black text-foreground">{c.customer}</span>
+          <span className="text-sm font-black text-foreground">{c.firstName} {c.lastName}</span>
           <span className="text-[10px] text-zinc-400 font-bold">{c.phone}</span>
         </div>
       ),
     },
     {
       header: "Dette Totale",
-      accessor: (c: Credit) => (
-        <span className="text-sm font-black text-red-600">
+      accessor: (c: CustomerWithDebt) => (
+        <span className={`text-sm font-black ${c.totalDebt > 0 ? "text-red-600" : "text-emerald-600"}`}>
           {c.totalDebt.toLocaleString()} FCFA
         </span>
       ),
     },
     {
       header: "Statut",
-      accessor: (c: Credit) => {
+      accessor: (c: CustomerWithDebt) => {
         const variants: any = {
           Sain: "success",
           Risqué: "warning",
@@ -70,15 +147,15 @@ export default function QuincCreditsPage() {
     },
     {
       header: "Dernier Versement",
-      accessor: (c: Credit) => (
+      accessor: (c: CustomerWithDebt) => (
         <span className="text-xs font-bold text-zinc-500">{c.lastPayment}</span>
       ),
     },
     {
       header: "Actions",
-      accessor: (c: Credit) => (
-        <div className="flex items-center gap-2">
-          <Button variant="primary" size="sm" className="h-8 px-2" onClick={() => showToast("Encaissement ouvert", "info")}>
+      accessor: (c: CustomerWithDebt) => (
+        <div className="flex items-center gap-2 justify-end">
+          <Button variant="primary" size="sm" className="h-8 px-2" onClick={() => showToast("Fonction d'encaissement en développement", "info")} disabled={c.totalDebt === 0}>
             <DollarSign className="h-3.5 w-3.5 mr-1.5" />
             Encaisser
           </Button>
@@ -110,7 +187,7 @@ export default function QuincCreditsPage() {
             </div>
             <div>
               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Créances Dehors</p>
-              <h4 className="text-xl font-black text-foreground">4,785,000 FCFA</h4>
+              <h4 className="text-xl font-black text-foreground">{loading ? "..." : `${totalDebts.toLocaleString()} FCFA`}</h4>
             </div>
           </Card>
           <Card className="p-5 flex items-center gap-4 border-l-4 border-l-emerald-600">
@@ -119,7 +196,7 @@ export default function QuincCreditsPage() {
             </div>
             <div>
               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Recouvrements (Mois)</p>
-              <h4 className="text-xl font-black text-foreground">1,200,000 FCFA</h4>
+              <h4 className="text-xl font-black text-foreground">0 FCFA</h4>
             </div>
           </Card>
           <Card className="p-5 flex items-center gap-4 border-l-4 border-l-primary">
@@ -128,7 +205,7 @@ export default function QuincCreditsPage() {
             </div>
             <div>
               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Clients Actifs</p>
-              <h4 className="text-xl font-black text-foreground">42</h4>
+              <h4 className="text-xl font-black text-foreground">{loading ? "..." : customers.length}</h4>
             </div>
           </Card>
         </div>
@@ -146,25 +223,51 @@ export default function QuincCreditsPage() {
               />
             </div>
           </div>
-          <DataTable columns={columns} data={mockCredits} />
+          <DataTable columns={columns} data={filtered} isLoading={loading} />
         </Card>
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nouveau Client Quinc.">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-black text-zinc-500 uppercase">Nom Complet / Chantier</label>
-            <input type="text" className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-black text-zinc-500 uppercase">Nom / Raison Sociale</label>
+              <input
+                type="text"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-black text-zinc-500 uppercase">Prénoms / Contact</label>
+              <input
+                type="text"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
+              />
+            </div>
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-black text-zinc-500 uppercase">Téléphone</label>
-            <input type="text" className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none" />
+            <input
+              type="text"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
+            />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-black text-zinc-500 uppercase">Plafond de Crédit Autorisé (FCFA)</label>
-            <input type="number" className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none" />
+            <label className="text-xs font-black text-zinc-500 uppercase">Adresse / Localisation</label>
+            <input
+              type="text"
+              value={formData.address || ""}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
+            />
           </div>
-          <Button variant="primary" className="mt-2" onClick={() => setIsModalOpen(false)}>Créer le compte</Button>
+          <Button variant="primary" className="mt-2" onClick={handleSubmit}>Créer le compte</Button>
         </div>
       </Modal>
     </AppLayout>
