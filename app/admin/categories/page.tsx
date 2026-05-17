@@ -10,13 +10,14 @@ import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useToast } from "@/contexts/ToastContext";
 import CategoryService, { Category } from "@/services/category.service";
 import UnitService, { Unit } from "@/services/unit.service";
-import { 
-  Plus, 
-  Edit2, 
-  Trash2, 
-  FolderTree, 
-  Tag, 
-  Layers, 
+import ShopService, { Shop } from "@/services/shop.service";
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  FolderTree,
+  Tag,
+  Layers,
   ChevronRight,
   Search,
   Filter
@@ -29,26 +30,28 @@ import Badge from "@/components/ui/Badge";
  */
 export default function AdminCategoriesPage() {
   const { showToast } = useToast();
-  
+
   // États pour les données
   const [categories, setCategories] = useState<Category[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingUnits, setLoadingUnits] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   // États pour les modales
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  
+
   // États pour le formulaire
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     parentId: "", // Si vide, c'est une catégorie racine
-    colorHex: "#3b82f6"
+    colorHex: "#3b82f6",
+    shopId: ""
   });
   const [unitFormData, setUnitFormData] = useState({
     name: "",
@@ -61,7 +64,7 @@ export default function AdminCategoriesPage() {
     setLoading(true);
     try {
       const response = await CategoryService.getAll();
-      console.log("les catégories",response.data);
+      console.log("les catégories", response.data);
       // Le backend NestJS renvoie un objet paginé { data: [...], total: ... }
       const list = response?.data && Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
       setCategories(list);
@@ -86,9 +89,19 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const fetchShops = async () => {
+    try {
+      const response = await ShopService.getAll();
+      setShops(response);
+    } catch (error) {
+      console.error("Erreur chargement boutiques:", error);
+    }
+  };
+
   useEffect(() => {
     fetchCategories();
     fetchUnits();
+    fetchShops();
   }, []);
 
   // Soumission de l'unité
@@ -121,7 +134,8 @@ export default function AdminCategoriesPage() {
         name: category.name,
         description: category.description || "",
         parentId: category.parentId || "",
-        colorHex: category.colorHex || "#3b82f6"
+        colorHex: category.colorHex || "#3b82f6",
+        shopId: (category as any).shopId || ""
       });
     } else {
       setSelectedCategory(null);
@@ -129,7 +143,8 @@ export default function AdminCategoriesPage() {
         name: "",
         description: "",
         parentId: "",
-        colorHex: "#3b82f6"
+        colorHex: "#3b82f6",
+        shopId: shops.length > 0 ? shops[0].id : ""
       });
     }
     setIsModalOpen(true);
@@ -173,7 +188,7 @@ export default function AdminCategoriesPage() {
   // Suppression d'une catégorie
   const handleDelete = async () => {
     if (!selectedCategory) return;
-    
+
     try {
       await CategoryService.delete(selectedCategory.id);
       showToast("Catégorie supprimée avec succès", "success");
@@ -191,7 +206,7 @@ export default function AdminCategoriesPage() {
       header: "Catégorie",
       accessor: (item: Category) => (
         <div className="flex items-center gap-3">
-          <div 
+          <div
             className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black"
             style={{ backgroundColor: item.colorHex || "#3b82f6" }}
           >
@@ -222,6 +237,17 @@ export default function AdminCategoriesPage() {
       )
     },
     {
+      header: "Boutique",
+      accessor: (item: Category) => {
+        const s = shops.find(shop => shop.id === item.shopId);
+        return (
+          <span className="text-xs font-bold text-zinc-500">
+            {s ? `${s.name} (${(s as any).type === "QUINCAILLERIE" ? "Quinc." : "Super."})` : "Globale"}
+          </span>
+        );
+      }
+    },
+    {
       header: "Description",
       accessor: (item: Category) => item.description || "—",
       className: "max-w-xs truncate text-zinc-500"
@@ -230,13 +256,13 @@ export default function AdminCategoriesPage() {
       header: "Actions",
       accessor: (item: Category) => (
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); handleOpenModal(item); }}
             className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 transition-colors"
           >
             <Edit2 className="h-4 w-4" />
           </button>
-          <button 
+          <button
             onClick={(e) => { e.stopPropagation(); setSelectedCategory(item); setIsConfirmOpen(true); }}
             className="p-2 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-red-500 transition-colors"
           >
@@ -248,33 +274,72 @@ export default function AdminCategoriesPage() {
   ];
 
   // Filtrage pour la recherche
-  const filteredCategories = categories.filter(cat => 
+  const filteredCategories = categories.filter(cat =>
     cat.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cat.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <AppLayout 
-      title="Gestion des Catégories" 
+    <AppLayout
+      title="Gestion des Catégories"
       subtitle="Organisez vos rayons et produits (Supérette & Quincaillerie)"
     >
+      {/* Statistiques rapides / Aide contextuelle */}
+      <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 bg-primary/5 rounded-3xl border border-primary/10 flex items-center gap-4">
+            <div className="p-3 bg-primary/10 text-primary rounded-2xl">
+              <Layers className="h-5 w-5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xl font-black text-primary">{categories.length}</span>
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Total Catégories</span>
+            </div>
+          </div>
+
+          <div className="p-4 bg-emerald-500/5 rounded-3xl border border-emerald-500/10 flex items-center gap-4">
+            <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-2xl">
+              <FolderTree className="h-5 w-5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xl font-black text-emerald-600">
+                {categories.filter(c => !c.parentId).length}
+              </span>
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Racines (Rayons)</span>
+            </div>
+          </div>
+
+          <div className="p-4 bg-amber-500/5 rounded-3xl border border-amber-500/10 flex items-center gap-4">
+            <div className="p-3 bg-amber-500/10 text-amber-600 rounded-2xl">
+              <ChevronRight className="h-5 w-5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xl font-black text-amber-600">
+                {categories.filter(c => c.parentId).length}
+              </span>
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Sous-catégories</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12">
-        
+
         {/* Barre d'actions et filtres */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">
               <Search className="h-4 w-4" />
             </span>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Rechercher une catégorie..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-xs font-bold outline-none focus:border-primary transition-all shadow-sm"
             />
           </div>
-          
+
           <div className="flex gap-2">
             <Button onClick={() => handleOpenModal()} variant="primary" className="h-12 px-6">
               <Plus className="h-4 w-4 mr-2" />
@@ -287,9 +352,9 @@ export default function AdminCategoriesPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <Card className="overflow-hidden border-none shadow-xl h-full">
-              <DataTable 
-                columns={columns} 
-                data={filteredCategories} 
+              <DataTable
+                columns={columns}
+                data={filteredCategories}
                 isLoading={loading}
               />
             </Card>
@@ -333,42 +398,7 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
 
-        {/* Statistiques rapides / Aide contextuelle */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 bg-primary/5 rounded-3xl border border-primary/10 flex items-center gap-4">
-            <div className="p-3 bg-primary/10 text-primary rounded-2xl">
-              <Layers className="h-5 w-5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-black text-primary">{categories.length}</span>
-              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Total Catégories</span>
-            </div>
-          </div>
-          
-          <div className="p-4 bg-emerald-500/5 rounded-3xl border border-emerald-500/10 flex items-center gap-4">
-            <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-2xl">
-              <FolderTree className="h-5 w-5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-black text-emerald-600">
-                {categories.filter(c => !c.parentId).length}
-              </span>
-              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Racines (Rayons)</span>
-            </div>
-          </div>
 
-          <div className="p-4 bg-amber-500/5 rounded-3xl border border-amber-500/10 flex items-center gap-4">
-            <div className="p-3 bg-amber-500/10 text-amber-600 rounded-2xl">
-              <ChevronRight className="h-5 w-5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-black text-amber-600">
-                {categories.filter(c => c.parentId).length}
-              </span>
-              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Sous-catégories</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Modale d'ajout/édition Unité */}
@@ -382,11 +412,11 @@ export default function AdminCategoriesPage() {
             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
               Nom de l'unité <span className="text-red-500">*</span>
             </label>
-            <input 
+            <input
               type="text"
               placeholder="Ex: Kilogramme, Litre, Pièce..."
               value={unitFormData.name}
-              onChange={(e) => setUnitFormData({...unitFormData, name: e.target.value})}
+              onChange={(e) => setUnitFormData({ ...unitFormData, name: e.target.value })}
               className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold outline-none focus:border-primary transition-all"
             />
           </div>
@@ -394,17 +424,17 @@ export default function AdminCategoriesPage() {
             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
               Abréviation <span className="text-red-500">*</span>
             </label>
-            <input 
+            <input
               type="text"
               placeholder="Ex: kg, L, pcs..."
               value={unitFormData.abbreviation}
-              onChange={(e) => setUnitFormData({...unitFormData, abbreviation: e.target.value})}
+              onChange={(e) => setUnitFormData({ ...unitFormData, abbreviation: e.target.value })}
               className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold outline-none focus:border-primary transition-all"
             />
           </div>
-          <Button 
-            variant="primary" 
-            className="mt-2" 
+          <Button
+            variant="primary"
+            className="mt-2"
             disabled={isSubmitting || !unitFormData.name || !unitFormData.abbreviation}
           >
             {isSubmitting ? "Création..." : "Créer l'unité"}
@@ -423,7 +453,7 @@ export default function AdminCategoriesPage() {
             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
               Nom de la catégorie <span className="text-red-500">*</span>
             </label>
-            <input 
+            <input
               type="text"
               placeholder="Ex: Alimentaire, Laitiers, Savons..."
               value={formData.name}
@@ -434,9 +464,26 @@ export default function AdminCategoriesPage() {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+              Boutique / Point de vente <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={formData.shopId}
+              onChange={(e) => setFormData({ ...formData, shopId: e.target.value })}
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all appearance-none"
+              required
+            >
+              <option value="">Sélectionner une boutique...</option>
+              {shops.map(s => (
+                <option key={s.id} value={s.id}>{s.name} ({(s as any).type === "QUINCAILLERIE" ? "Quinc." : "Super."})</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
               Catégorie Parente (Optionnel)
             </label>
-            <select 
+            <select
               value={formData.parentId}
               onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
               className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all appearance-none"
@@ -455,7 +502,7 @@ export default function AdminCategoriesPage() {
             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
               Description
             </label>
-            <textarea 
+            <textarea
               rows={3}
               placeholder="Brève description de la catégorie..."
               value={formData.description}
@@ -469,7 +516,7 @@ export default function AdminCategoriesPage() {
               Couleur d'identification
             </label>
             <div className="flex items-center gap-4">
-              <input 
+              <input
                 type="color"
                 value={formData.colorHex}
                 onChange={(e) => setFormData({ ...formData, colorHex: e.target.value })}
@@ -480,17 +527,17 @@ export default function AdminCategoriesPage() {
           </div>
 
           <div className="flex gap-3 mt-4">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               className="flex-1"
               onClick={() => setIsModalOpen(false)}
             >
               Annuler
             </Button>
-            <Button 
-              type="submit" 
-              variant="primary" 
+            <Button
+              type="submit"
+              variant="primary"
               className="flex-1"
               loading={isSubmitting}
             >
@@ -501,7 +548,7 @@ export default function AdminCategoriesPage() {
       </Modal>
 
       {/* Modale de confirmation de suppression */}
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleDelete}

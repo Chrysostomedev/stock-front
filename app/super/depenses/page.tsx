@@ -8,7 +8,8 @@ import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/hooks/useAuth";
-import ExpenseService, { Expense, ExpenseCategory } from "@/services/expense.service";
+import ExpenseService from "@/services/expense.service";
+import { Expense, ExpenseCategory } from "@/types/super";
 import {
   Wallet,
   Plus,
@@ -22,15 +23,15 @@ import {
 } from "lucide-react";
 
 const CATEGORIES: { value: ExpenseCategory; label: string }[] = [
-  { value: "RENT", label: "Loyer" },
-  { value: "UTILITIES", label: "Eau / Électricité" },
-  { value: "SALARY", label: "Salaires" },
-  { value: "SUPPLIES", label: "Fournitures" },
-  { value: "TRANSPORT", label: "Transport" },
-  { value: "MAINTENANCE", label: "Entretien" },
-  { value: "TAXES", label: "Taxes" },
-  { value: "MARKETING", label: "Publicité" },
-  { value: "OTHER", label: "Autres" },
+  { value: ExpenseCategory.RENT, label: "Loyer" },
+  { value: ExpenseCategory.UTILITIES, label: "Eau / Électricité" },
+  { value: ExpenseCategory.SALARY, label: "Salaires" },
+  { value: ExpenseCategory.SUPPLIES, label: "Fournitures" },
+  { value: ExpenseCategory.TRANSPORT, label: "Transport" },
+  { value: ExpenseCategory.MAINTENANCE, label: "Entretien" },
+  { value: ExpenseCategory.TAXES, label: "Taxes" },
+  { value: ExpenseCategory.MARKETING, label: "Publicité" },
+  { value: ExpenseCategory.OTHER, label: "Autres" },
 ];
 
 export default function SuperDepensesPage() {
@@ -47,7 +48,7 @@ export default function SuperDepensesPage() {
   const [formData, setFormData] = useState({
     title: "",
     amount: "",
-    category: "OTHER" as ExpenseCategory,
+    category: ExpenseCategory.OTHER,
     description: ""
   });
 
@@ -77,14 +78,18 @@ export default function SuperDepensesPage() {
     }
     setIsSubmitting(true);
     try {
+      // ⚠️ Le backend exige shopId ET userId pour chaque dépense
       await ExpenseService.create({
-        ...formData,
+        title: formData.title,
+        category: formData.category,
         amount: parseFloat(formData.amount),
-        shopId: user.shopId
+        description: formData.description || undefined,
+        shopId: user.shopId,
+        userId: user.id, // OBLIGATOIRE — le backend rejette sans ce champ
       });
       showToast("Dépense enregistrée", "success");
       setIsModalOpen(false);
-      setFormData({ title: "", amount: "", category: "OTHER", description: "" });
+      setFormData({ title: "", amount: "", category: ExpenseCategory.OTHER, description: "" });
       loadExpenses();
     } catch (error) {
       showToast("Échec de l'enregistrement", "error");

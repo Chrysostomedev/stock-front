@@ -19,7 +19,7 @@ export default function AdminDashboardPage() {
   const modules = [
     {
       title: "Gestion des Boutiques",
-      description: "Configurez les points de vente et entrepôts de gaz ou quincaillerie.",
+      description: "Configurez et suivez tous les points de vente .",
       icon: <Building2 className="h-7 w-7 text-primary" />,
       href: "/admin/boutiques",
       color: "border-l-primary",
@@ -46,10 +46,10 @@ export default function AdminDashboardPage() {
       color: "border-l-secondary",
     },
     {
-      title: "Module Gaz & Livraisons",
+      title: "Bilan financier",
       description: "Gestion des bouteilles de gaz, recharges et livraisons.",
       icon: <Flame className="h-7 w-7 text-amber-500" />,
-      href: "/gaz",
+      href: "/admin/bilan",
       color: "border-l-amber-500",
     },
     {
@@ -63,8 +63,8 @@ export default function AdminDashboardPage() {
 
   return (
     <AppLayout
-      title="Tableau de Bord Admin"
-      subtitle="Gestion centralisée de SP SERVICES Stock"
+      title="Tableau de Bord Administrateur"
+      subtitle="Gestion centralisée de SP SERVICES "
     >
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {modules.map((mod, idx) => (

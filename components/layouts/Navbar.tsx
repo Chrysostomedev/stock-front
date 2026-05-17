@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Bell, UserCircle, LogOut, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebar } from "@/contexts/SidebarContext";
@@ -16,11 +17,12 @@ interface NavbarProps {
 export default function Navbar({ title, subtitle, backUrl, rightElement }: NavbarProps) {
   const { logout } = useAuth();
   const { toggle } = useSidebar();
+  const router = useRouter();
   return (
-    <header className="sticky top-0 z-30 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/60 dark:border-zinc-800/60 h-16 shrink-0 w-full flex items-center select-none">
-      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between w-full h-full gap-4">
+    <header className="sticky top-0 z-30 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/60 dark:border-zinc-800/60 min-h-[4rem] py-2 shrink-0 w-full flex items-center select-none">
+      <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3">
         {/* Left Part: Title or Back Button */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
             onClick={toggle}
             className="flex sm:hidden items-center justify-center h-10 w-10 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors"
@@ -51,13 +53,13 @@ export default function Navbar({ title, subtitle, backUrl, rightElement }: Navba
         </div>
 
         {/* Right Part: Profile, Notification or Custom Element */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
           {rightElement ? (
             rightElement
           ) : (
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => alert("Aucune nouvelle notification")}
+                onClick={() => router.push("/notifications")}
                 className="flex items-center justify-center h-10 w-10 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors relative cursor-pointer"
                 title="Notifications"
               >
