@@ -12,6 +12,8 @@ import CategoryService, { Category } from "@/services/category.service";
 import ShopService, { Shop } from "@/services/shop.service";
 import CustomerService, { Customer } from "@/services/customer.service";
 import SaleService from "@/services/sale.service";
+import CashSessionService from "@/services/super/cashSession.service";
+import { CashSession } from "@/types/super";
 import { useAuth } from "@/hooks/useAuth";
 import {
   ShoppingCart,
@@ -49,6 +51,13 @@ export default function SuperCaissePage() {
   const [currentShop, setCurrentShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // === Session de caisse ===
+  // Le caissier doit ouvrir une session avant de pouvoir enregistrer des ventes.
+  // Le cashSessionId est envoyé dans chaque vente pour la traçabilité.
+  const [cashSession, setCashSession] = useState<CashSession | null>(null);
+  const [openingBalance, setOpeningBalance] = useState("");
+  const [isOpeningSession, setIsOpeningSession] = useState(false);
+
   // États de recherche et UI
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -67,13 +76,32 @@ export default function SuperCaissePage() {
   const [lastSaleId, setLastSaleId] = useState<string>("");
 
   const loadData = async () => {
-    if (!user?.shopId) return;
+    if (!user) return;
+    if (!user.shopId) {
+      showToast("Erreur: Votre compte n'est associé à aucune boutique.", "error");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const [prodRes, catRes, shopRes, custRes] = await Promise.all([
-        ProductService.getAll({ isActive: true, shopId: user.shopId, limit: 1000 }),
-        CategoryService.getAll({ limit: 100 }),
-        ShopService.getById(user.shopId),
+      let prodRes;
+      try {
+        prodRes = await ProductService.getAll({ shopId: user.shopId, limit: 1000 });
+      } catch (err) {
+        console.warn("Retrying ProductService.getAll without limit due to backend error:", err);
+        prodRes = await ProductService.getAll({ shopId: user.shopId });
+      }
+
+      let catRes;
+      try {
+        catRes = await CategoryService.getAll({ limit: 1000 });
+      } catch (err) {
+        console.warn("Retrying CategoryService.getAll without limit due to backend error:", err);
+        catRes = await CategoryService.getAll();
+      }
+
+      const [shopRes, custRes] = await Promise.all([
+        user.shopId ? ShopService.getById(user.shopId) : ShopService.getAll().then(res => res.data?.[0] || res?.[0]),
         CustomerService.getAll()
       ]);
 
@@ -85,6 +113,17 @@ export default function SuperCaissePage() {
       setCategories(catList);
       setCustomers(custList);
       setCurrentShop(shopRes);
+
+      // Vérifier si une session de caisse est déjà active pour ce caissier
+      if (user?.id) {
+        try {
+          const session = await CashSessionService.getActive(user.id);
+          setCashSession(session);
+        } catch {
+          // Pas de session active — le caissier devra en ouvrir une
+          setCashSession(null);
+        }
+      }
     } catch (error) {
       showToast("Erreur lors du chargement des données", "error");
     } finally {
@@ -95,6 +134,68 @@ export default function SuperCaissePage() {
   useEffect(() => {
     loadData();
   }, [user]);
+
+  /**
+   * Ouvrir une session de caisse.
+   * Le caissier déclare son fond de caisse initial (ex: 5000 XOF).
+   * Le backend interdit d'ouvrir une session si une est déjà active (409).
+   */
+  const handleOpenSession = async () => {
+    if (!user?.id) {
+      showToast("Erreur: Utilisateur non identifié", "error");
+      return;
+    }
+    
+    // Fallback: Si le user n'a pas de shopId (ex: créé via Swagger sans UserShopAccess), 
+    // on utilise currentShop?.id si disponible
+    const targetShopId = user.shopId || currentShop?.id;
+    if (!targetShopId) {
+      showToast("Erreur: Aucun point de vente associé à votre compte", "error");
+      return;
+    }
+
+    const balance = parseFloat(openingBalance) || 0;
+    setIsOpeningSession(true);
+    try {
+      const session = await CashSessionService.open({
+        shopId: targetShopId,
+        userId: user.id,
+        openingBalance: balance,
+        notes: `Session ouverte par ${user.name}`,
+      });
+      setCashSession(session);
+      showToast(`Session ouverte avec ${balance.toLocaleString()} XOF en caisse`, "success");
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        showToast("Une session est déjà active", "error");
+      } else {
+        showToast("Erreur lors de l'ouverture de la session", "error");
+      }
+    } finally {
+      setIsOpeningSession(false);
+    }
+  };
+
+  /**
+   * Fermer la session de caisse active.
+   * Le caissier doit compter son argent et déclarer le montant réel.
+   */
+  const handleCloseSession = async () => {
+    if (!cashSession) return;
+    const closingStr = prompt("Montant réel compté en caisse (XOF) :");
+    if (!closingStr) return;
+    const closingBalance = parseFloat(closingStr) || 0;
+    try {
+      await CashSessionService.close(cashSession.id, {
+        closingBalance,
+        notes: `Session fermée par ${user?.name}`,
+      });
+      setCashSession(null);
+      showToast(`Session fermée. Solde déclaré: ${closingBalance.toLocaleString()} XOF`, "success");
+    } catch (error) {
+      showToast("Erreur lors de la fermeture", "error");
+    }
+  };
 
   const addToCart = (product: Product) => {
     if (product.stockQty <= 0) {
@@ -149,6 +250,7 @@ export default function SuperCaissePage() {
         shopId: user.shopId,
         userId: user.id,
         customerId: selectedCustomer?.id || undefined,
+        cashSessionId: cashSession?.id || undefined, // Lier la vente à la session active
         items: cart.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -193,6 +295,51 @@ export default function SuperCaissePage() {
 
   return (
     <AppLayout title="Point de Vente" subtitle={currentShop?.name || "Caisse"}>
+
+      {/* === BANNIÈRE SESSION DE CAISSE === */}
+      {!cashSession ? (
+        /* Pas de session active → Le caissier doit en ouvrir une */
+        <div className="mb-4 p-5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 rounded-2xl flex flex-col md:flex-row items-center gap-4">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="p-3 bg-amber-500/10 rounded-xl">
+              <Wallet className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-black text-amber-700 dark:text-amber-400">Ouvrir la caisse</p>
+              <p className="text-[10px] text-amber-600/70">Déclarez votre fond de caisse pour commencer à vendre</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <input
+              type="number"
+              placeholder="Fond initial (XOF)"
+              value={openingBalance}
+              onChange={(e) => setOpeningBalance(e.target.value)}
+              className="px-4 py-3 bg-white dark:bg-zinc-900 border border-amber-200 dark:border-amber-800 rounded-xl text-sm font-bold w-40 outline-none focus:border-primary"
+            />
+            <Button variant="primary" size="sm" onClick={handleOpenSession} loading={isOpeningSession}>
+              Ouvrir la caisse
+            </Button>
+          </div>
+        </div>
+      ) : (
+        /* Session active → Afficher le résumé et bouton fermer */
+        <div className="mb-4 p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
+            <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">
+              Caisse ouverte — Fond initial: {new Intl.NumberFormat("fr-FR").format(cashSession.openingBalance)} XOF
+            </p>
+          </div>
+          <button
+            onClick={handleCloseSession}
+            className="px-3 py-1.5 bg-red-500/10 text-red-600 rounded-xl text-[10px] font-black hover:bg-red-500/20 transition-all"
+          >
+            Fermer la caisse
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 h-[calc(100vh-160px)] overflow-hidden">
 
         {/* CATALOGUE (8/12) */}

@@ -39,7 +39,7 @@ export default function SuperDashboardPage() {
     setLoading(true);
     try {
       // Charger les ventes pour calculer le CA du jour
-      const salesRes = await SaleService.getAll({ shopId: user.shopId, limit: 500 });
+      const salesRes = await SaleService.getAll({ shopId: user.shopId });
       const sales = salesRes.data && Array.isArray(salesRes.data) ? salesRes.data : (Array.isArray(salesRes) ? salesRes : []);
 
       const today = new Date().toLocaleDateString();
@@ -48,7 +48,7 @@ export default function SuperDashboardPage() {
       const revenue = todaySales.reduce((acc: number, s: any) => acc + (s.totalAmount || s.total || 0), 0);
 
       // Charger les produits pour les alertes
-      const prodRes = await ProductService.getAll({ shopId: user.shopId, limit: 1000 });
+      const prodRes = await ProductService.getAll({ shopId: user.shopId });
       const prods = prodRes.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
       const criticalCount = prods.filter((p: any) => p.stockQty <= p.minStockQty).length;
 
@@ -123,44 +123,48 @@ export default function SuperDashboardPage() {
         </button>
       }
     >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 max-w-7xl mx-auto">
-        <Card className="p-6 bg-gradient-to-br from-primary/5 to-transparent border-primary/10 rounded-3xl shadow-sm">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="p-3 bg-primary/10 text-primary rounded-2xl">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">CA du Jour</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 max-w-7xl mx-auto">
+        {/* Métrique CA du jour */}
+        <div className="flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl shadow-sm">
+          <div className="p-3 bg-primary/10 text-primary rounded-xl">
+            <TrendingUp className="h-5 w-5" />
           </div>
-          <h4 className="text-2xl font-black text-zinc-900 dark:text-zinc-50">
-            {new Intl.NumberFormat('fr-FR').format(stats.todayRevenue)} <span className="text-xs opacity-50">XOF</span>
-          </h4>
-          <p className="text-[10px] font-bold text-emerald-600 mt-2 flex items-center gap-1">
-            <CheckCircle2 className="h-3 w-3" />
-            Mise à jour en temps réel
-          </p>
-        </Card>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">CA du Jour</span>
+            <div className="flex items-baseline gap-1">
+              <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">
+                {new Intl.NumberFormat('fr-FR').format(stats.todayRevenue)}
+              </h4>
+              <span className="text-xs font-bold text-zinc-400">XOF</span>
+            </div>
+          </div>
+        </div>
 
-        <Card className="p-6 bg-gradient-to-br from-amber-500/5 to-transparent border-amber-500/10 rounded-3xl shadow-sm">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="p-3 bg-amber-500/10 text-amber-600 rounded-2xl">
-              <History className="h-5 w-5" />
-            </div>
-            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Tickets du Jour</span>
+        {/* Métrique Tickets */}
+        <div className="flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl shadow-sm">
+          <div className="p-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-xl">
+            <History className="h-5 w-5" />
           </div>
-          <h4 className="text-2xl font-black text-zinc-900 dark:text-zinc-50">{stats.todaySalesCount} tickets</h4>
-          <p className="text-[10px] font-bold text-zinc-400 mt-2">Dernière activité à {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
-        </Card>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Tickets Émis</span>
+            <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">
+              {stats.todaySalesCount} <span className="text-sm font-medium text-zinc-500">tickets</span>
+            </h4>
+          </div>
+        </div>
 
-        <Card className="p-6 bg-gradient-to-br from-red-500/5 to-transparent border-red-500/10 rounded-3xl shadow-sm">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="p-3 bg-red-500/10 text-red-600 rounded-2xl">
-              <AlertCircle className="h-5 w-5" />
-            </div>
-            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Alertes Stock</span>
+        {/* Métrique Alertes */}
+        <div className="flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl shadow-sm">
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl">
+            <AlertCircle className="h-5 w-5" />
           </div>
-          <h4 className="text-2xl font-black text-red-600">{stats.criticalStockCount} articles</h4>
-          <p className="text-[10px] font-bold text-red-500 mt-2">Action requise immédiatement</p>
-        </Card>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-red-500/80 uppercase tracking-widest mb-1">Alertes Stock</span>
+            <h4 className="text-xl font-black text-red-600">
+              {stats.criticalStockCount} <span className="text-sm font-medium text-red-500/70">articles</span>
+            </h4>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-7xl mx-auto">

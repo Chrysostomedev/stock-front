@@ -72,9 +72,12 @@ export function useAuth() {
     setIsAuthenticated(true);
 
     // Redirection automatique selon le rôle
-    if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") router.push("/admin");
+    // Backend roles : SUPER_ADMIN, ADMIN, MANAGER, CASHIER, AUDITOR
+    if (user.role === "SUPER_ADMIN" || user.role === "ADMIN") router.push("/admin");
     else if (user.role === "CASHIER") router.push("/super");
     else if (user.role === "MANAGER") router.push("/quinc");
+    else if (user.role === "AUDITOR") router.push("/admin"); // Lecture seule, même interface admin
+    else router.push("/admin"); // Fallback pour tout rôle inconnu
 
     return user;
   };
