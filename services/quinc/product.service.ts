@@ -14,23 +14,50 @@ class QuincProductService {
    */
   async getAll(shopId: string): Promise<Product[]> {
     try {
-      let response;
-      try {
-        response = await axiosInstance.get("/products", {
-          params: { shopId, limit: 1000 },
-        });
-      } catch (err) {
-        console.warn("Retrying QuincProductService.getAll without limit due to backend error:", err);
-        response = await axiosInstance.get("/products", {
-          params: { shopId },
-        });
-      }
-      // Le backend renvoie souvent les données dans .data.data avec pagination
+      const response = await axiosInstance.get("/products", {
+        params: { shopId, limit: 1000 },
+      });
       const data = response.data?.data || response.data;
       return Array.isArray(data) ? data : [];
     } catch (error) {
-      console.error("Erreur lors de la récupération des matériaux:", error);
-      throw error;
+      console.warn("QuincProductService.getAll with limit 1000 failed, trying auto-pagination fallback:", error);
+      try {
+        const firstPageResponse = await axiosInstance.get("/products", {
+          params: { shopId, page: 1 },
+        });
+        
+        const resData = firstPageResponse.data;
+        const total = resData.total || 0;
+        const limit = resData.limit || 10;
+        const totalPages = resData.totalPages || Math.ceil(total / limit);
+        
+        const firstPageList = resData.data || resData;
+        const allData = Array.isArray(firstPageList) ? [...firstPageList] : [];
+        
+        if (totalPages <= 1 || !Array.isArray(resData.data)) {
+          return allData;
+        }
+        
+        const pagePromises = [];
+        for (let p = 2; p <= totalPages; p++) {
+          pagePromises.push(
+            axiosInstance.get("/products", { params: { shopId, page: p } })
+          );
+        }
+        
+        const pagesResults = await Promise.all(pagePromises);
+        pagesResults.forEach((pageRes) => {
+          const pageList = pageRes.data?.data || pageRes.data;
+          if (Array.isArray(pageList)) {
+            allData.push(...pageList);
+          }
+        });
+        
+        return allData;
+      } catch (fallbackError) {
+        console.error("Erreur lors de la récupération résiliente des matériaux:", fallbackError);
+        return [];
+      }
     }
   }
 
