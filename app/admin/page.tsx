@@ -13,10 +13,18 @@ import {
   ArrowRight,
   UserCircle,
   Flame,
+  BarChart2,
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
   const modules = [
+    {
+      title: "Dashboard Analytique",
+      description: "Vue globale des KPIs, ventes, boutiques et alertes opérationnelles en temps réel.",
+      icon: <BarChart2 className="h-7 w-7 text-violet-500" />,
+      href: "/admin/dashboard",
+      color: "border-l-violet-500",
+    },
     {
       title: "Gestion des Boutiques",
       description: "Configurez les points de vente et entrepôts de gaz ou quincaillerie.",

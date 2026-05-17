@@ -71,7 +71,7 @@ export default function SuperCaissePage() {
     setLoading(true);
     try {
       const [prodRes, catRes, shopRes, custRes] = await Promise.all([
-        ProductService.getAll({ isActive: true, shopId: user.shopId, limit: 1000 }),
+        ProductService.getAll({  shopId: user.shopId, limit: 100 }),
         CategoryService.getAll({ limit: 100 }),
         ShopService.getById(user.shopId),
         CustomerService.getAll()
@@ -80,7 +80,7 @@ export default function SuperCaissePage() {
       const prodList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
       const catList = catRes?.data && Array.isArray(catRes.data) ? catRes.data : (Array.isArray(catRes) ? catRes : []);
       const custList = custRes?.data && Array.isArray(custRes.data) ? custRes.data : (Array.isArray(custRes) ? custRes : []);
-
+      console.log("products caisses",prodList)
       setProducts(prodList);
       setCategories(catList);
       setCustomers(custList);
