@@ -292,10 +292,124 @@ export interface StockTransferItem {
  */
 export interface CreditPayment {
   id: string;
-  items: CartItem[];
-  total: number;
-  paymentMethod: "cash" | "mtn" | "moov" | "credit";
-  customerName?: string;
-  date: string;
-  time: string;
+  customerId: string;
+  amount: number;
+  method: PaymentMethod;
+  reference?: string;       // Référence de transaction (ex: OM_123456)
+  notes?: string;
+  localId?: string;         // Support offline
+  createdAt: string;
+  updatedAt: string;
+  // Relation
+  customer?: {
+    id: string;
+    name: string;
+    phone?: string;
+  };
+}
+
+// ============================================================================
+// DTOs — Payloads envoyés au backend pour les créations/modifications
+// ============================================================================
+
+/** DTO pour ouvrir une session de caisse */
+export interface OpenCashSessionDto {
+  shopId: string;
+  userId: string;
+  openingBalance: number;
+  notes?: string;
+}
+
+/** DTO pour fermer une session de caisse */
+export interface CloseCashSessionDto {
+  closingBalance: number;
+  notes?: string;
+}
+
+/** DTO pour créer une dépense */
+export interface CreateExpenseDto {
+  title: string;
+  category: ExpenseCategory;
+  amount: number;
+  shopId: string;
+  userId: string;            // OBLIGATOIRE — Le backend l'exige
+  date?: string;
+  description?: string;
+  receiptUrl?: string;
+  isRecurring?: boolean;
+  recurringDay?: number;
+}
+
+/** DTO pour filtrer les dépenses */
+export interface FilterExpenseDto {
+  shopId?: string;
+  category?: ExpenseCategory;
+  startDate?: string;         // Format YYYY-MM-DD
+  endDate?: string;           // Format YYYY-MM-DD
+}
+
+/** DTO pour créer un lot de produit (arrivage) */
+export interface CreateProductBatchDto {
+  productId: string;
+  batchNumber: string;
+  quantity: number;
+  buyingPrice: number;
+  expiresAt?: string;
+  receivedAt?: string;
+}
+
+/** DTO pour créer un fournisseur */
+export interface CreateSupplierDto {
+  name: string;
+  contact?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  isActive?: boolean;
+}
+
+/** DTO pour créer un bon de commande */
+export interface CreatePurchaseOrderDto {
+  supplierId: string;
+  shopId: string;
+  expectedAt?: string;
+  notes?: string;
+  items: {
+    productId: string;
+    quantityOrdered: number;
+    unitCost: number;
+  }[];
+}
+
+/** DTO pour réceptionner des articles d'une commande */
+export interface ReceiveItemsDto {
+  userId: string;
+  items: {
+    itemId: string;           // ID de l'item dans la commande
+    quantityReceived: number;
+  }[];
+}
+
+/** DTO pour créer un transfert de stock */
+export interface CreateStockTransferDto {
+  fromShopId: string;
+  toShopId: string;
+  userId: string;
+  items: {
+    productId: string;
+    quantity: number;
+    unitCost: number;
+  }[];
+  notes?: string;
+}
+
+/** DTO pour créer un versement client */
+export interface CreateCreditPaymentDto {
+  customerId: string;
+  amount: number;
+  method: PaymentMethod;
+  reference?: string;
+  notes?: string;
+  localId?: string;
 }

@@ -12,6 +12,8 @@ import CategoryService, { Category } from "@/services/category.service";
 import ShopService, { Shop } from "@/services/shop.service";
 import CustomerService, { Customer } from "@/services/customer.service";
 import SaleService from "@/services/sale.service";
+import CashSessionService from "@/services/super/cashSession.service";
+import { CashSession } from "@/types/super";
 import { useAuth } from "@/hooks/useAuth";
 import {
   ShoppingCart,
@@ -32,7 +34,6 @@ import {
   RefreshCw,
   X
 } from "lucide-react";
-import CashSessionService from "@/services/super/cashSession.service";
 
 /**
  * Interface de Caisse Optimisée pour Catalogues Massifs
@@ -83,17 +84,31 @@ export default function SuperCaissePage() {
     }
     setLoading(true);
     try {
-      const [prodRes, catRes, shopRes, custRes] = await Promise.all([
-        ProductService.getAll({ isActive: true, shopId: user.shopId, limit: 1000 }),
-        CategoryService.getAll({ limit: 100 }),
-        ShopService.getById(user.shopId),
+      let prodRes;
+      try {
+        prodRes = await ProductService.getAll({ shopId: user.shopId, limit: 1000 });
+      } catch (err) {
+        console.warn("Retrying ProductService.getAll without limit due to backend error:", err);
+        prodRes = await ProductService.getAll({ shopId: user.shopId });
+      }
+
+      let catRes;
+      try {
+        catRes = await CategoryService.getAll({ limit: 1000 });
+      } catch (err) {
+        console.warn("Retrying CategoryService.getAll without limit due to backend error:", err);
+        catRes = await CategoryService.getAll();
+      }
+
+      const [shopRes, custRes] = await Promise.all([
+        user.shopId ? ShopService.getById(user.shopId) : ShopService.getAll().then(res => res.data?.[0] || res?.[0]),
         CustomerService.getAll()
       ]);
 
       const prodList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
       const catList = catRes?.data && Array.isArray(catRes.data) ? catRes.data : (Array.isArray(catRes) ? catRes : []);
       const custList = custRes?.data && Array.isArray(custRes.data) ? custRes.data : (Array.isArray(custRes) ? custRes : []);
-      console.log("products caisses", prodList)
+
       setProducts(prodList);
       setCategories(catList);
       setCustomers(custList);
