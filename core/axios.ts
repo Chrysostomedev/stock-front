@@ -13,16 +13,14 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("access_token");
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error),
 );
 
 // Intercepteur pour gérer les erreurs globales (ex: 401 Unauthorized)
@@ -32,8 +30,9 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401) {
       // Redirection vers login si non autorisé (sauf si on est déjà sur login)
       if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("user_id");
         window.location.href = "/login";
       }
     }

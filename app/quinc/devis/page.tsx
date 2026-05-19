@@ -518,6 +518,166 @@ export default function QuincDevisPage() {
           </div>
         )}
       </Modal>
+
+      {/* Feuille de style globale d'impression */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          /* Masquage de l'interface entière excepté la section d'impression */
+          body * {
+            visibility: hidden !important;
+          }
+          /* Rendre uniquement visible la section d'impression */
+          #print-section, #print-section * {
+            visibility: visible !important;
+          }
+          #print-section {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            background-color: white !important;
+            color: #111827 !important;
+            padding: 24px !important;
+          }
+          /* ensure background colors are printed exactly */
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+          /* Empêcher les sauts de page */
+          tr {
+            page-break-inside: avoid !important;
+          }
+        }
+      `}} />
+
+      {/* SECTION D'IMPRESSION HAUTE FIDÉLITÉ (STYLE REFERENCE INVOICE) */}
+      {viewDoc && (
+        <div id="print-section" className="hidden print:block bg-white text-zinc-900 font-sans p-8 select-none">
+          {/* Ligne bleue d'en-tête */}
+          <div className="h-2 bg-[#00a3e0] w-full mb-6"></div>
+
+          {/* En-tête : Marque & Infos Bon */}
+          <div className="flex justify-between items-stretch mb-8">
+            {/* Logo et Nom à gauche */}
+            <div className="bg-[#003b95] text-white pl-6 pr-12 py-5 rounded-br-[40px] flex items-center gap-4 min-w-[280px]">
+              <div className="p-2 bg-white/10 rounded-xl">
+                <Package className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-black tracking-tight leading-none text-white">SP SERVICES</h1>
+                <p className="text-[9px] text-[#00a3e0] font-bold uppercase tracking-widest mt-1">Gestion de Stock Pro</p>
+              </div>
+            </div>
+
+            {/* Numéro et date à droite */}
+            <div className="bg-[#003b95] text-white px-8 py-5 rounded-bl-[40px] text-right flex flex-col justify-center">
+              <span className="text-[9px] uppercase tracking-widest text-zinc-300 font-black">
+                {viewDoc.type === "Client" ? "BON DE COMMANDE CLIENT" : "BON DE COMMANDE FOURNISSEUR"}
+              </span>
+              <h2 className="text-sm font-black font-mono mt-1 text-[#00a3e0]">N° {viewDoc.id.toUpperCase()}</h2>
+              <p className="text-[9px] text-zinc-200 font-bold mt-1">Date: {new Date(viewDoc.date).toLocaleDateString("fr-FR")}</p>
+            </div>
+          </div>
+
+          {/* Informations de paiement & Facturation */}
+          <div className="grid grid-cols-2 gap-8 mb-8 text-xs font-bold font-sans">
+            {/* Bloc de Paiement (Gauche) */}
+            <div className="border border-[#003b95]/20 p-5 rounded-2xl bg-zinc-50/50">
+              <h3 className="font-black text-[#003b95] uppercase tracking-wider mb-3 text-[10px]">Payment information:</h3>
+              <div className="grid grid-cols-3 gap-y-1.5 font-bold text-zinc-500">
+                <span className="col-span-1">Account:</span>
+                <span className="col-span-2 font-mono text-zinc-800">4568789465132156</span>
+                <span className="col-span-1">A/C Name:</span>
+                <span className="col-span-2 text-zinc-800">SP SERVICES STOCK</span>
+                <span className="col-span-1">Bank Detail:</span>
+                <span className="col-span-2 text-zinc-800">ECOBANK CÔTE D'IVOIRE</span>
+              </div>
+            </div>
+
+            {/* Bloc Partenaire (Droite) */}
+            <div className="p-1">
+              <h3 className="font-black text-[#003b95] uppercase tracking-wider mb-3 text-[10px]">
+                {viewDoc.type === "Client" ? "Client / Destinataire:" : "Fournisseur Partenaire:"}
+              </h3>
+              <div className="grid grid-cols-3 gap-y-1.5 font-bold text-zinc-500">
+                <span className="col-span-1">Nom / Cie:</span>
+                <span className="col-span-2 text-zinc-850 font-black">{viewDoc.customer}</span>
+                <span className="col-span-1">Téléphone:</span>
+                <span className="col-span-2 font-mono text-zinc-800">Non renseigné</span>
+                <span className="col-span-1">Adresse:</span>
+                <span className="col-span-2 text-zinc-800">Abidjan, Côte d'Ivoire</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tableau des Articles Commandés */}
+          <div className="border border-zinc-200 rounded-2xl overflow-hidden mb-8 shadow-sm">
+            <table className="w-full text-left text-xs font-bold">
+              <thead>
+                <tr className="bg-[#003b95] text-white text-[9px] uppercase tracking-wider border-b border-zinc-200">
+                  <th className="p-3.5 text-center w-12 bg-[#003b95]">N°</th>
+                  <th className="p-3.5 pl-6">Désignation des Articles</th>
+                  <th className="p-3.5 text-right w-36">Prix Unitaire</th>
+                  <th className="p-3.5 text-center w-24">Quantité</th>
+                  <th className="p-3.5 text-right w-40">Montant Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-200">
+                {viewDoc.items?.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-zinc-50/50">
+                    <td className="p-3.5 text-center bg-[#003b95] text-white font-mono text-[10px]">{String(idx + 1).padStart(2, "0")}</td>
+                    <td className="p-3.5 pl-6 text-zinc-800 text-[11px] font-black">{item.name}</td>
+                    <td className="p-3.5 text-right font-mono text-zinc-650">{new Intl.NumberFormat("fr-FR").format(item.price)} FCFA</td>
+                    <td className="p-3.5 text-center font-mono text-zinc-650">{item.quantity}</td>
+                    <td className="p-3.5 text-right font-mono text-zinc-900 font-black">{new Intl.NumberFormat("fr-FR").format(item.quantity * item.price)} FCFA</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Zone inférieure : CGV et Totaux */}
+          <div className="grid grid-cols-12 gap-8 mb-12 text-xs">
+            {/* Conditions Générales (Gauche) */}
+            <div className="col-span-7 pr-4">
+              <h4 className="font-black text-[#003b95] uppercase tracking-wider mb-2 text-[10px]">TERMS & CONDITIONS:</h4>
+              <p className="text-[10px] text-zinc-400 leading-relaxed font-normal font-sans">
+                Les marchandises livrées restent la propriété exclusive de SP SERVICES jusqu'au paiement intégral de la commande. Toute divergence ou contestation de quantité/qualité doit être notifiée par écrit sous un délai de 48 heures suivant la réception effective dans nos locaux.
+              </p>
+            </div>
+
+            {/* Totaux (Droite) */}
+            <div className="col-span-5 flex flex-col gap-2 text-right font-bold text-zinc-500">
+              <div className="flex justify-between">
+                <span>Sous-total:</span>
+                <span className="font-mono text-zinc-700">{new Intl.NumberFormat("fr-FR").format(viewDoc.amount)} FCFA</span>
+              </div>
+              <div className="flex justify-between border-b border-zinc-200 pb-2">
+                <span>Taxes (0%):</span>
+                <span className="font-mono text-zinc-700">0 FCFA</span>
+              </div>
+              <div className="flex justify-between text-sm font-black text-[#003b95] pt-1">
+                <span>Montant Net à Payer:</span>
+                <span className="font-mono text-[#00a3e0] text-base">{new Intl.NumberFormat("fr-FR").format(viewDoc.amount)} FCFA</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Pied de page décoratif */}
+          <div className="relative mt-auto pt-8 border-t border-zinc-150 flex flex-col items-center">
+            <p className="text-[9px] font-black text-[#003b95] uppercase tracking-widest">SP SERVICES - SYSTÈME D'APPROVISIONNEMENT ET DE STOCK</p>
+            <p className="text-[9px] text-[#00a3e0] font-bold mt-1">Visit us at www.spservices.ci</p>
+            
+            {/* Bande bleue de pied de page */}
+            <div className="h-1.5 bg-[#00a3e0] w-full mt-4 rounded-full"></div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
