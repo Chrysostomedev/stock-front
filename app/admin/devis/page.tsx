@@ -20,8 +20,6 @@ import {
   Search,
   Printer,
   TrendingUp,
-  Building2,
-  RefreshCw,
   Plus,
   Trash2,
   Calendar,
@@ -35,7 +33,8 @@ import {
   ChevronRight,
   Info,
   Layers,
-  Archive
+  Archive,
+  RefreshCw
 } from "lucide-react";
 import Image from "next/image";
 
@@ -115,9 +114,9 @@ export default function AdminDevisPage() {
       // Fetch core datasets
       const [shopRes, supplierRes, prodRes, poRes] = await Promise.all([
         ShopService.getAll(),
-        SupplierService.getAll({ limit: 1000 }),
-        ProductService.getAll({ limit: 1000 }),
-        PurchaseOrderService.getAll({ limit: 1000 })
+        SupplierService.getAll({ limit: 20 }),
+        ProductService.getAll({ limit: 20 }),
+        PurchaseOrderService.getAll({ limit: 20 })
       ]);
 
       const activeShops = Array.isArray(shopRes) ? shopRes : shopRes?.data || [];
@@ -368,7 +367,7 @@ export default function AdminDevisPage() {
       setIsReceiveOpen(false);
       
       // Reload products catalog in case prices/stocks updated
-      const prodRes = await ProductService.getAll({ limit: 1000 });
+      const prodRes = await ProductService.getAll({ limit: 20 });
       setProducts(Array.isArray(prodRes) ? prodRes : prodRes?.data || []);
     } catch (error) {
       console.error("Error receiving items:", error);
@@ -527,7 +526,6 @@ export default function AdminDevisPage() {
               <FileText className="h-5 w-5" />
             </div>
           </Card>
-
           <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-emerald-500/10 to-emerald-100/5 p-5">
             <div>
               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valeur Commande</p>
@@ -539,7 +537,6 @@ export default function AdminDevisPage() {
               <TrendingUp className="h-5 w-5" />
             </div>
           </Card>
-
           <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-amber-500/10 to-amber-100/5 p-5">
             <div>
               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">En Cours de Réception</p>
@@ -551,7 +548,6 @@ export default function AdminDevisPage() {
               <Truck className="h-5 w-5" />
             </div>
           </Card>
-
           <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-teal-500/10 to-teal-100/5 p-5">
             <div>
               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Entièrement Reçus</p>
@@ -564,7 +560,6 @@ export default function AdminDevisPage() {
             </div>
           </Card>
         </div>
-
         {/* Search & Advanced Filters */}
         <Card className="p-4 border-none shadow-xl bg-white dark:bg-zinc-900/50 rounded-2xl">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -579,7 +574,6 @@ export default function AdminDevisPage() {
                 className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200 dark:border-zinc-700/60 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all text-zinc-750 dark:text-zinc-200"
               />
             </div>
-
             {/* Shop filter */}
             <div>
               <select
@@ -986,13 +980,12 @@ export default function AdminDevisPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-600 dark:text-zinc-400">
-                  {selectedPO.items?.map((item: PurchaseOrderItem) => {
+                  {selectedPO.items?.map((item: PurchaseOrderItem, idx) => {
                     const ordered = item.quantityOrdered;
                     const received = item.quantityReceived || 0;
                     const percent = Math.min(100, Math.round((received / ordered) * 100));
-                    
                     return (
-                      <tr key={item.id}>
+                      <tr key={item.id || `po-item-${item.productId || idx}`}>
                         <td className="p-3">
                           <p className="font-black text-zinc-855 dark:text-zinc-100">{getProductName(item.productId)}</p>
                           <p className="text-[9px] font-mono text-zinc-400">SKU: {getProductSku(item.productId)}</p>
@@ -1033,7 +1026,6 @@ export default function AdminDevisPage() {
                 </tbody>
               </table>
             </div>
-
             {/* Audit trail */}
             {selectedPO.status === PurchaseOrderStatus.RECEIVED && (
               <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-900/30 rounded-xl text-emerald-700 dark:text-emerald-400 text-xs">
@@ -1041,7 +1033,6 @@ export default function AdminDevisPage() {
                 <span className="font-bold">Ce bon de commande a été entièrement livré et réceptionné en stock.</span>
               </div>
             )}
-
             {/* Actions for workflow status updates */}
             <div className="flex flex-wrap justify-between items-center gap-3 pt-2 print:hidden">
               <div className="flex gap-2">
@@ -1050,12 +1041,10 @@ export default function AdminDevisPage() {
                   Imprimer
                 </Button>
               </div>
-
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setIsViewOpen(false)} className="text-xs">
                   Fermer
                 </Button>
-
                 {/* Workflow Actions */}
                 {selectedPO.status === PurchaseOrderStatus.DRAFT && (
                   <>
@@ -1312,7 +1301,7 @@ export default function AdminDevisPage() {
               </thead>
               <tbody className="divide-y divide-zinc-200">
                 {selectedPO.items?.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-zinc-50/50">
+                  <tr key={item.id || `print-item-${item.productId || idx}`} className="hover:bg-zinc-50/50">
                     <td className="p-3.5 text-center bg-[#003b95] text-white font-mono text-[10px]">{String(idx + 1).padStart(2, "0")}</td>
                     <td className="p-3.5 pl-6 text-zinc-800 text-[11px] font-black">{getProductName(item.productId)}</td>
                     <td className="p-3.5 text-right font-mono text-zinc-650">{new Intl.NumberFormat("fr-FR").format(item.unitCost)} XOF</td>
