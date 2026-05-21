@@ -42,52 +42,52 @@ interface Document {
   items: DocumentItem[];
 }
 
-const initialDocs: Document[] = [
-  { 
-    id: "BC-2026-001", 
-    type: "Client", 
-    customer: "Entreprise BTP SARL", 
-    date: "2026-05-10", 
-    amount: 450000, 
-    status: "Envoyé", 
-    delay: 30,
-    items: [{ productId: "p1", name: "Ciment CPJ45", quantity: 90, price: 5000 }]
-  },
-  { 
-    id: "BC-2026-002", 
-    type: "Fournisseur", 
-    customer: "SOTACI CI", 
-    date: "2026-05-08", 
-    amount: 85000, 
-    status: "Payé", 
-    delay: 15,
-    items: [{ productId: "p2", name: "Fer à béton 8mm", quantity: 17, price: 5000 }]
-  },
-  { 
-    id: "BC-2026-003", 
-    type: "Client", 
-    customer: "Chantier Riviera", 
-    date: "2026-05-07", 
-    amount: 1250000, 
-    status: "Brouillon", 
-    delay: 45,
-    items: [{ productId: "p3", name: "Briques creuses", quantity: 2500, price: 500 }]
-  },
-];
+// const initialDocs: Document[] = [
+//   { 
+//     id: "BC-2026-001", 
+//     type: "Client", 
+//     customer: "Entreprise BTP SARL", 
+//     date: "2026-05-10", 
+//     amount: 450000, 
+//     status: "Envoyé", 
+//     delay: 30,
+//     items: [{ productId: "p1", name: "Ciment CPJ45", quantity: 90, price: 5000 }]
+//   },
+//   { 
+//     id: "BC-2026-002", 
+//     type: "Fournisseur", 
+//     customer: "SOTACI CI", 
+//     date: "2026-05-08", 
+//     amount: 85000, 
+//     status: "Payé", 
+//     delay: 15,
+//     items: [{ productId: "p2", name: "Fer à béton 8mm", quantity: 17, price: 5000 }]
+//   },
+//   { 
+//     id: "BC-2026-003", 
+//     type: "Client", 
+//     customer: "Chantier Riviera", 
+//     date: "2026-05-07", 
+//     amount: 1250000, 
+//     status: "Brouillon", 
+//     delay: 45,
+//     items: [{ productId: "p3", name: "Briques creuses", quantity: 2500, price: 500 }]
+//   },
+// ];
 
 export default function QuincDevisPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
 
   const [search, setSearch] = useState("");
-  const [docs, setDocs] = useState<Document[]>(initialDocs);
+  const [docs, setDocs] = useState<Document[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal Creation States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<"Client" | "Fournisseur">("Client");
-  
+
   // Form States
   const [partnerName, setPartnerName] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
@@ -268,14 +268,14 @@ export default function QuincDevisPage() {
       header: "Actions",
       accessor: (d: Document) => (
         <div className="flex items-center gap-2 justify-end">
-          <button 
+          <button
             onClick={() => { setViewDoc(d); setIsViewOpen(true); }}
             className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-primary transition-all"
             title="Détails"
           >
             <Printer className="h-4 w-4" />
           </button>
-          <button 
+          <button
             onClick={() => handleDeleteDoc(d.id)}
             className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg text-zinc-400 hover:text-red-600 transition-all"
             title="Supprimer"
@@ -331,9 +331,9 @@ export default function QuincDevisPage() {
       </div>
 
       {/* Creation Modal */}
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         title={`Créer un bon de commande - ${modalType === "Client" ? "Client" : "Fournisseur"}`}
       >
         <div className="flex flex-col gap-4 max-h-[85vh] overflow-y-auto pr-1">
@@ -341,8 +341,8 @@ export default function QuincDevisPage() {
             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
               {modalType === "Client" ? "Client / Partenaire" : "Fournisseur"} <span className="text-red-500">*</span>
             </label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder={modalType === "Client" ? "Ex: Entreprise BTP SARL" : "Ex: SOTACI"}
               value={partnerName}
               onChange={(e) => setPartnerName(e.target.value)}
@@ -352,8 +352,8 @@ export default function QuincDevisPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Date</label>
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
@@ -361,8 +361,8 @@ export default function QuincDevisPage() {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Délai (jours)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 value={delay}
                 onChange={(e) => setDelay(Number(e.target.value))}
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
@@ -520,7 +520,8 @@ export default function QuincDevisPage() {
       </Modal>
 
       {/* Feuille de style globale d'impression */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @media print {
           /* Masquage de l'interface entière excepté la section d'impression */
           body * {
@@ -672,7 +673,7 @@ export default function QuincDevisPage() {
           <div className="relative mt-auto pt-8 border-t border-zinc-150 flex flex-col items-center">
             <p className="text-[9px] font-black text-[#003b95] uppercase tracking-widest">SP SERVICES - SYSTÈME D'APPROVISIONNEMENT ET DE STOCK</p>
             <p className="text-[9px] text-[#00a3e0] font-bold mt-1">Visit us at www.spservices.ci</p>
-            
+
             {/* Bande bleue de pied de page */}
             <div className="h-1.5 bg-[#00a3e0] w-full mt-4 rounded-full"></div>
           </div>

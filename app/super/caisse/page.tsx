@@ -32,7 +32,9 @@ import {
   List,
   LayoutGrid,
   RefreshCw,
-  X
+  X,
+  Clock,
+  Pause
 } from "lucide-react";
 
 /**
@@ -75,6 +77,61 @@ export default function SuperCaissePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastSaleId, setLastSaleId] = useState<string>("");
 
+  // Carts on Hold (Paniers en attente)
+  const [pendingCarts, setPendingCarts] = useState<{ id: string; name: string; items: any[]; timestamp: string; total: number }[]>([]);
+  const [showPendingModal, setShowPendingModal] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("super_pending_carts");
+    if (saved) {
+      try {
+        setPendingCarts(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error loading pending carts:", e);
+      }
+    }
+  }, []);
+
+  const handlePutOnHold = () => {
+    if (cart.length === 0) {
+      showToast("Le panier est vide !", "error");
+      return;
+    }
+    const name = prompt("Nom ou note pour ce panier en attente :", `Client #${pendingCarts.length + 1}`);
+    if (name === null) return;
+    const nameVal = name.trim() || `Client #${pendingCarts.length + 1}`;
+    
+    const newPending = {
+      id: Math.random().toString(36).substring(7),
+      name: nameVal,
+      items: [...cart],
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      total: subtotal
+    };
+    
+    const updated = [newPending, ...pendingCarts];
+    setPendingCarts(updated);
+    localStorage.setItem("super_pending_carts", JSON.stringify(updated));
+    setCart([]);
+    showToast(`Panier de "${nameVal}" mis en attente.`, "success");
+  };
+
+  const handleRestoreCart = (pending: any) => {
+    setCart(pending.items);
+    const updated = pendingCarts.filter(c => c.id !== pending.id);
+    setPendingCarts(updated);
+    localStorage.setItem("super_pending_carts", JSON.stringify(updated));
+    setShowPendingModal(false);
+    showToast(`Panier de "${pending.name}" restauré !`, "success");
+  };
+
+  const handleDeletePendingCart = (id: string, name: string) => {
+    const updated = pendingCarts.filter(c => c.id !== id);
+    setPendingCarts(updated);
+    localStorage.setItem("super_pending_carts", JSON.stringify(updated));
+    showToast(`Panier de "${name}" supprimé.`, "success");
+  };
+
   const loadData = async () => {
     if (!user) return;
     if (!user.shopId) {
@@ -86,7 +143,7 @@ export default function SuperCaissePage() {
     try {
       let prodRes;
       try {
-        prodRes = await ProductService.getAll({ shopId: user.shopId, limit: 1000 });
+        prodRes = await ProductService.getAll({ shopId: user.shopId, limit: 200 });
       } catch (err) {
         console.warn("Retrying ProductService.getAll without limit due to backend error:", err);
         prodRes = await ProductService.getAll({ shopId: user.shopId });
@@ -94,7 +151,7 @@ export default function SuperCaissePage() {
 
       let catRes;
       try {
-        catRes = await CategoryService.getAll({ limit: 1000 });
+        catRes = await CategoryService.getAll({ limit: 200 });
       } catch (err) {
         console.warn("Retrying CategoryService.getAll without limit due to backend error:", err);
         catRes = await CategoryService.getAll();
@@ -145,7 +202,7 @@ export default function SuperCaissePage() {
       showToast("Erreur: Utilisateur non identifié", "error");
       return;
     }
-    
+
     // Fallback: Si le user n'a pas de shopId (ex: créé via Swagger sans UserShopAccess), 
     // on utilise currentShop?.id si disponible
     const targetShopId = user.shopId || currentShop?.id;
@@ -166,11 +223,19 @@ export default function SuperCaissePage() {
       setCashSession(session);
       showToast(`Session ouverte avec ${balance.toLocaleString()} XOF en caisse`, "success");
     } catch (error: any) {
-      if (error?.response?.status === 409) {
-        showToast("Une session est déjà active", "error");
-      } else {
-        showToast("Erreur lors de l'ouverture de la session", "error");
+      if (error?.response?.status === 409 || error?.response?.data?.message?.includes("déjà ouverte")) {
+        showToast("Une session est déjà active. Récupération...", "success");
+        try {
+          const session = await CashSessionService.getActive(user.id);
+          if (session) {
+            setCashSession(session);
+            return;
+          }
+        } catch (fetchErr) {
+          console.error("Failed to re-fetch active session", fetchErr);
+        }
       }
+      showToast("Erreur lors de l'ouverture de la session", "error");
     } finally {
       setIsOpeningSession(false);
     }
@@ -391,36 +456,116 @@ export default function SuperCaissePage() {
             ))}
           </div>
 
-          {/* Grille Compacte */}
+          {/* Grille Compacte et Moderne de Cartes */}
           <div className={`flex-1 overflow-y-auto pr-2 ${viewMode === "grid" ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3" : "flex flex-col gap-2"}`}>
-            {filteredProducts.map(product => (
-              <button
-                key={product.id}
-                onClick={() => addToCart(product)}
-                className={`group bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl hover:border-primary/50 transition-all text-left shadow-sm hover:shadow-lg active:scale-95 ${viewMode === "grid" ? "flex flex-col p-3" : "flex items-center justify-between p-3"}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-[11px] font-black text-zinc-800 dark:text-zinc-200 truncate">{product.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-bold text-primary">{product.sellingPrice} <span className="text-[8px]">XOF</span></span>
-                    <span className={`text-[9px] font-bold ${product.stockQty <= product.minStockQty ? "text-red-500" : "text-zinc-400"}`}>
-                      Qty: {product.stockQty}
+            {filteredProducts.map(product => {
+              const isLowStock = product.stockQty <= (product.minStockQty || 5);
+              const isOutOfStock = product.stockQty <= 0;
+              
+              if (viewMode === "grid") {
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => !isOutOfStock && addToCart(product)}
+                    disabled={isOutOfStock}
+                    className={`group relative bg-white dark:bg-zinc-900 border rounded-2xl transition-all duration-300 text-left shadow-sm hover:shadow-xl active:scale-[0.98] ${
+                      isOutOfStock 
+                        ? "opacity-50 cursor-not-allowed border-zinc-200 dark:border-zinc-800" 
+                        : "border-zinc-150/80 dark:border-zinc-800/80 hover:border-primary/45"
+                    } flex flex-col p-4 justify-between min-h-[135px]`}
+                  >
+                    <div className="w-full">
+                      {/* Top row with stock status */}
+                      <div className="flex justify-between items-center mb-2">
+                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                          isOutOfStock 
+                            ? "bg-red-500/10 text-red-500 animate-pulse" 
+                            : isLowStock 
+                              ? "bg-amber-500/10 text-amber-600" 
+                              : "bg-emerald-500/10 text-emerald-600"
+                        }`}>
+                          {isOutOfStock ? "Rupture" : isLowStock ? `Bas (${product.stockQty})` : `Stock: ${product.stockQty}`}
+                        </span>
+                        <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 truncate max-w-[50px]">
+                          {product.sku || "PROD"}
+                        </span>
+                      </div>
+
+                      <h3 className="text-xs font-black text-zinc-900 dark:text-zinc-50 line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                        {product.name}
+                      </h3>
+                    </div>
+
+                    <div className="w-full flex items-end justify-between mt-3 pt-3 border-t border-zinc-100/50 dark:border-zinc-800/40">
+                      <div className="flex flex-col">
+                        <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Prix</span>
+                        <span className="text-sm font-black text-zinc-900 dark:text-zinc-50 tracking-tight">
+                          {product.sellingPrice.toLocaleString()} <span className="text-[9px] font-normal text-zinc-450">XOF</span>
+                        </span>
+                      </div>
+
+                      <div className={`h-7 w-7 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                        isOutOfStock 
+                          ? "bg-zinc-150 dark:bg-zinc-800 text-zinc-400" 
+                          : "bg-zinc-50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 group-hover:bg-primary group-hover:text-white group-hover:rotate-90"
+                      }`}>
+                        <Plus className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </button>
+                );
+              }
+
+              // List view mode
+              return (
+                <button
+                  key={product.id}
+                  onClick={() => !isOutOfStock && addToCart(product)}
+                  disabled={isOutOfStock}
+                  className={`group relative bg-white dark:bg-zinc-900 border rounded-2xl transition-all duration-300 text-left shadow-sm hover:shadow-xl active:scale-[0.98] ${
+                    isOutOfStock 
+                      ? "opacity-50 cursor-not-allowed border-zinc-200 dark:border-zinc-800" 
+                      : "border-zinc-150/80 dark:border-zinc-800/80 hover:border-primary/45"
+                  } flex items-center justify-between p-3.5`}
+                >
+                  <div className="flex-1 min-w-0 pr-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-xs font-black text-zinc-900 dark:text-zinc-50 truncate group-hover:text-primary transition-colors">
+                        {product.name}
+                      </h3>
+                      <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                        isOutOfStock 
+                          ? "bg-red-500/10 text-red-500" 
+                          : isLowStock 
+                            ? "bg-amber-500/10 text-amber-600" 
+                            : "bg-emerald-500/10 text-emerald-600"
+                      }`}>
+                        {isOutOfStock ? "Rupture" : isLowStock ? `Bas (${product.stockQty})` : `Stock: ${product.stockQty}`}
+                      </span>
+                    </div>
+                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500">
+                      SKU: {product.sku || "N/A"} {product.barcode ? `• Code: ${product.barcode}` : ""}
                     </span>
                   </div>
-                </div>
-                {viewMode === "grid" ? (
-                  <div className="mt-2 flex justify-end">
-                    <div className="h-6 w-6 bg-zinc-50 dark:bg-zinc-800 rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                      <Plus className="h-3.5 w-3.5" />
+
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col text-right">
+                      <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Prix</span>
+                      <span className="text-sm font-black text-zinc-900 dark:text-zinc-50">
+                        {product.sellingPrice.toLocaleString()} <span className="text-[10px] font-normal text-zinc-450">XOF</span>
+                      </span>
+                    </div>
+                    <div className={`h-8 w-8 bg-zinc-50 dark:bg-zinc-800 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                      isOutOfStock 
+                        ? "text-zinc-450" 
+                        : "group-hover:bg-primary group-hover:text-white group-hover:rotate-90"
+                    }`}>
+                      <Plus className="h-4 w-4" />
                     </div>
                   </div>
-                ) : (
-                  <div className="h-8 w-8 bg-zinc-50 dark:bg-zinc-800 rounded-xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                    <Plus className="h-4 w-4" />
-                  </div>
-                )}
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -434,34 +579,30 @@ export default function SuperCaissePage() {
                 <ShoppingCart className="h-4 w-4 text-primary" />
                 Panier ({cart.length})
               </h2>
-              <button onClick={() => setCart([])} className="text-[10px] font-black text-red-500 uppercase hover:underline">Vider</button>
+              <div className="flex items-center gap-2">
+                {pendingCarts.length > 0 && (
+                  <button
+                    onClick={() => setShowPendingModal(true)}
+                    className="flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-500/10 px-2 py-1 rounded-xl hover:bg-amber-500/20 transition-all uppercase tracking-wider"
+                  >
+                    <Clock className="h-3 w-3" />
+                    {pendingCarts.length} En attente
+                  </button>
+                )}
+                {cart.length > 0 && (
+                  <button
+                    onClick={handlePutOnHold}
+                    className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-500/10 px-2 py-1 rounded-xl hover:bg-blue-500/20 transition-all uppercase tracking-wider"
+                  >
+                    <Pause className="h-3 w-3" />
+                    Attente
+                  </button>
+                )}
+                <button onClick={() => setCart([])} className="text-[10px] font-black text-red-500 uppercase hover:underline">Vider</button>
+              </div>
             </div>
 
-            {/* Sélecteur de Client */}
-            <div className="relative">
-              {selectedCustomer ? (
-                <div className="flex items-center justify-between p-2.5 bg-primary/10 border border-primary/20 rounded-xl">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-black text-primary truncate">{selectedCustomer.name}</span>
-                  </div>
-                  <button onClick={() => setSelectedCustomer(null)} className="p-1 hover:bg-primary/20 rounded-lg">
-                    <X className="h-3 w-3 text-primary" />
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
-                  <select
-                    className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-[11px] font-bold outline-none"
-                    onChange={(e) => setSelectedCustomer(customers.find(c => c.id === e.target.value) || null)}
-                  >
-                    <option value="">-- Client de passage --</option>
-                    {customers.map(c => <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>)}
-                  </select>
-                </div>
-              )}
-            </div>
+
           </div>
 
           {/* Liste Articles */}
@@ -582,6 +723,68 @@ export default function SuperCaissePage() {
           saleId={lastSaleId}
         />
       </div>
+      {/* Modal des Paniers en attente */}
+      {showPendingModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="p-5 border-b border-zinc-150 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/50">
+              <div className="flex items-center gap-2.5">
+                <Clock className="h-5 w-5 text-amber-500" />
+                <div>
+                  <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-50 uppercase tracking-wider">Paniers en attente</h3>
+                  <p className="text-[10px] text-zinc-400 font-bold mt-0.5">{pendingCarts.length} paniers suspendus</p>
+                </div>
+              </div>
+              <button onClick={() => setShowPendingModal(false)} className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors">
+                <X className="h-4 w-4 text-zinc-400" />
+              </button>
+            </div>
+            
+            <div className="p-4 max-h-[360px] overflow-y-auto flex flex-col gap-2.5">
+              {pendingCarts.map((item) => (
+                <div key={item.id} className="p-4 bg-zinc-50 dark:bg-zinc-850 rounded-2xl border border-zinc-150/40 dark:border-zinc-800 flex justify-between items-center group">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-black text-zinc-800 dark:text-zinc-200 truncate">{item.name}</span>
+                      <span className="text-[9px] font-bold text-zinc-400 bg-zinc-200/50 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{item.timestamp}</span>
+                    </div>
+                    <p className="text-[9px] font-bold text-zinc-400 mt-1">
+                      {item.items.reduce((acc, it) => acc + it.quantity, 0)} articles • {item.total.toLocaleString()} XOF
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleRestoreCart(item)}
+                      className="px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                    >
+                      Récupérer
+                    </button>
+                    <button
+                      onClick={() => handleDeletePendingCart(item.id, item.name)}
+                      className="p-2 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-xl transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              
+              {pendingCarts.length === 0 && (
+                <div className="py-12 flex flex-col items-center justify-center opacity-30 text-center">
+                  <Clock className="h-10 w-10 text-zinc-400 mb-2" />
+                  <p className="text-xs font-black uppercase tracking-widest">Aucun panier suspendu</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-150 dark:border-zinc-800 flex justify-end">
+              <Button onClick={() => setShowPendingModal(false)} variant="outline" size="sm" className="text-[10px] font-black tracking-widest uppercase">
+                Fermer
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

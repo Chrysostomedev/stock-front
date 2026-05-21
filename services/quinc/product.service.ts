@@ -15,7 +15,7 @@ class QuincProductService {
   async getAll(shopId: string): Promise<Product[]> {
     try {
       const response = await axiosInstance.get("/products", {
-        params: { shopId, limit: 1000 },
+        params: { shopId, limit: 200 },
       });
       const data = response.data?.data || response.data;
       return Array.isArray(data) ? data : [];

@@ -60,13 +60,13 @@ export default function AdminDashboardPage() {
       href: "/admin/bilan",
       color: "border-l-amber-500",
     },
-    {
-      title: "Mon Profil",
-      description: "Gérez vos informations personnelles et mot de passe.",
-      icon: <UserCircle className="h-7 w-7 text-zinc-500" />,
-      href: "/profile",
-      color: "border-l-zinc-400",
-    },
+    // {
+    //   title: "Mon Profil",
+    //   description: "Gérez vos informations personnelles et mot de passe.",
+    //   icon: <UserCircle className="h-7 w-7 text-zinc-500" />,
+    //   href: "/profile",
+    //   color: "border-l-zinc-400",
+    // },
   ];
 
   return (

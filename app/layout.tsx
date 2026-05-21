@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
+import { ShopSettingsProvider } from "@/contexts/ShopSettingsContext";
 import "./globals.css";
 import { AuthProvider } from "./context/useContext";
 
@@ -34,13 +35,15 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
          <AuthProvider>
-        <ThemeProvider>
-          <ToastProvider>
-            <SidebarProvider>
-              {children}
-            </SidebarProvider>
-          </ToastProvider>
-        </ThemeProvider>
+          <ShopSettingsProvider>
+            <ThemeProvider>
+              <ToastProvider>
+                <SidebarProvider>
+                  {children}
+                </SidebarProvider>
+              </ToastProvider>
+            </ThemeProvider>
+          </ShopSettingsProvider>
          </AuthProvider>
       </body>
     </html>

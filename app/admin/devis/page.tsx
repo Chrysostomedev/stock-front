@@ -115,9 +115,9 @@ export default function AdminDevisPage() {
       // Fetch core datasets
       const [shopRes, supplierRes, prodRes, poRes] = await Promise.all([
         ShopService.getAll(),
-        SupplierService.getAll({ limit: 1000 }),
-        ProductService.getAll({ limit: 1000 }),
-        PurchaseOrderService.getAll({ limit: 1000 })
+        SupplierService.getAll({ limit: 200 }),
+        ProductService.getAll({ limit: 200 }),
+        PurchaseOrderService.getAll({ limit: 200 })
       ]);
 
       const activeShops = Array.isArray(shopRes) ? shopRes : shopRes?.data || [];
@@ -368,7 +368,7 @@ export default function AdminDevisPage() {
       setIsReceiveOpen(false);
       
       // Reload products catalog in case prices/stocks updated
-      const prodRes = await ProductService.getAll({ limit: 1000 });
+      const prodRes = await ProductService.getAll({ limit: 200 });
       setProducts(Array.isArray(prodRes) ? prodRes : prodRes?.data || []);
     } catch (error) {
       console.error("Error receiving items:", error);

@@ -1,4 +1,5 @@
 import React from "react";
+import { useShopSettings } from "@/contexts/ShopSettingsContext";
 
 interface TicketReceiptProps {
   shop: any;
@@ -18,14 +19,32 @@ interface TicketReceiptProps {
 export const TicketReceipt = React.forwardRef<HTMLDivElement, TicketReceiptProps>(
   ({ shop, user, items, total, paymentMethod, amountReceived, change, saleId }, ref) => {
     const today = new Date().toLocaleString("fr-FR");
+    
+    let customHeader = "";
+    let customFooter = "";
+    try {
+      const settingsContext = useShopSettings();
+      customHeader = settingsContext.getSettingValue("receipt_header");
+      customFooter = settingsContext.getSettingValue("receipt_footer");
+    } catch (e) {
+      // Pas de provider
+    }
 
     return (
       <div ref={ref} className="p-8 bg-white text-black font-mono text-[12px] w-[80mm] mx-auto">
         {/* Header Boutique */}
         <div className="text-center flex flex-col gap-1 mb-6">
-          <h1 className="text-lg font-black uppercase tracking-tighter">{shop?.name || "SP SERVICES"}</h1>
-          <p className="text-[10px] font-bold">{shop?.address || "Côte d'Ivoire"}</p>
-          <p className="text-[10px]">Tél: {shop?.phone || "+225 -- -- -- --"}</p>
+          {customHeader ? (
+            <div className="whitespace-pre-wrap font-bold text-center leading-tight">
+              {customHeader}
+            </div>
+          ) : (
+            <>
+              <h1 className="text-lg font-black uppercase tracking-tighter">{shop?.name || "SP SERVICES"}</h1>
+              <p className="text-[10px] font-bold">{shop?.address || "Côte d'Ivoire"}</p>
+              <p className="text-[10px]">Tél: {shop?.phone || "+225 -- -- -- --"}</p>
+            </>
+          )}
           <div className="border-b border-dashed border-black my-2" />
         </div>
 
@@ -99,8 +118,16 @@ export const TicketReceipt = React.forwardRef<HTMLDivElement, TicketReceiptProps
 
         {/* Footer */}
         <div className="text-center mt-8 pt-4 border-t border-dashed border-black flex flex-col gap-2">
-          <p className="text-[9px] font-bold italic uppercase tracking-widest">Merci de votre visite !</p>
-          <p className="text-[8px]">Les marchandises vendues ne sont ni reprises ni échangées.</p>
+          {customFooter ? (
+            <div className="whitespace-pre-wrap text-[9px] text-center leading-relaxed">
+              {customFooter}
+            </div>
+          ) : (
+            <>
+              <p className="text-[9px] font-bold italic uppercase tracking-widest">Merci de votre visite !</p>
+              <p className="text-[8px]">Les marchandises vendues ne sont ni reprises ni échangées.</p>
+            </>
+          )}
           <div className="mt-2 text-[10px] font-black">
              *** SP SERVICES STOCK ***
           </div>

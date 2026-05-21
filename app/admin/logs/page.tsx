@@ -38,7 +38,7 @@ export default function AdminLogsPage() {
   const [selectedShop, setSelectedShop] = useState("");
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedAction, setSelectedAction] = useState("");
-  
+
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -51,7 +51,7 @@ export default function AdminLogsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      
+
       // Load shops and users in parallel to resolve names
       const [resShops, resUsers] = await Promise.all([
         ShopService.getAll(),
@@ -60,7 +60,7 @@ export default function AdminLogsPage() {
 
       const activeShops = Array.isArray(resShops) ? resShops : (resShops as any)?.data || [];
       const activeUsers = Array.isArray(resUsers) ? resUsers : (resUsers as any)?.data || [];
-      
+
       setShops(activeShops);
       setUsers(activeUsers);
 
@@ -74,7 +74,7 @@ export default function AdminLogsPage() {
       if (selectedAction) params.action = selectedAction;
 
       const logRes = await AuditLogService.getAll(params);
-      
+
       if (logRes && Array.isArray(logRes.data)) {
         setLogs(logRes.data);
         setTotalPages(logRes.totalPages || 1);
@@ -329,7 +329,7 @@ export default function AdminLogsPage() {
             data={filteredLogs}
             isLoading={loading}
           />
-          
+
           {/* Pagination Controls */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-6 py-4 bg-zinc-50/50 dark:bg-zinc-800/20 border-t border-zinc-100 dark:border-zinc-800 text-xs">
@@ -420,7 +420,7 @@ export default function AdminLogsPage() {
               </p>
             </div>
 
-            {/* Data diff (before/after json) */}
+            {/* Data diff (before/after json)
             {(selectedLog.dataBefore || selectedLog.dataAfter) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {selectedLog.dataBefore && (
@@ -440,12 +440,8 @@ export default function AdminLogsPage() {
                   </div>
                 )}
               </div>
-            )}
+            )} */}
 
-            <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-black tracking-widest uppercase">
-              <Info className="h-3.5 w-3.5 text-indigo-500" />
-              <span>Donnée certifiée et signée dans la blockchain interne</span>
-            </div>
 
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="secondary" onClick={() => setIsViewOpen(false)}>

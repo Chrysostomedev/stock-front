@@ -44,7 +44,7 @@ export default function Sidebar() {
   };
   // Full available link list
   const allLinks = [
-    { href: "/admin", label: "Administration", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
+    { href: "/admin/dashboard", label: "Tableau de bord", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/bilan", label: "Bilan Financier", icon: <TrendingUp className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/boutiques", label: "Boutiques", icon: <Building2 className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/utilisateurs", label: "Utilisateurs", icon: <Users className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
@@ -66,18 +66,20 @@ export default function Sidebar() {
     { href: "/super/depenses", label: "Dépenses Boutique", icon: <Wallet className="h-5 w-5" />, roles: ["CASHIER"] },
     // { href: "/super/inventaire", label: "Inventaire Tournant", icon: <CheckCircle2 className="h-5 w-5" />, roles: ["CASHIER"] },
     { href: "/super/transferts", label: "Transferts Stock", icon: <Layers className="h-5 w-5" />, roles: ["CASHIER"] },
+    { href: "/super/settings", label: "Paramètres Boutique", icon: <Settings className="h-5 w-5" />, roles: ["CASHIER"] },
 
     // Gérant Quincaillerie
     { href: "/quinc", label: "Dashboard Quinc.", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/caisse", label: "Caisse Quinc.", icon: <ShoppingCart className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/produits", label: "Stock Matériaux", icon: <Package className="h-5 w-5" />, roles: ["MANAGER"] },
+    { href: "/quinc/commandes", label: "Historique Ventes", icon: <FileText className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/devis", label: "Bons de Commande", icon: <FileText className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/credits", label: "Clients & Crédits", icon: <Users className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/fournisseurs", label: "Fournisseurs", icon: <Building2 className="h-5 w-5" />, roles: ["MANAGER"] },
     // { href: "/quinc/livraisons", label: "Livraisons", icon: <Layers className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/transferts", label: "Transferts Stock", icon: <Layers className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/depenses", label: "Dépenses/Charges", icon: <Wallet className="h-5 w-5" />, roles: ["MANAGER"] },
-    // { href: "/quinc/inventaire", label: "Inventaire", icon: <CheckCircle2 className="h-5 w-5" />, roles: ["MANAGER"] },
+    { href: "/quinc/settings", label: "Paramètres Boutique", icon: <Settings className="h-5 w-5" />, roles: ["MANAGER"] },
 
     { href: "/profile", label: "Mon Profil", icon: <UserCircle className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER", "MANAGER", "AUDITOR"] },
     { href: "/admin/settings", label: "Paramètres", icon: <Settings className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
@@ -101,21 +103,37 @@ export default function Sidebar() {
           }`}
       >
         <div className="flex flex-col gap-6">
-          {/* Logo */}
-          <Link href={userRole === "ADMIN" || userRole === "SUPER_ADMIN" ? "/admin" : `/${userRole === "CASHIER" ? "super" : "quinc"}`} onClick={close} className="hidden sm:flex items-center gap-2 px-2.5">
-            <span className="text-xl font-black tracking-tighter text-primary">
-              SP SERVICES Stock
-            </span>
-          </Link>
-          {/* Close button for mobile */}
-          <div className="flex sm:hidden items-center justify-between px-2.5 mb-2">
-            <span className="text-lg font-black tracking-tighter text-primary">
-              SP SERVICES
-            </span>
-            <button onClick={close} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800">
-              <X className="h-5 w-5" />
-            </button>
+          {/* Logo & Company Info */}
+          <div className="flex flex-col gap-3 px-2">
+            <Link
+              href={userRole === "ADMIN" || userRole === "SUPER_ADMIN" ? "/admin" : `/${userRole === "CASHIER" ? "super" : "quinc"}`}
+              onClick={close}
+              className="flex items-center gap-3"
+            >
+              <img
+                src="/img/logo.png"
+                alt="SP SERVICES Logo"
+                className="h-10 w-auto object-contain rounded-lg"
+              />
+              <div className="flex flex-col">
+                <span className="text-sm font-black tracking-tighter text-foreground leading-none">
+                  SP SERVICES
+                </span> 
+
+              </div>
+              {/* Close button for mobile */}
+              <div className="flex sm:hidden items-end justify-between px-2.5 mb-2">
+
+                <button onClick={close} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </Link>
+
+
           </div>
+
+
           {/* Navigation links */}
           <nav className="flex flex-col gap-1">
             {links.map((link, idx) => {
