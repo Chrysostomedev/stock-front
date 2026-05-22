@@ -1,6 +1,10 @@
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+// NEXT_PUBLIC_API_URL est injecté au build Next.js (depuis .env).
+// Fallback sur Railway — ne jamais pointer sur localhost en prod/Electron.
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://back-spservice-production.up.railway.app/api/v1";
 
 const axiosInstance = axios.create({
   baseURL: API_URL,

@@ -6,7 +6,7 @@ import {
 } from '@capacitor-community/electron';
 import chokidar from 'chokidar';
 import type { MenuItemConstructorOptions } from 'electron';
-import { app, BrowserWindow, Menu, MenuItem, nativeImage, Tray, session } from 'electron';
+import { app, BrowserWindow, globalShortcut, Menu, MenuItem, nativeImage, Tray, session } from 'electron';
 import electronIsDev from 'electron-is-dev';
 import electronServe from 'electron-serve';
 import windowStateKeeper from 'electron-window-state';
@@ -198,6 +198,17 @@ export class ElectronCapacitorApp {
     // Link electron plugins into the system.
     setupCapacitorElectronPlugins();
 
+    // Raccourci F12 pour ouvrir/fermer les DevTools (utile pour déboguer en prod)
+    globalShortcut.register('F12', () => {
+      if (this.MainWindow?.webContents) {
+        if (this.MainWindow.webContents.isDevToolsOpened()) {
+          this.MainWindow.webContents.closeDevTools();
+        } else {
+          this.MainWindow.webContents.openDevTools();
+        }
+      }
+    });
+
     // When the web app is loaded we hide the splashscreen if needed and show the mainwindow.
     this.MainWindow.webContents.on('dom-ready', () => {
       if (this.CapacitorFileConfig.electron?.splashScreenEnabled) {
@@ -210,6 +221,8 @@ export class ElectronCapacitorApp {
         if (electronIsDev) {
           this.MainWindow.webContents.openDevTools();
         }
+        // Pour déboguer en prod : décommenter la ligne suivante temporairement
+        // this.MainWindow.webContents.openDevTools();
         CapElectronEventEmitter.emit('CAPELECTRON_DeeplinkListenerInitialized', '');
       }, 400);
     });
@@ -224,8 +237,8 @@ export function setupContentSecurityPolicy(customScheme: string): void {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           electronIsDev
-            ? `default-src ${customScheme}://* 'unsafe-inline' devtools://* 'unsafe-eval' data:`
-            : `default-src ${customScheme}://* 'unsafe-inline' data:`,
+            ? `default-src ${customScheme}://* 'unsafe-inline' devtools://* 'unsafe-eval' data:; connect-src ${customScheme}://* https://back-spservice-production.up.railway.app wss: ws: http://localhost:* http://127.0.0.1:*`
+            : `default-src ${customScheme}://* 'unsafe-inline' data:; connect-src ${customScheme}://* https://back-spservice-production.up.railway.app wss: https:`,
         ],
       },
     });
