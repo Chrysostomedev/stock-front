@@ -4,7 +4,9 @@ import type { MenuItemConstructorOptions } from 'electron';
 import { app, MenuItem } from 'electron';
 import electronIsDev from 'electron-is-dev';
 import unhandled from 'electron-unhandled';
-import { autoUpdater } from 'electron-updater';
+// autoUpdater retiré — publish: null dans electron-builder.config.json
+// signifie qu'aucun serveur de mise à jour n'est configuré.
+// L'import de electron-updater sans app-update.yml provoque un crash ENOENT.
 
 import { ElectronCapacitorApp, setupContentSecurityPolicy, setupReloadWatcher } from './setup';
 
@@ -45,8 +47,11 @@ if (electronIsDev) {
   setupContentSecurityPolicy(myCapacitorApp.getCustomURLScheme());
   // Initialize our app, build windows, and load content.
   await myCapacitorApp.init();
-  // Check for updates if we are in a packaged app.
-  autoUpdater.checkForUpdatesAndNotify();
+  // Check for updates désactivé — pas de serveur de mise à jour configuré (publish: null).
+  // Pour activer les mises à jour automatiques plus tard :
+  //   1. Configurer un serveur dans electron-builder.config.json (GitHub Releases, S3, etc.)
+  //   2. Réimporter autoUpdater depuis 'electron-updater'
+  //   3. Décommenter : autoUpdater.checkForUpdatesAndNotify();
 })();
 
 // Handle when all of our windows are close (platforms have their own expectations).

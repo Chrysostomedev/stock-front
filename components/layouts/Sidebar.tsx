@@ -85,7 +85,12 @@ export default function Sidebar() {
     { href: "/admin/settings", label: "Paramètres", icon: <Settings className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
   ];
   // Filter links by userRole
-  const userRole = user?.role as UserRole;
+  // Fallback localStorage pour Electron/mobile où les cookies ne sont pas
+  // disponibles immédiatement au premier rendu (user peut être null brièvement)
+  const userRole = (user?.role ||
+    (typeof window !== "undefined" ? localStorage.getItem("userRole") : null)
+  ) as UserRole | undefined;
+
   const links = allLinks.filter((link) => userRole && link.roles.includes(userRole));
 
   return (
@@ -106,7 +111,15 @@ export default function Sidebar() {
           {/* Logo & Company Info */}
           <div className="flex flex-col gap-3 px-2">
             <Link
-              href={userRole === "ADMIN" || userRole === "SUPER_ADMIN" ? "/admin" : `/${userRole === "CASHIER" ? "super" : "quinc"}`}
+              href={
+                userRole === "ADMIN" || userRole === "SUPER_ADMIN"
+                  ? "/admin"
+                  : userRole === "CASHIER"
+                  ? "/super"
+                  : userRole === "MANAGER"
+                  ? "/quinc"
+                  : "/login"
+              }
               onClick={close}
               className="flex items-center gap-3"
             >
