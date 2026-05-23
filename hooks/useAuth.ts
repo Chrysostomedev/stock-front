@@ -14,7 +14,7 @@ export function useAuth() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = Cookies.get("token");
+      const token = Cookies.get("access_token");
       if (!token) {
         setLoading(false);
         return;
@@ -33,8 +33,15 @@ export function useAuth() {
         setIsAuthenticated(true);
       } catch (error) {
         console.error("Auth check failed:", error);
+        Cookies.remove("access_token");
         Cookies.remove("token");
         Cookies.remove("userRole");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("user");
+        localStorage.removeItem("userRole");
       } finally {
         setLoading(false);
       }
@@ -47,6 +54,7 @@ export function useAuth() {
     const response = await AuthService.login(credentials);
     // Le back renvoie { user, token: { accessToken, refreshToken } }
     const accessToken = response.accessToken || response.token?.accessToken;
+    const refreshToken = response.refreshToken || response.token?.refreshToken;
     const user = response.user;
 
     if (!accessToken) {
@@ -54,11 +62,17 @@ export function useAuth() {
     }
 
     // Stockage dans Cookies pour le Middleware
+    Cookies.set("access_token", accessToken, { expires: 7 });
     Cookies.set("token", accessToken, { expires: 7 });
     Cookies.set("userRole", user.role, { expires: 7 });
     
     // Stockage dans LocalStorage pour l'UI
+    localStorage.setItem("access_token", accessToken);
     localStorage.setItem("token", accessToken);
+    if (refreshToken) {
+      localStorage.setItem("refresh_token", refreshToken);
+    }
+    localStorage.setItem("user_id", user.id);
     localStorage.setItem("user", JSON.stringify(user));
     localStorage.setItem("userRole", user.role);
 
@@ -88,9 +102,13 @@ export function useAuth() {
     } catch (e) {
       console.error("Logout error", e);
     }
+    Cookies.remove("access_token");
     Cookies.remove("token");
     Cookies.remove("userRole");
+    localStorage.removeItem("access_token");
     localStorage.removeItem("token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user_id");
     localStorage.removeItem("user");
     localStorage.removeItem("userRole");
     setUser(null);

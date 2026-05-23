@@ -24,7 +24,10 @@ const AuthService = {
       console.warn("Backend logout failed, continuing with local logout", error);
     }
     if (typeof window !== "undefined") {
+      localStorage.removeItem("access_token");
       localStorage.removeItem("token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user_id");
       localStorage.removeItem("user");
       localStorage.removeItem("userRole");
     }
