@@ -238,17 +238,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     <AuthContext.Provider
       value={{ user, isAuthenticated, loading, login, logout, refreshUser }}
     >
-      {!loading ? (
-        children
-      ) : (
-        // Écran de chargement affiché pendant la vérification de session
-        <div className="flex h-screen flex-col items-center justify-center bg-background">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-title border-t-transparent" />
-          <h2 className="mt-4 text-muted font-bold">
-            Chargement de votre session...
-          </h2>
-        </div>
-      )}
+      {/* 
+        On rend TOUJOURS les children — plus de blocage sur loading.
+        Les pages protégées gèrent elles-mêmes leur état de chargement.
+        Cela évite l'écran blanc sur Electron et le chargement lent sur web.
+      */}
+      {children}
     </AuthContext.Provider>
   );
 };

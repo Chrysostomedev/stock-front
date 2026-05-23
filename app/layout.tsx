@@ -4,6 +4,8 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { ShopSettingsProvider } from "@/contexts/ShopSettingsContext";
+// NetworkProvider : gestion offline, détection réseau, sync automatique
+import { NetworkProvider } from "@/contexts/NetworkContext";
 import "./globals.css";
 import { AuthProvider } from "./context/useContext";
 
@@ -34,17 +36,24 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
-         <AuthProvider>
+        <AuthProvider>
           <ShopSettingsProvider>
             <ThemeProvider>
               <ToastProvider>
-                <SidebarProvider>
-                  {children}
-                </SidebarProvider>
+                {/*
+                  NetworkProvider doit être DANS ToastProvider (pour pouvoir
+                  afficher des toasts lors des syncs) et DANS AuthProvider
+                  (pour avoir accès au token JWT lors des appels sync).
+                */}
+                <NetworkProvider>
+                  <SidebarProvider>
+                    {children}
+                  </SidebarProvider>
+                </NetworkProvider>
               </ToastProvider>
             </ThemeProvider>
           </ShopSettingsProvider>
-         </AuthProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,99 +1,96 @@
 /**
- * ============================================================================
- * SERVICE : TRANSFERTS DE STOCK (Stock Transfers)
- * ============================================================================
- * 
- * Gère les mouvements de stock entre boutiques du réseau SP Services.
- * 
- * Workflow :
- *   1. CRÉATION → Un manager initie un transfert (stock déduit de la source)
- *   2. EN TRANSIT → Les produits sont en cours de déplacement
- *   3. RÉCEPTION → La boutique destination confirme (stock ajouté)
- *   4. ou ANNULATION → Stock réintégré dans la boutique source
- * 
- * Le backend gère automatiquement :
- *   - TRANSFER_OUT : Déduction du stock source à la création
- *   - TRANSFER_IN  : Ajout au stock destination à la complétion
- *   - Rollback      : Réintégration si annulé
- * 
- * Endpoints backend :
- *   POST   /api/v1/stock-transfers            → Créer un transfert
- *   GET    /api/v1/stock-transfers            → Lister avec filtres
- *   GET    /api/v1/stock-transfers/:id        → Détail
- *   PUT    /api/v1/stock-transfers/:id/status → Mettre à jour le statut
- * 
- * @see back-spservice/src/modules/stock-transfer
- * ============================================================================
+ * super/stockTransfer.service.ts — Transferts de stock avec fallback offline
+ * ─────────────────────────────────────────────────────────────────────────────
+ * OFFLINE :
+ *  - create()       → enqueued (StockTransfer/CREATE)
+ *  - getAll()       → cache localStorage
+ *  - getById()      → cache localStorage
+ *  - updateStatus() → enqueued (StockTransfer/UPDATE)
+ *    ⚠️ Le stock source/destination est ajusté côté backend à la sync.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import axiosInstance from "../../core/axios";
+import { withOfflineFallback, withOfflineCache } from "../../core/offline-wrapper";
 import { StockTransfer, CreateStockTransferDto } from "../../types/super";
 
 const StockTransferService = {
   /**
-   * Créer un nouveau transfert de stock entre boutiques.
-   * 
-   * ⚠️ Le stock est IMMÉDIATEMENT déduit de la boutique source.
-   * Si le stock est insuffisant, le backend renvoie une erreur 400.
-   * 
-   * @param dto - Données du transfert (fromShopId, toShopId, userId, items[], notes?)
-   * @returns Le transfert créé avec statut PENDING
-   * @throws 400 si stock insuffisant dans la boutique source
+   * Créer un transfert de stock. OFFLINE : enqueued.
+   * ⚠️ Le stock source sera déduit et le stock destination ajouté à la sync.
    */
   async create(dto: CreateStockTransferDto): Promise<StockTransfer> {
-    const response = await axiosInstance.post("/stock-transfers", dto);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "StockTransfer",
+      operation: "CREATE",
+      payload: dto as unknown as Record<string, unknown>,
+      apiCall: () =>
+        axiosInstance.post("/stock-transfers", dto).then((r) => r.data),
+      optimisticResult: {
+        ...dto,
+        id: `local_${Date.now()}`,
+        transferNumber: `TRF-OFFLINE-${Date.now()}`,
+        status: "PENDING",
+        syncStatus: "PENDING",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as unknown as StockTransfer,
+    });
   },
 
   /**
-   * Lister tous les transferts de stock avec filtres.
-   * 
-   * @param params - Filtres optionnels (fromShopId, toShopId, status)
-   * @returns Liste des transferts correspondant aux filtres
+   * Lister les transferts. OFFLINE : cache.
    */
   async getAll(params?: {
     fromShopId?: string;
     toShopId?: string;
     status?: string;
   }): Promise<any> {
-    const response = await axiosInstance.get("/stock-transfers", { params });
-    return response.data;
+    return withOfflineCache(
+      `stock_transfers_${JSON.stringify(params ?? {})}`,
+      () =>
+        axiosInstance
+          .get("/stock-transfers", { params })
+          .then((r) => r.data),
+      { data: [], total: 0 }
+    );
   },
 
   /**
-   * Récupérer les détails d'un transfert par son ID.
-   * 
-   * @param id - UUID du transfert
-   * @returns Détail complet incluant items et boutiques
+   * Détail d'un transfert. OFFLINE : cache.
    */
   async getById(id: string): Promise<StockTransfer> {
-    const response = await axiosInstance.get(`/stock-transfers/${id}`);
-    return response.data;
+    return withOfflineCache(
+      `stock_transfer_${id}`,
+      () =>
+        axiosInstance.get(`/stock-transfers/${id}`).then((r) => r.data)
+    );
   },
 
   /**
-   * Mettre à jour le statut d'un transfert.
-   * 
-   * Transitions importantes :
-   *   PENDING → IN_TRANSIT → COMPLETED (stock ajouté à la destination)
-   *   PENDING → CANCELLED (stock réintégré à la source)
-   *   IN_TRANSIT → CANCELLED (stock réintégré à la source)
-   * 
-   * @param id - UUID du transfert
-   * @param status - Nouveau statut
-   * @param notes - Notes optionnelles (ex: raison d'annulation)
-   * @returns Le transfert mis à jour
+   * Mettre à jour le statut d'un transfert. OFFLINE : enqueued.
    */
   async updateStatus(
     id: string,
     status: string,
     notes?: string
   ): Promise<StockTransfer> {
-    const response = await axiosInstance.put(`/stock-transfers/${id}/status`, {
-      status,
-      notes,
+    return withOfflineFallback({
+      entityType: "StockTransfer",
+      operation: "UPDATE",
+      payload: { id, status, ...(notes ? { notes } : {}) } as Record<string, unknown>,
+      apiCall: () =>
+        axiosInstance
+          .put(`/stock-transfers/${id}/status`, { status, notes })
+          .then((r) => r.data),
+      optimisticResult: {
+        id,
+        status,
+        notes,
+        syncStatus: "PENDING",
+        updatedAt: new Date().toISOString(),
+      } as unknown as StockTransfer,
     });
-    return response.data;
   },
 };
 
