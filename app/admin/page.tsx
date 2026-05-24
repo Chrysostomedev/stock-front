@@ -8,7 +8,6 @@ import {
   ShoppingCart,
   Wrench,
   Users,
-  Settings,
   Building2,
   ArrowRight,
   UserCircle,

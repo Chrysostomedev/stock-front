@@ -27,7 +27,6 @@ import { UserRole } from "@/types/auth";
 
 export default function AdminUtilisateursPage() {
   const { users, loading, error, shopAccesses, addUser, updateUser, deleteUser, toggleStatus, refresh, fetchShopAccesses } = useUsers();
-
   const formatDate = (dateString?: string | Date) => {
     if (!dateString) return "Jamais";
     try {
@@ -36,7 +35,6 @@ export default function AdminUtilisateursPage() {
       return "Jamais";
     }
   };
-
   const { showToast } = useToast();
   const [shops, setShops] = useState<Shop[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,18 +43,16 @@ export default function AdminUtilisateursPage() {
   const [isShopsModalOpen, setIsShopsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserAccount | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-console.log("shopAccesses",shopAccesses)
+  console.log("shopAccesses",shopAccesses)
   // Form state
   const [formData, setFormData] = useState<Partial<UserAccount>>({
     name: "",
-    username: "",
     phone: "",
     role: "CASHIER",
     pin: "1234",
     isActive: true,
     shopId: ""
   });
-
   useEffect(() => {
     const loadShops = async () => {
       try {
@@ -232,7 +228,6 @@ console.log("shopAccesses",shopAccesses)
               className="w-full pl-11 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
             />
           </div>
-          
           {loading ? (
             <div className="py-20 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
               Chargement des utilisateurs...
@@ -260,18 +255,7 @@ console.log("shopAccesses",shopAccesses)
               className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
             />
           </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Identifiant (Login)</label>
-              <input 
-                type="text" 
-                value={formData.username}
-                onChange={(e) => setFormData({...formData, username: e.target.value})}
-                placeholder="Ex: j.dupont"
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-              />
-            </div>
+          <div className="grid grid-cols-1 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-black text-zinc-500 uppercase">Téléphone</label>
               <input 
@@ -301,7 +285,7 @@ console.log("shopAccesses",shopAccesses)
             </div>
             {!selectedUser && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-zinc-500 uppercase">Code PIN (4 chiffres)</label>
+                <label className="text-xs font-black text-zinc-500 uppercase">code PIN</label>
                 <input 
                   type="text" 
                   maxLength={4}
@@ -313,21 +297,6 @@ console.log("shopAccesses",shopAccesses)
               </div>
             )}
           </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-black text-zinc-500 uppercase">Assigner à une boutique</label>
-            <select 
-              value={formData.shopId}
-              onChange={(e) => setFormData({...formData, shopId: e.target.value})}
-              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-            >
-              <option value="">-- Choisir une boutique --</option>
-              {shops.map(shop => (
-                <option key={shop.id} value={shop.id}>{shop.name} ({shop.type})</option>
-              ))}
-            </select>
-          </div>
-          
           {!selectedUser && (
             <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl flex items-center gap-3">
               <div className="p-2 bg-primary/10 text-primary rounded-lg">
@@ -339,18 +308,16 @@ console.log("shopAccesses",shopAccesses)
               </div>
             </div>
           )}
-
           <Button 
             variant="primary" 
             className="mt-2" 
             onClick={handleSubmit}
-            disabled={!formData.name || !formData.username || (!selectedUser && (!formData.pin || formData.pin.length !== 4))}
+            disabled={!formData.name  || (!selectedUser && (!formData.pin || formData.pin.length !== 4))}
           >
             {selectedUser ? "Mettre à jour l'accès" : "Créer le compte"}
           </Button>
         </div>
       </Modal>
-
       {/* Shops Access Modal */}
       <Modal
         isOpen={isShopsModalOpen}
@@ -380,7 +347,7 @@ console.log("shopAccesses",shopAccesses)
             </div>
           ) : (
             <div className="p-4 text-center text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700">
-              Aucune boutique n'est assignée à cet utilisateur.
+              Aucune boutique n&apos;est assignée à cet utilisateur.
             </div>
           )}
         </div>

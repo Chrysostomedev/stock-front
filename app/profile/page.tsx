@@ -20,25 +20,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import AuthService from "@/services/auth.service";
 
-/**
- * ============================================================================
- * PAGE : PROFIL UTILISATEUR
- * ============================================================================
- * 
- * Permet à l'utilisateur de :
- *   1. Voir ses informations (nom, téléphone, rôle)
- *   2. Modifier son nom et téléphone
- *   3. Changer son mot de passe (le passwordHash)
- * 
- * ⚠️ Le backend n'utilise que le "passwordHash" pour l'authentification.
- *    Le PIN n'est pas utilisé pour le login, on ne l'expose pas ici.
- * 
- * Endpoint : PATCH /api/v1/auth/update/:id
- * Le backend hash automatiquement le passwordHash avec bcrypt.
- * 
- * @see back-spservice/src/modules/auth/users/application/usecases/update-user.usecase.ts
- * ============================================================================
- */
+
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const { showToast } = useToast();
