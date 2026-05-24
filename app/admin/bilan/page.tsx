@@ -5,7 +5,6 @@ import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
-import Badge from "@/components/ui/Badge";
 import { useToast } from "@/contexts/ToastContext";
 import ShopService, { Shop } from "@/services/shop.service";
 import ProductService from "@/services/product.service";
@@ -15,16 +14,11 @@ import {
   TrendingUp,
   DollarSign,
   Layers,
-  Building2,
-  Calendar,
   TrendingDown,
   Percent,
   RefreshCw,
   Sparkles,
-  ChevronRight,
   Eye,
-  CheckCircle,
-  AlertTriangle,
   Wallet,
   ShoppingBag,
   CreditCard
@@ -264,8 +258,6 @@ export default function AdminBilanPage() {
       .join(" ");
   };
 
-  const maxHistoryValue = Math.max(...reports.flatMap((r) => r.revenueHistory), 1000);
-
   // Colors mapping for boutiques (expanded to 20 colors to support many shops seamlessly)
   const shopColors = [
     { primary: "#3b82f6", bg: "rgba(59, 130, 246, 0.1)", border: "#3b82f6" }, // Blue
@@ -305,7 +297,7 @@ export default function AdminBilanPage() {
             <option value="7days"> 7 Derniers Jours</option>
             <option value="month"> Mois en Cours</option>
             <option value="year"> Année en Cours</option>
-            <option value="all"> Tout l'Historique</option>
+            <option value="all"> Tout l&apos;Historique</option>
           </select>
           <Button onClick={loadBilanData} variant="secondary" className="gap-2">
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -321,7 +313,7 @@ export default function AdminBilanPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                  Chiffre d'Affaires CA
+                  Chiffre d&apos;Affaires CA
                 </p>
                 <h3 className="text-2xl font-black text-zinc-800 dark:text-zinc-100 mt-1">
                   {globalCA.toLocaleString()} XOF
@@ -395,190 +387,6 @@ export default function AdminBilanPage() {
             </div>
           </Card>
         </div>
-
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Curve / Line chart */}
-          <Card className="lg:col-span-2 shadow-xl border-none">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-100 uppercase tracking-wider">
-                  Évolution du Chiffre d'Affaires
-                </h3>
-                <p className="text-xs text-zinc-400">Tendance chronologique des ventes globales</p>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="h-64 flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-              </div>
-            ) : (
-              <div className="relative">
-                {/* SVG Graph */}
-                <svg className="w-full h-64 overflow-visible" viewBox="0 0 500 200" preserveAspectRatio="none">
-                  {/* Grid Lines */}
-                  {[0, 50, 100, 150, 200].map((yVal) => (
-                    <line
-                      key={yVal}
-                      x1="0"
-                      y1={yVal}
-                      x2="500"
-                      y2={yVal}
-                      stroke="rgba(120, 120, 120, 0.05)"
-                      strokeWidth="1"
-                    />
-                  ))}
-
-                  {/* Draw curve for each shop */}
-                  {reports.map((rep, index) => {
-                    const color = shopColors[index % shopColors.length];
-                    const pts = getPointsStr(rep.revenueHistory, maxHistoryValue, 500, 200);
-                    if (!pts) return null;
-
-                    return (
-                      <g key={rep.shop.id}>
-                        {/* Area Gradient under line */}
-                        <path
-                          d={`M0,200 L${pts} L500,200 Z`}
-                          fill={color.bg}
-                          className="transition-all duration-500"
-                        />
-                        {/* Stroke Path */}
-                        <polyline
-                          fill="none"
-                          stroke={color.primary}
-                          strokeWidth="3.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          points={pts}
-                          className="transition-all duration-500"
-                        />
-                        {/* Interactive dots */}
-                        {rep.revenueHistory.map((val, idx) => {
-                          const len = rep.revenueHistory.length - 1;
-                          const x = (idx / len) * 500;
-                          const y = 200 - (val / maxHistoryValue) * 200;
-                          return (
-                            <circle
-                              key={idx}
-                              cx={x}
-                              cy={y}
-                              r="5"
-                              fill="#fff"
-                              stroke={color.primary}
-                              strokeWidth="3"
-                              className="cursor-pointer hover:r-7 transition-all"
-                            />
-                          );
-                        })}
-                      </g>
-                    );
-                  })}
-                </svg>
-
-                {/* X Axis labels dynamic */}
-                <div className="flex justify-between mt-3 text-[9px] font-black text-zinc-400 uppercase tracking-widest px-1">
-                  {reports[0]?.historyLabels.map((lbl, i) => (
-                    <span key={i}>{lbl}</span>
-                  ))}
-                </div>
-
-                {/* Chart Legends (Scrollable container to handle up to 20+ shops seamlessly) */}
-                <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 justify-center max-h-16 overflow-y-auto pr-1">
-                  {reports.map((rep, index) => {
-                    const color = shopColors[index % shopColors.length];
-                    return (
-                      <div key={rep.shop.id} className="flex items-center gap-2">
-                        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: color.primary }} />
-                        <span className="text-[10px] font-black text-zinc-600 dark:text-zinc-400">
-                          {rep.shop.name}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </Card>
-
-          {/* Donut Chart / Circular distribution */}
-          <Card className="shadow-xl border-none">
-            <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-100 uppercase tracking-wider mb-2">
-              Parts du Chiffre d'Affaires
-            </h3>
-            <p className="text-xs text-zinc-400 mb-6">Répartition par point de vente</p>
-
-            {loading ? (
-              <div className="h-64 flex items-center justify-center">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full">
-                <div className="relative w-44 h-44">
-                  {/* SVG Pie/Donut Chart */}
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 42 42">
-                    <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="rgba(120, 120, 120, 0.05)" strokeWidth="6" />
-
-                    {(() => {
-                      let accumulatedPercentage = 0;
-                      return reports.map((rep, idx) => {
-                        const color = shopColors[idx % shopColors.length];
-                        const percentage = globalCA > 0 ? (rep.totalRevenue / globalCA) * 100 : 0;
-                        if (percentage === 0) return null;
-
-                        const strokeDasharray = `${percentage} ${100 - percentage}`;
-                        const strokeDashoffset = 100 - accumulatedPercentage;
-                        accumulatedPercentage += percentage;
-
-                        return (
-                          <circle
-                            key={rep.shop.id}
-                            cx="21"
-                            cy="21"
-                            r="15.915"
-                            fill="transparent"
-                            stroke={color.primary}
-                            strokeWidth="6"
-                            strokeDasharray={strokeDasharray}
-                            strokeDashoffset={strokeDashoffset}
-                            className="transition-all duration-700 hover:stroke-7"
-                          />
-                        );
-                      });
-                    })()}
-                  </svg>
-
-                  {/* Inner text */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total CA</span>
-                    <span className="text-xs font-black text-zinc-800 dark:text-zinc-100 mt-0.5">
-                      {globalCA.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Percentage list (Scrollable container to prevent layout deforming with many shops) */}
-                <div className="w-full flex flex-col gap-2 mt-6 max-h-40 overflow-y-auto pr-1">
-                  {reports.map((rep, idx) => {
-                    const color = shopColors[idx % shopColors.length];
-                    const percentage = globalCA > 0 ? ((rep.totalRevenue / globalCA) * 100).toFixed(1) : "0.0";
-                    return (
-                      <div key={rep.shop.id} className="flex items-center justify-between text-xs px-2">
-                        <div className="flex items-center gap-2">
-                          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color.primary }} />
-                          <span className="font-bold text-zinc-600 dark:text-zinc-400">{rep.shop.name}</span>
-                        </div>
-                        <span className="font-black text-zinc-800 dark:text-zinc-200">{percentage}%</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </Card>
-        </div>
-
         {/* Dynamic Comparative Table with Expandable Details */}
         <Card className="shadow-xl border-none">
           <div className="flex items-center justify-between mb-6">
@@ -586,7 +394,7 @@ export default function AdminBilanPage() {
               <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-100 uppercase tracking-wider">
                 Bilan Comptable des Points de Vente
               </h3>
-              <p className="text-xs text-zinc-400">Cliquez sur "Consulter" pour ouvrir le rapport d'audit détaillé de la boutique</p>
+              <p className="text-xs text-zinc-400">Cliquez sur Consulter pour ouvrir le rapport d&apos;audit détaillé de la boutique</p>
             </div>
           </div>
 
@@ -596,7 +404,7 @@ export default function AdminBilanPage() {
                 <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 uppercase tracking-widest text-[9px]">
                   <th className="py-4 px-4">Boutique</th>
                   <th className="py-4 px-4 text-center">Transactions</th>
-                  <th className="py-4 px-4 text-right">Chiffre d'Affaires</th>
+                  <th className="py-4 px-4 text-right">Chiffre d&apos;Affaires</th>
                   <th className="py-4 px-4 text-right">Coût Achat (COGS)</th>
                   <th className="py-4 px-4 text-right">Dépenses</th>
                   <th className="py-4 px-4 text-right text-emerald-500">Bénéfice Net</th>
@@ -679,7 +487,6 @@ export default function AdminBilanPage() {
                 </p>
               </div>
             </div>
-
             {/* Payment methods breakdown */}
             <div>
               <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Répartition des encaissements</h4>
@@ -716,12 +523,12 @@ export default function AdminBilanPage() {
 
             {/* Allocation par catégories */}
             <div>
-              <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Chiffre d'Affaires par catégories</h4>
+              <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Chiffre d&apos;Affaires par catégories</h4>
               <div className="flex flex-col gap-2">
                 {Object.entries(selectedBoutique.categoryBreakdown).length === 0 ? (
                   <p className="text-xs text-zinc-450 italic text-center p-3 bg-zinc-50 dark:bg-zinc-800/20 rounded-lg">Aucune vente enregistrée sur cette période.</p>
                 ) : (
-                  Object.entries(selectedBoutique.categoryBreakdown).map(([cat, val], idx) => {
+                  Object.entries(selectedBoutique.categoryBreakdown).map(([cat, val]) => {
                     const pct = selectedBoutique.totalRevenue > 0 ? (val / selectedBoutique.totalRevenue) * 100 : 0;
                     return (
                       <div key={cat} className="flex flex-col gap-1 text-xs">

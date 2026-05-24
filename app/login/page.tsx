@@ -87,7 +87,6 @@ export default function LoginPage() {
               Accédez à votre espace de gestion
             </p>
           </div>
-
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
             {/* Champ téléphone — envoyé tel quel au backend */}
             <div className="flex flex-col gap-2">

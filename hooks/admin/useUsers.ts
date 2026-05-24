@@ -35,7 +35,6 @@ export function useUsers() {
       setLoading(true);
       const userResponse: any = await AdminUserService.getShopAccesses(userId);
       console.log("user data:", userResponse);
-      
       // Si la réponse contient directement shopAccesses (c'est l'objet User)
       let list = [];
       if (userResponse && Array.isArray(userResponse.shopAccesses)) {
@@ -61,9 +60,6 @@ export function useUsers() {
   const addUser = async (userData: Partial<UserAccount>) => {
     try {
       const newUser = await AdminUserService.createUser(userData);
-      if (userData.shopId && newUser.id) {
-        await AdminUserService.assignShopToUser(newUser.id, userData.shopId, userData.role || 'CASHIER');
-      }
       setUsers((prev) => [...prev, { ...newUser, shopId: userData.shopId }]);
       return newUser;
     } catch (err: any) {
