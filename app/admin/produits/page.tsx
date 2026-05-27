@@ -602,7 +602,6 @@ export default function AdminProduitsPage() {
               </label>
             </div>
           </div>
-
           <div className="md:col-span-2 flex gap-3 mt-4 border-t pt-6 border-zinc-100 dark:border-zinc-800">
             <Button
               type="button"
