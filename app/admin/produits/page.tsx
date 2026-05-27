@@ -93,7 +93,7 @@ export default function AdminProduitsPage() {
       console.error("Erreur de chargement:", error);
       showToast("Erreur lors du chargement des données", "error");
     } finally {
-      loading(false);
+     setLoading(false);
     }
   };
 
