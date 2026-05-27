@@ -304,6 +304,15 @@ export default function SuperCaissePage() {
       !selectedCategory || p.categoryId === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+  // 3. Ton formatage de date actuel
+  const today = new Date().toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
   // Composant partagé du Panier pour éviter la duplication Desktop / Mobile Drawer
   const renderCartContent = () => (
