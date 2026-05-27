@@ -11,13 +11,7 @@ import ProductService from "@/services/product.service";
 import SaleService from "@/services/sale.service";
 import ExpenseService from "@/services/expense.service";
 import {
-  TrendingUp,
-  DollarSign,
-  Layers,
-  TrendingDown,
-  Percent,
   RefreshCw,
-  Sparkles,
   Eye,
   Wallet,
   ShoppingBag,
@@ -50,11 +44,9 @@ export default function AdminBilanPage() {
   const [reports, setReports] = useState<BoutiqueReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<PeriodType>("7days");
-
   // Detailed modal view for a specific boutique
   const [selectedBoutique, setSelectedBoutique] = useState<BoutiqueReport | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-
   const loadBilanData = async () => {
     setLoading(true);
     try {
@@ -76,19 +68,16 @@ export default function AdminBilanPage() {
             // Load expenses
             const expRes = await ExpenseService.getAll({ shopId: shop.id });
             const expenses = Array.isArray(expRes) ? expRes : expRes?.data || [];
-
             // 1. Stock values
             let stockQtyTotal = 0;
             let stockPurchaseVal = 0;
             let stockSellingVal = 0;
-
             prods.forEach((p: any) => {
               const qty = p.stockQty || p.stockQuantity || 0;
               stockQtyTotal += qty;
               stockPurchaseVal += qty * (p.buyingPrice || 0);
               stockSellingVal += qty * (p.sellingPrice || 0);
             });
-
             // 2. Period Filter Criteria
             const now = new Date();
             const filteredSales = sales.filter((sale: any) => {
@@ -307,87 +296,6 @@ export default function AdminBilanPage() {
       }
     >
       <div className="flex flex-col gap-6">
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="relative overflow-hidden bg-gradient-to-br from-indigo-500/10 to-blue-500/10 border-indigo-500/20 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                  Chiffre d&apos;Affaires CA
-                </p>
-                <h3 className="text-2xl font-black text-zinc-800 dark:text-zinc-100 mt-1">
-                  {globalCA.toLocaleString()} XOF
-                </h3>
-              </div>
-              <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-500">
-                <TrendingUp className="h-6 w-6" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-1 text-[10px] text-zinc-400">
-              <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-              <span>CA brut pour la période sélectionnée</span>
-            </div>
-          </Card>
-
-          <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                  Bénéfices Nets Réels
-                </p>
-                <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                  {globalProfit.toLocaleString()} XOF
-                </h3>
-              </div>
-              <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
-                <DollarSign className="h-6 w-6" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-1 text-[10px] text-zinc-400">
-              <Percent className="h-3.5 w-3.5 text-emerald-500" />
-              <span>Prend en compte le coût des marchandises & charges</span>
-            </div>
-          </Card>
-
-          <Card className="relative overflow-hidden bg-gradient-to-br from-rose-500/10 to-orange-500/10 border-rose-500/20 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                  Charges & Dépenses
-                </p>
-                <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">
-                  {globalExpenses.toLocaleString()} XOF
-                </h3>
-              </div>
-              <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-500">
-                <TrendingDown className="h-6 w-6" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-1 text-[10px] text-rose-550">
-              <span>Coûts logistiques et salaires inclus</span>
-            </div>
-          </Card>
-
-          <Card className="relative overflow-hidden bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border-amber-500/20 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                  Marge Inventaire Potentielle
-                </p>
-                <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
-                  {globalPotentialProfit.toLocaleString()} XOF
-                </h3>
-              </div>
-              <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500">
-                <Layers className="h-6 w-6" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-1 text-[10px] text-zinc-400">
-              <span>Marge brute latente si tout le stock est vendu</span>
-            </div>
-          </Card>
-        </div>
-        {/* Dynamic Comparative Table with Expandable Details */}
         <Card className="shadow-xl border-none">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -397,7 +305,6 @@ export default function AdminBilanPage() {
               <p className="text-xs text-zinc-400">Cliquez sur Consulter pour ouvrir le rapport d&apos;audit détaillé de la boutique</p>
             </div>
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-bold">
               <thead>
@@ -450,7 +357,6 @@ export default function AdminBilanPage() {
           </div>
         </Card>
       </div>
-
       {/* Boutique Audit Details Modal */}
       <Modal
         isOpen={isDetailOpen}
@@ -520,7 +426,6 @@ export default function AdminBilanPage() {
                 </div>
               </div>
             </div>
-
             {/* Allocation par catégories */}
             <div>
               <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Chiffre d&apos;Affaires par catégories</h4>
@@ -545,7 +450,6 @@ export default function AdminBilanPage() {
                 )}
               </div>
             </div>
-
             {/* Expenses List breakdown */}
             <div>
               <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Registre des dépenses de la boutique</h4>
@@ -565,7 +469,6 @@ export default function AdminBilanPage() {
                 </div>
               )}
             </div>
-
             <div className="flex justify-end gap-3 border-t border-zinc-100 dark:border-zinc-850 pt-4">
               <Button variant="secondary" onClick={() => setIsDetailOpen(false)}>
                 Fermer

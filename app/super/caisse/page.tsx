@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import AppLayout from "@/components/layouts/AppLayout";
-import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
 import { TicketReceipt } from "@/components/ui/TicketReceipt";
 import { useToast } from "@/contexts/ToastContext";
 import ProductService, { Product } from "@/services/product.service";
@@ -15,189 +13,589 @@ import SaleService from "@/services/sale.service";
 import CashSessionService from "@/services/super/cashSession.service";
 import { CashSession } from "@/types/super";
 import { useAuth } from "@/hooks/useAuth";
+
+/* ─────────────────────────────────────────────────────────
+   ICÔNES INLINE  (lucide-react reste disponible si besoin)
+───────────────────────────────────────────────────────── */
 import {
-  ShoppingCart,
-  Search,
-  Plus,
-  Minus,
-  CheckCircle2,
-  Smartphone,
-  Banknote,
-  User,
-  List,
-  LayoutGrid,
-  X,
-  Wallet,
-  ArrowLeft,
+  ShoppingCart, Search, Plus, Minus, CheckCircle2,
+  Smartphone, Banknote, Wallet, User, X, LayoutGrid,
+  List, Apple, Droplets, ShoppingBag, Package,
+  ChevronUp, Scissors, RefreshCw,
 } from "lucide-react";
 
-/**
- * Interface de Caisse Professionnelle & Multi-support (Desktop / Mobile)
- */
+/* ─────────────────────────────────────────────────────────
+   STYLES GLOBAUX — injectés une seule fois côté client
+───────────────────────────────────────────────────────── */
+const POS_STYLES = `
+/* ── Variables ── */
+.pos-root {
+  --pos-bg: #F0F4FA;
+  --pos-surface: #FFFFFF;
+  --pos-surface2: #E8EFF8;
+  --pos-border: #D0DBF0;
+  --pos-text: #0F1E3D;
+  --pos-text2: #4A5A7A;
+  --pos-text3: #8A9BBD;
+  --pos-accent: #2563EB;
+  --pos-primary: #1E3A8A;
+  --pos-success: #2D7A4F;
+  --pos-success-bg: #EAF5EE;
+  --pos-success-border: #A5D6BA;
+  --pos-warn: #C07A1A;
+  --pos-warn-bg: #FDF5E6;
+  --pos-warn-border: #E8C87A;
+  --pos-danger: #C0392B;
+  --pos-danger-bg: #FDECEA;
+  --cart-bg: #0F1E3D;
+  --cart-surface: #162545;
+  --cart-surface2: #1E3060;
+  --cart-border: #2A4480;
+  --cart-text: #EEF2FF;
+  --cart-text2: #7B93C8;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+/* ── Layout ── */
+.pos-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr 390px;
+  height: calc(100vh - 64px);
+  gap: 0;
+  overflow: hidden;
+  background: var(--pos-bg);
+}
+
+/* ── Sidebar catégories (desktop) ── */
+.pos-sidebar {
+  background: var(--pos-surface);
+  border-right: 1px solid var(--pos-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.pos-sidebar-logo {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--pos-border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--pos-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pos-sidebar-logo svg { color: var(--pos-accent); }
+.pos-sidebar-shop { font-size: 10px; color: var(--pos-text3); margin-top: 1px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.pos-cats-list { flex: 1; overflow-y: auto; padding: 8px; }
+.pos-cat-btn {
+  width: 100%; padding: 9px 12px; border: none; background: transparent;
+  color: var(--pos-text2); font-size: 11px; font-weight: 700; text-align: left;
+  cursor: pointer; border-radius: 8px; display: flex; align-items: center; gap: 8px;
+  transition: all .15s; letter-spacing: .04em; text-transform: uppercase;
+}
+.pos-cat-btn svg { flex-shrink: 0; opacity: .7; }
+.pos-cat-btn:hover { background: var(--pos-surface2); color: var(--pos-text); }
+.pos-cat-btn.active { background: var(--pos-primary); color: #fff; }
+.pos-cat-btn.active svg { opacity: 1; }
+.pos-cat-count { margin-left: auto; font-size: 10px; opacity: .55; }
+.pos-session-bar { padding: 12px; border-top: 1px solid var(--pos-border); }
+.pos-session-open {
+  background: var(--pos-success-bg); border: 1px solid var(--pos-success-border);
+  border-radius: 8px; padding: 8px 10px; font-size: 11px; color: var(--pos-success);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.pos-session-closed {
+  background: var(--pos-warn-bg); border: 1px solid var(--pos-warn-border);
+  border-radius: 8px; padding: 8px 10px; font-size: 11px; color: var(--pos-warn);
+}
+.pos-session-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+  display: inline-block; margin-right: 6px;
+  animation: pos-pulse 1.5s infinite;
+}
+@keyframes pos-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── Catalogue ── */
+.pos-catalog {
+  display: flex; flex-direction: column; overflow: hidden; background: var(--pos-bg);
+}
+.pos-catalog-header {
+  padding: 14px 16px; display: flex; gap: 10px;
+  background: var(--pos-surface); border-bottom: 1px solid var(--pos-border);
+}
+.pos-search-wrap { flex: 1; position: relative; }
+.pos-search-wrap svg {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: var(--pos-text3); pointer-events: none; width: 16px; height: 16px;
+}
+.pos-search {
+  width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--pos-border);
+  border-radius: 10px; font-size: 13px; background: var(--pos-surface);
+  color: var(--pos-text); outline: none; transition: border-color .15s;
+  font-family: inherit;
+}
+.pos-search:focus { border-color: var(--pos-primary); }
+.pos-view-toggle {
+  display: flex; background: var(--pos-surface2); border-radius: 10px;
+  padding: 3px; gap: 2px;
+}
+.pos-view-btn {
+  width: 34px; height: 34px; border: none; background: transparent;
+  border-radius: 7px; cursor: pointer; color: var(--pos-text3);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.pos-view-btn.active { background: var(--pos-surface); color: var(--pos-text); }
+.pos-products-wrap { flex: 1; overflow-y: auto; padding: 14px; }
+.pos-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.pos-product-list { display: flex; flex-direction: column; gap: 6px; }
+
+/* Carte produit (grid) */
+.pos-prod-card {
+  background: var(--pos-surface); border: 1px solid var(--pos-border);
+  border-radius: 12px; padding: 14px 12px; cursor: pointer;
+  transition: all .15s; position: relative; overflow: hidden;
+  display: flex; flex-direction: column; gap: 5px; user-select: none;
+  text-align: left;
+}
+.pos-prod-card:hover {
+  border-color: #B8B4AA; transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,0,0,.06);
+}
+.pos-prod-card:active { transform: scale(.97); }
+.pos-prod-card.no-stock { opacity: .4; cursor: not-allowed; }
+.pos-prod-card.no-stock:hover { transform: none; box-shadow: none; }
+.pos-prod-cat { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--pos-text3); }
+.pos-prod-name { font-size: 12px; font-weight: 600; color: var(--pos-text); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pos-prod-price { font-size: 15px; font-weight: 700; color: var(--pos-accent); margin-top: auto; font-variant-numeric: tabular-nums; }
+.pos-prod-price small { font-size: 9px; font-weight: 400; color: var(--pos-text3); }
+.pos-prod-stock { font-size: 10px; color: var(--pos-text3); }
+.pos-prod-stock.low { color: var(--pos-danger); }
+.pos-in-cart-badge {
+  position: absolute; top: -1px; right: -1px;
+  background: var(--pos-accent); color: #fff;
+  font-size: 10px; font-weight: 700;
+  width: 22px; height: 22px;
+  border-radius: 0 11px 0 11px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Ligne produit (list) */
+.pos-prod-row {
+  background: var(--pos-surface); border: 1px solid var(--pos-border);
+  border-radius: 10px; padding: 10px 14px; cursor: pointer;
+  display: flex; align-items: center; gap: 12px;
+  transition: all .15s; user-select: none;
+}
+.pos-prod-row:hover { border-color: #B8B4AA; background: var(--pos-surface2); }
+.pos-prod-row:active { transform: scale(.99); }
+.pos-prod-row.no-stock { opacity: .4; cursor: not-allowed; }
+.pos-prod-row-info { flex: 1; min-width: 0; }
+.pos-prod-row-name { font-size: 13px; font-weight: 600; color: var(--pos-text); }
+.pos-prod-row-sub { font-size: 11px; color: var(--pos-text3); margin-top: 1px; }
+.pos-prod-row-price { font-size: 14px; font-weight: 700; color: var(--pos-accent); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pos-prod-row-stock { font-size: 11px; color: var(--pos-text3); min-width: 48px; text-align: right; }
+.pos-prod-row-stock.low { color: var(--pos-danger); }
+.pos-prod-row-qty-badge { font-size: 11px; font-weight: 700; color: var(--pos-accent); min-width: 22px; text-align: center; }
+.pos-row-add-btn {
+  width: 30px; height: 30px; border: 1px solid var(--pos-border);
+  border-radius: 8px; background: transparent; cursor: pointer;
+  color: var(--pos-text); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all .15s;
+}
+.pos-row-add-btn:hover { background: var(--pos-primary); color: #fff; border-color: var(--pos-primary); }
+
+/* ── Panneau Panier ── */
+.pos-cart {
+  background: var(--cart-bg); color: var(--cart-text);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.pos-cart-head {
+  padding: 14px 20px; border-bottom: 1px solid var(--cart-border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.pos-cart-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--cart-text2); display: flex; align-items: center; gap: 8px; }
+.pos-cart-badge { background: var(--pos-accent); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+.pos-cart-clear-btn { background: transparent; border: none; color: var(--cart-text2); font-size: 11px; cursor: pointer; letter-spacing: .05em; text-transform: uppercase; font-weight: 600; transition: color .15s; }
+.pos-cart-clear-btn:hover { color: var(--pos-danger); }
+
+/* Client */
+.pos-cust-wrap { padding: 10px 20px; border-bottom: 1px solid var(--cart-border); flex-shrink: 0; }
+.pos-cust-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--cart-text2); margin-bottom: 6px; }
+.pos-cust-select {
+  width: 100%; background: var(--cart-surface2); border: 1px solid var(--cart-border);
+  color: var(--cart-text); border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; outline: none; cursor: pointer; font-family: inherit;
+}
+.pos-cust-selected {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; background: rgba(232,93,43,.1);
+  border: 1px solid rgba(232,93,43,.3); border-radius: 8px;
+}
+.pos-cust-name { font-size: 12px; font-weight: 600; color: var(--pos-accent); display: flex; align-items: center; gap: 6px; }
+.pos-cust-clear { background: transparent; border: none; color: var(--cart-text2); cursor: pointer; display: flex; align-items: center; }
+.pos-cust-clear:hover { color: var(--pos-danger); }
+
+/* Articles panier */
+.pos-cart-items { flex: 1; overflow-y: auto; padding: 0 20px; }
+.pos-cart-empty {
+  height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+  opacity: .3; padding: 40px 0;
+}
+.pos-cart-empty p { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+
+/* Ligne article panier — style caisse supermarché */
+.pos-ci {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--cart-border);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 3px 12px;
+}
+.pos-ci:last-child { border-bottom: none; }
+.pos-ci-name { font-size: 13px; font-weight: 600; color: var(--cart-text); line-height: 1.3; grid-column: 1; grid-row: 1; }
+.pos-ci-meta { font-size: 11px; color: var(--cart-text2); grid-column: 1; grid-row: 2; display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.pos-ci-controls { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 6px; }
+.pos-ci-total { font-size: 15px; font-weight: 700; color: var(--cart-text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pos-ci-qty-row { display: flex; align-items: center; gap: 4px; }
+.pos-ci-btn {
+  width: 26px; height: 26px; border: 1px solid var(--cart-border);
+  background: var(--cart-surface2); color: var(--cart-text);
+  border-radius: 6px; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; transition: all .15s; flex-shrink: 0;
+}
+.pos-ci-btn:hover { background: var(--cart-surface); border-color: #6B6960; }
+.pos-ci-btn.del:hover { background: var(--pos-danger); border-color: var(--pos-danger); color: #fff; }
+.pos-ci-qty {
+  font-size: 12px; font-weight: 700; color: var(--cart-text);
+  min-width: 26px; text-align: center;
+  background: var(--cart-surface); border: 1px solid var(--cart-border);
+  border-radius: 6px; padding: 2px 4px; font-variant-numeric: tabular-nums;
+}
+
+/* Totaux */
+.pos-totals { padding: 14px 20px; border-top: 1px solid var(--cart-border); display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+.pos-tot-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--cart-text2); }
+.pos-tot-val { font-variant-numeric: tabular-nums; font-weight: 600; }
+.pos-discount-row { display: flex; align-items: center; gap: 8px; }
+.pos-discount-row label { font-size: 11px; color: var(--cart-text2); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; flex: 1; display: flex; align-items: center; gap: 5px; }
+.pos-discount-input {
+  background: var(--cart-surface2); border: 1px solid var(--cart-border);
+  color: #EF9F27; font-size: 13px; font-weight: 700; border-radius: 6px;
+  padding: 5px 8px; width: 110px; text-align: right; outline: none;
+  transition: border-color .15s; font-variant-numeric: tabular-nums;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.pos-discount-input:focus { border-color: #EF9F27; }
+.pos-discount-unit { font-size: 11px; color: var(--cart-text2); font-weight: 600; }
+.pos-tot-main {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-top: 10px; border-top: 1px solid var(--cart-border);
+}
+.pos-tot-main-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--cart-text2); }
+.pos-tot-main-val { font-size: 24px; font-weight: 700; color: var(--cart-text); font-variant-numeric: tabular-nums; }
+
+/* Paiement */
+.pos-payment { padding: 14px 20px; border-top: 1px solid var(--cart-border); display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+.pos-pay-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--cart-text2); }
+.pos-pay-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pos-pay-btn {
+  padding: 10px; border: 1px solid var(--cart-border);
+  background: var(--cart-surface2); color: var(--cart-text2);
+  border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all .15s; font-family: inherit;
+}
+.pos-pay-btn:hover { border-color: #6B6960; color: var(--cart-text); }
+.pos-pay-btn.active { background: var(--pos-surface); color: var(--pos-primary); border-color: var(--pos-surface); }
+.pos-cash-wrap { display: flex; flex-direction: column; gap: 6px; }
+.pos-cash-input {
+  background: var(--cart-surface2); border: 1px solid var(--cart-border);
+  color: var(--cart-text); font-size: 15px; font-weight: 700;
+  border-radius: 8px; padding: 10px 12px; width: 100%; outline: none;
+  transition: border-color .15s; font-family: 'IBM Plex Mono', monospace;
+}
+.pos-cash-input:focus { border-color: #6B6960; }
+.pos-cash-input::placeholder { color: var(--cart-text2); font-weight: 400; font-size: 13px; font-family: inherit; }
+.pos-change-row {
+  background: #0F2D5A; border: 1px solid #2A5298; border-radius: 8px;
+  padding: 9px 12px; display: flex; justify-content: space-between; align-items: center;
+}
+.pos-change-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #7EB3FF; }
+.pos-change-val { font-size: 16px; font-weight: 700; color: #7EB3FF; font-variant-numeric: tabular-nums; }
+.pos-mobile-ops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.pos-mobile-op {
+  padding: 9px; border: 1px solid var(--cart-border);
+  background: var(--cart-surface2); color: var(--cart-text2);
+  border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 700;
+  letter-spacing: .04em; transition: all .15s; text-align: center; font-family: inherit;
+}
+.pos-mobile-op:hover, .pos-mobile-op.active { background: var(--cart-surface); color: var(--cart-text); border-color: #6B6960; }
+
+.pos-checkout-btn {
+  width: 100%; padding: 15px; background: var(--pos-accent); color: #fff;
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .15s; font-family: inherit;
+}
+.pos-checkout-btn:hover:not(:disabled) { background: #1D4ED8; transform: translateY(-1px); }
+.pos-checkout-btn:active:not(:disabled) { transform: scale(.98); }
+.pos-checkout-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* Session banner */
+.pos-session-banner {
+  padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;
+  border-radius: 10px; margin-bottom: 12px; font-size: 12px;
+}
+.pos-session-open-banner { background: var(--pos-success-bg); border: 1px solid var(--pos-success-border); color: var(--pos-success); }
+.pos-session-closed-banner { background: var(--pos-warn-bg); border: 1px solid var(--pos-warn-border); color: var(--pos-warn); }
+.pos-session-input {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--pos-warn-border);
+  background: var(--pos-surface); font-size: 13px; font-weight: 600;
+  outline: none; width: 140px; font-family: inherit;
+}
+.pos-session-btn {
+  padding: 8px 14px; background: var(--pos-primary); color: #fff; border: none;
+  border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;
+  font-family: inherit; text-transform: uppercase; letter-spacing: .06em;
+  transition: background .15s;
+}
+.pos-session-btn:hover { background: #3A3835; }
+.pos-session-btn:disabled { opacity: .5; cursor: not-allowed; }
+.pos-close-session-btn {
+  padding: 6px 12px; background: rgba(192,57,43,.1);
+  border: 1px solid rgba(192,57,43,.3); color: var(--pos-danger);
+  border-radius: 8px; font-size: 11px; font-weight: 700; cursor: pointer;
+  font-family: inherit; text-transform: uppercase; letter-spacing: .06em;
+  transition: all .15s;
+}
+.pos-close-session-btn:hover { background: rgba(192,57,43,.2); }
+
+/* ── Mobile header fixe (search + cats) ── */
+.pos-mobile-header { display: none; }
+.pos-mobile-search-wrap { position: relative; }
+.pos-mobile-search-wrap svg {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--pos-text3); pointer-events: none; width: 17px; height: 17px;
+}
+.pos-mobile-search {
+  width: 100%; padding: 11px 14px 11px 38px;
+  border: 1.5px solid var(--pos-border); border-radius: 12px;
+  font-size: 14px; background: var(--pos-surface);
+  color: var(--pos-text); outline: none; transition: border-color .15s;
+  font-family: inherit;
+}
+.pos-mobile-search:focus { border-color: var(--pos-accent); }
+.pos-mobile-cats {
+  display: flex; gap: 7px; overflow-x: auto; padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.pos-mobile-cats::-webkit-scrollbar { display: none; }
+.pos-mob-cat {
+  padding: 7px 14px; border: 1.5px solid var(--pos-border);
+  background: var(--pos-surface); border-radius: 20px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--pos-text2); cursor: pointer;
+  white-space: nowrap; transition: all .15s; flex-shrink: 0;
+  font-family: inherit;
+}
+.pos-mob-cat.active {
+  background: var(--pos-accent); color: #fff; border-color: var(--pos-accent);
+}
+
+/* ── Mobile ── */
+@media (max-width: 1024px) {
+  .pos-layout { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  .pos-sidebar { display: none; }
+  .pos-cart { display: none; }
+}
+@media (max-width: 768px) {
+  .pos-catalog-header { display: none; }
+  .pos-mobile-header {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 10px 12px 8px;
+    background: var(--pos-surface);
+    border-bottom: 1px solid var(--pos-border);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .pos-products-wrap { padding: 10px 10px 80px; }
+  .pos-product-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+}
+
+/* Scrollbar fine */
+.pos-catalog *::-webkit-scrollbar,
+.pos-cart *::-webkit-scrollbar { width: 3px; }
+.pos-catalog *::-webkit-scrollbar-track,
+.pos-cart *::-webkit-scrollbar-track { background: transparent; }
+.pos-catalog *::-webkit-scrollbar-thumb,
+.pos-cart *::-webkit-scrollbar-thumb { background: var(--pos-border); border-radius: 4px; }
+`;
+
+/* ─────────────────────────────────────────────────────────
+   UTILITAIRES
+───────────────────────────────────────────────────────── */
+const fmt = (n: number) =>
+  new Intl.NumberFormat("fr-FR").format(Math.round(n));
+
+const CAT_ICONS: Record<string, React.ReactNode> = {
+  default: <Package size={14} />,
+};
+
+interface CartItem {
+  product: Product;
+  quantity: number;
+}
+
+/* ─────────────────────────────────────────────────────────
+   COMPOSANT PRINCIPAL
+───────────────────────────────────────────────────────── */
 export default function SuperCaissePage() {
   const { showToast } = useToast();
   const { user } = useAuth();
-
   const componentRef = useRef<HTMLDivElement>(null);
 
-  // États des données
+  /* Données */
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [currentShop, setCurrentShop] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Session de caisse
+  /* Session de caisse */
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [openingBalance, setOpeningBalance] = useState("");
   const [isOpeningSession, setIsOpeningSession] = useState(false);
 
-  // États de recherche et UI
+  /* UI catalogue */
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  // Navigation Mobile (Toggle Panier Vue Plein Écran)
-  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  /* Panier */
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
 
-  // État du panier
-  const [cart, setCart] = useState<{ product: Product; quantity: number }[]>(
-    [],
-  );
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null,
-  );
-
-  type PaymentMethod = "CASH" | "MOBILE_MONEY";
-  type MobileProvider = "ORANGE" | "MTN" | "WAVE";
-
-  // NOUVEAU : Remise en valeur absolue (Somme brute en XOF)
-  const [discountAmountInput, setDiscountAmountInput] = useState<string>("0");
-
-  // État du paiement
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
-  const [mobileProvider, setMobileProvider] = useState<MobileProvider>("WAVE");
+  /* Paiement */
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "MOBILE_MONEY">("CASH");
+  const [mobileProvider, setMobileProvider] = useState<"ORANGE" | "MTN" | "WAVE">("WAVE");
   const [amountReceived, setAmountReceived] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastSaleId, setLastSaleId] = useState<string>("");
 
+  /* Mobile drawer */
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
+
+  /* Inject styles */
+  useEffect(() => {
+    if (document.getElementById("pos-styles")) return;
+    const s = document.createElement("style");
+    s.id = "pos-styles";
+    s.textContent = POS_STYLES;
+    document.head.appendChild(s);
+    return () => { document.getElementById("pos-styles")?.remove(); };
+  }, []);
+
+  /* ── Chargement données ── */
   const loadData = async () => {
     if (!user) return;
     if (!user.shopId) {
-      showToast(
-        "Erreur: Votre compte n'est associé à aucune boutique.",
-        "error",
-      );
+      showToast("Erreur: compte non associé à une boutique.", "error");
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
-      const [prodRes, catRes, shopRes, custRes] = await Promise.all([
-        ProductService.getAll({ isActive: true, shopId: user.shopId, limit: 1000 }),
-        CategoryService.getAll({ limit: 100 }),
-        ShopService.getById(user.shopId),
-        CustomerService.getAll()
+      let prodRes;
+      try { prodRes = await ProductService.getAll({ shopId: user.shopId, limit: 1000 }); }
+      catch { prodRes = await ProductService.getAll({ shopId: user.shopId }); }
+
+      let catRes;
+      try { catRes = await CategoryService.getAll({ limit: 1000 }); }
+      catch { catRes = await CategoryService.getAll(); }
+
+      const [shopRes, custRes] = await Promise.all([
+        user.shopId
+          ? ShopService.getById(user.shopId)
+          : ShopService.getAll().then((r) => r.data?.[0] || r?.[0]),
+        CustomerService.getAll(),
       ]);
 
-      const prodList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
-      const catList = catRes?.data && Array.isArray(catRes.data) ? catRes.data : (Array.isArray(catRes) ? catRes : []);
-      const custList = custRes?.data && Array.isArray(custRes.data) ? custRes.data : (Array.isArray(custRes) ? custRes : []);
-      console.log("products caisses",prodList)
-      setProducts(prodList);
-      setCategories(catList);
-      setCustomers(custList);
+      const toList = (r: any) =>
+        r?.data && Array.isArray(r.data) ? r.data : Array.isArray(r) ? r : [];
+
+      setProducts(toList(prodRes));
+      setCategories(toList(catRes));
+      setCustomers(toList(custRes));
       setCurrentShop(shopRes);
+
       if (user?.id) {
-        try {
-          const session = await CashSessionService.getActive(user.id);
-          setCashSession(session);
-        } catch {
-          setCashSession(null);
-        }
+        try { setCashSession(await CashSessionService.getActive(user.id)); }
+        catch { setCashSession(null); }
       }
-    } catch (error) {
+    } catch {
       showToast("Erreur lors du chargement des données", "error");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [user]);
+  useEffect(() => { loadData(); }, [user]);
 
+  /* ── Session ── */
   const handleOpenSession = async () => {
-    if (!user?.id)
-      return showToast("Erreur: Utilisateur non identifié", "error");
-
+    if (!user?.id) return;
     const targetShopId = user.shopId || currentShop?.id;
-    if (!targetShopId)
-      return showToast(
-        "Erreur: Aucun point de vente associé à votre compte",
-        "error",
-      );
-
-    const balance = parseFloat(openingBalance) || 0;
+    if (!targetShopId) { showToast("Aucun point de vente associé", "error"); return; }
     setIsOpeningSession(true);
     try {
       const session = await CashSessionService.open({
         shopId: targetShopId,
         userId: user.id,
-        openingBalance: balance,
+        openingBalance: parseFloat(openingBalance) || 0,
         notes: `Session ouverte par ${user.name}`,
       });
       setCashSession(session);
-      showToast(
-        `Session ouverte avec ${balance.toLocaleString()} XOF en caisse`,
-        "success",
-      );
-    } catch (error: unknown) {
-      const err = error as { response?: { status?: number } };
-      if (err.response?.status === 409) {
-        showToast("Une session est déjà active", "error");
-      } else {
-        showToast("Erreur lors de l'ouverture de la session", "error");
-      }
-    } finally {
-      setIsOpeningSession(false);
-    }
+      showToast(`Caisse ouverte — ${fmt(parseFloat(openingBalance) || 0)} XOF`, "success");
+    } catch (e: any) {
+      showToast(e?.response?.status === 409 ? "Session déjà active" : "Erreur ouverture", "error");
+    } finally { setIsOpeningSession(false); }
   };
+
   const handleCloseSession = async () => {
     if (!cashSession) return;
-    const closingStr = prompt("Montant réel compté en caisse (XOF) :");
-    if (!closingStr) return;
-    const closingBalance = parseFloat(closingStr) || 0;
+    const s = prompt("Montant réel compté en caisse (XOF) :");
+    if (!s) return;
     try {
       await CashSessionService.close(cashSession.id, {
-        closingBalance,
+        closingBalance: parseFloat(s) || 0,
         notes: `Session fermée par ${user?.name}`,
       });
       setCashSession(null);
-      showToast(
-        `Session fermée. Solde déclaré: ${closingBalance.toLocaleString()} XOF`,
-        "success",
-      );
-    } catch (error) {
-      showToast("Erreur lors de la fermeture", "error");
-    }
+      showToast(`Caisse fermée — ${fmt(parseFloat(s) || 0)} XOF déclarés`, "success");
+    } catch { showToast("Erreur lors de la fermeture", "error"); }
   };
+
+  /* ── Panier ── */
   const addToCart = (product: Product) => {
-    if (product.stockQty <= 0) {
-      showToast("Stock épuisé !", "error");
-      return;
-    }
+    if (product.stockQty <= 0) { showToast("Stock épuisé", "error"); return; }
     setCart((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
-      if (existing) {
-        if (existing.quantity >= product.stockQty) {
-          showToast("Limite de stock", "error");
-          return prev;
-        }
-        return prev.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item,
+      const ex = prev.find((i) => i.product.id === product.id);
+      if (ex) {
+        if (ex.quantity >= product.stockQty) { showToast("Limite de stock atteinte", "error"); return prev; }
+        return prev.map((i) =>
+          i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
       return [...prev, { product, quantity: 1 }];
@@ -206,527 +604,560 @@ export default function SuperCaissePage() {
 
   const updateQuantity = (productId: string, delta: number) => {
     setCart((prev) =>
-      prev
-        .map((item) => {
-          if (item.product.id === productId) {
-            const newQty = Math.max(0, item.quantity + delta);
-            if (newQty > item.product.stockQty) {
-              showToast("Stock insuffisant", "error");
-              return item;
-            }
-            return { ...item, quantity: newQty };
-          }
-          return item;
-        })
-        .filter((item) => item.quantity > 0),
+      prev.map((item) => {
+        if (item.product.id !== productId) return item;
+        const nq = item.quantity + delta;
+        if (nq > item.product.stockQty) { showToast("Stock insuffisant", "error"); return item; }
+        return { ...item, quantity: nq };
+      }).filter((i) => i.quantity > 0)
     );
   };
 
-  // NOUVEAU : Calculs financiers mis à jour pour la somme brute
-  const subtotal = cart.reduce(
-    (acc, item) => acc + item.product.sellingPrice * item.quantity,
-    0,
-  );
-  const discountAmount = Math.min(
-    subtotal,
-    parseFloat(discountAmountInput) || 0,
-  ); // Sécurité anti-remise supérieure au prix
-  const total = subtotal - discountAmount;
-  const change = amountReceived
-    ? Math.max(0, parseInt(amountReceived) - total)
-    : 0;
+  /* ── Calculs ── */
+  const subtotal = cart.reduce((s, i) => s + i.product.sellingPrice * i.quantity, 0);
+  const discAmt = Math.max(0, Math.min(subtotal, discountAmount));
+  const total = subtotal - discAmt;
+  const received = parseFloat(amountReceived) || 0;
+  const change = Math.max(0, received - total);
 
-  const handlePrint = useReactToPrint({
-    contentRef: componentRef,
-    documentTitle: `Ticket_${lastSaleId || "Vente"}`,
+  const inCart = (id: string) => cart.find((i) => i.product.id === id);
+  const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
+
+  /* ── Filtrage ── */
+  const filteredProducts = products.filter((p) => {
+    const q = searchTerm.toLowerCase();
+    const matchQ = !q || p.name.toLowerCase().includes(q) || p.barcode?.includes(q) || p.sku?.toLowerCase().includes(q);
+    const matchC = !selectedCategory || p.categoryId === selectedCategory;
+    return matchQ && matchC;
   });
+
+  /* ── Print & Checkout ── */
+  const handlePrint = useReactToPrint({ contentRef: componentRef, documentTitle: `Ticket_${lastSaleId}` });
 
   const handleCheckout = async () => {
     if (cart.length === 0) return showToast("Panier vide", "error");
-    if (!user?.shopId) return showToast("Erreur shopId manquant", "error");
-
+    if (!user?.shopId) return showToast("Boutique non identifiée", "error");
     setIsProcessing(true);
     try {
-      const saleData = {
+      const res = await SaleService.create({
         shopId: user.shopId,
         userId: user.id,
         customerId: selectedCustomer?.id || undefined,
         cashSessionId: cashSession?.id || undefined,
-        items: cart.map((item) => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          unitPrice: item.product.sellingPrice,
+        items: cart.map((i) => ({
+          productId: i.product.id,
+          quantity: i.quantity,
+          unitPrice: i.product.sellingPrice,
           discount: 0,
         })),
-        payments: [
-          {
-            method: paymentMethod,
-            amount: total,
-            reference:
-              paymentMethod === "MOBILE_MONEY"
-                ? `${mobileProvider}_${Date.now()}`
-                : undefined,
-          },
-        ],
-        discountAmount: discountAmount, // Transmission correcte de la somme fixe
-        notes: `Vente effectuée par ${user.name}`,
-      };
-
-      const response = await SaleService.create(saleData as any);
-      setLastSaleId(response.id);
+        payments: [{
+          method: paymentMethod,
+          amount: total,
+          reference: paymentMethod === "MOBILE_MONEY" ? `${mobileProvider}_${Date.now()}` : undefined,
+        }],
+        discountAmount: discAmt,
+        notes: `Vente par ${user.name}`,
+      } as any);
+      setLastSaleId(res.id);
       showToast("Vente validée !", "success");
       setTimeout(() => {
         handlePrint();
         setCart([]);
         setAmountReceived("");
         setSelectedCustomer(null);
-        setDiscountAmountInput("0");
-        setIsMobileCartOpen(false); // Ferme le tiroir sur mobile après validation
+        setDiscountAmount(0);
+        setMobileCartOpen(false);
         loadData();
       }, 300);
-    } catch (error) {
-      console.error("Sale Error:", error);
-      showToast(
-        "Erreur lors de la vente. Vérifiez les stocks et la connexion.",
-        "error",
-      );
-    } finally {
-      setIsProcessing(false);
-    }
+    } catch (e) {
+      console.error(e);
+      showToast("Erreur lors de la vente. Vérifiez les stocks.", "error");
+    } finally { setIsProcessing(false); }
   };
-  const filteredProducts = products.filter((p) => {
-    const s = searchTerm.toLowerCase();
-    const matchesSearch =
-      p.name.toLowerCase().includes(s) ||
-      p.barcode?.includes(s) ||
-      p.sku?.toLowerCase().includes(s);
-    const matchesCategory =
-      !selectedCategory || p.categoryId === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-  // 3. Ton formatage de date actuel
-  const today = new Date().toLocaleString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
 
-  // Composant partagé du Panier pour éviter la duplication Desktop / Mobile Drawer
-  const renderCartContent = () => (
-    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-zinc-900">
-      {/* Header Panier */}
-      <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex flex-col gap-3 bg-zinc-50/50 dark:bg-zinc-800/30">
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-black text-zinc-900 dark:text-zinc-50 uppercase tracking-widest">
-            <ShoppingCart className="h-5 w-5 text-primary" />
-            Panier ({cart.reduce((sum, i) => sum + i.quantity, 0)})
-          </h2>
-          <button
-            onClick={() => setCart([])}
-            className="text-xs font-black text-red-500 uppercase hover:underline"
-          >
-            Vider
-          </button>
-        </div>
-        {/* Sélecteur de Client */}
-        <div className="relative">
-          {selectedCustomer ? (
-            <div className="flex items-center justify-between p-2.5 bg-primary/10 border border-primary/20 rounded-xl">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-primary" />
-                <span className="text-xs font-black text-primary truncate">
-                  {selectedCustomer.name}
-                </span>
-              </div>
-              <button
-                onClick={() => setSelectedCustomer(null)}
-                className="p-1 hover:bg-primary/20 rounded-lg"
-              >
-                <X className="h-3 w-3 text-primary" />
-              </button>
-            </div>
-          ) : (
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-              <select
-                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
-                onChange={(e) =>
-                  setSelectedCustomer(
-                    customers.find((c) => c.id === e.target.value) || null,
-                  )
-                }
-              >
-                <option value="">-- Client de passage --</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.phone ? `(${c.phone})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      </div>
-
-     {/* Liste Articles défilante - MAXIMISÉE POUR DESKTOP */}
-<div className="flex-1 overflow-y-auto p-3 lg:p-4 flex flex-col gap-2.5 min-h-0 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-800">
-  {cart.map((item) => (
-    <div
-      key={item.product.id}
-      className="flex items-center justify-between gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/30 rounded-xl border border-zinc-100 dark:border-zinc-800/80 hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 transition-colors"
-    >
-      {/* Infos produit réorganisées */}
-      <div className="flex-1 min-w-0">
-        <h4 className="text-xs lg:text-[10px] font-black text-zinc-800 dark:text-zinc-200 line-clamp-2 leading-tight">
-          {item.product.name}
-        </h4>
-        <div className="text-[11px] font-bold text-zinc-400 mt-1">
-          {item.product.sellingPrice.toLocaleString()} XOF 
-          <span className="font-normal text-zinc-400/60"> x {item.quantity}</span>
-        </div>
-      </div>
-
-      {/* Actions & Prix de la ligne */}
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="text-right text-xs lg:text-sm font-black text-zinc-900 dark:text-zinc-100">
-          {(item.product.sellingPrice * item.quantity).toLocaleString()} XOF
-        </div>
-        
-        {/* Contrôles de quantité plus compacts sur desktop */}
-        <div className="flex items-center bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-700 p-0.5 shadow-sm">
-          <button
-            onClick={() => updateQuantity(item.product.id, -1)}
-            className="p-1 text-zinc-500 hover:text-primary transition-colors"
-          >
-            <Minus className="h-3 w-3" />
-          </button>
-          <span className="w-6 text-center text-xs font-black text-zinc-800 dark:text-zinc-200">
-            {item.quantity}
-          </span>
-          <button
-            onClick={() => updateQuantity(item.product.id, 1)}
-            className="p-1 text-zinc-500 hover:text-primary transition-colors"
-          >
-            <Plus className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
-    </div>
-  ))}
-  {cart.length === 0 && (
-    <div className="flex-1 flex flex-col items-center justify-center py-16 opacity-25">
-      <ShoppingCart className="h-12 w-12 mb-2 text-zinc-400" />
-      <p className="text-[11px] font-black uppercase tracking-widest text-zinc-400">
-        Panier vide
-      </p>
-    </div>
-  )}
-</div>
-{/* Bloc Totaux, Remises & Règlements - COMPACTÉ SUR DESKTOP (`lg:p-3 lg:gap-2`) */}
-{/* Bloc Totaux, Remises & Règlements - ANCRÉ ET SÉCURISÉ EN BAS */}
-<div className="p-4 lg:p-3 bg-zinc-900 dark:bg-black text-white flex flex-col gap-3 lg:gap-2 shrink-0 border-t border-zinc-800 mt-auto ">
-  <div className="flex flex-col gap-1.5">
-    <div className="flex justify-between items-center text-zinc-400 font-bold text-[11px] uppercase tracking-widest">
-      <span>Sous-total</span>
-      <span className="text-zinc-300">{subtotal.toLocaleString()} XOF</span>
-    </div>
-    {/* Remise brute (XOF) */}
-    {(user?.role === "MANAGER" ||
-      user?.role === "ADMIN" ||
-      user?.role === "SUPER_ADMIN" ||
-      user?.role === "CASHIER") && (
-      <div className="flex justify-between items-center bg-white/5 px-2 py-1 rounded-lg border border-white/5">
-        <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
-          Remise (XOF)
-        </span>
-        <input
-          type="number"
-          value={discountAmountInput}
-          min="0"
-          max={subtotal}
-          onChange={(e) => setDiscountAmountInput(e.target.value)}
-          className="w-24 bg-white/10 border border-white/10 rounded px-2 py-0.5 text-right text-xs font-black text-amber-400 outline-none focus:border-primary"
-        />
-      </div>
-    )}
-    
-    <div className="flex justify-between items-center text-white font-black mt-1 border-t border-white/10 pt-1.5">
-      <span className="text-[11px] uppercase tracking-wider text-zinc-400">Total net</span>
-      <span className="text-emerald-400 text-xl lg:text-2xl font-black">
-        {total.toLocaleString()} <span className="text-xs font-normal text-white/40">XOF</span>
-      </span>
-    </div>
-  </div>
-
-  {/* Moyens de Paiement */}
-  <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-white/5 rounded-lg">
-    <button
-      onClick={() => setPaymentMethod("CASH")}
-      className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md transition-all ${paymentMethod === "CASH" ? "bg-white text-black font-black shadow" : "text-zinc-400 hover:text-white text-xs"}`}
-    >
-      <Banknote className="h-3.5 w-3.5" />
-      <span className="text-[10px] font-black uppercase">Espèce</span>
-    </button>
-    <button
-      onClick={() => setPaymentMethod("MOBILE_MONEY")}
-      className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md transition-all ${paymentMethod === "MOBILE_MONEY" ? "bg-primary text-white font-black shadow" : "text-zinc-400 hover:text-white text-xs"}`}
-    >
-      <Smartphone className="h-3.5 w-3.5" />
-      <span className="text-[10px] font-black uppercase">Mobile</span>
-    </button>
-  </div>
-
-  {paymentMethod === "CASH" ? (
-    <div className="flex flex-col gap-1">
-      <input
-        type="number"
-        placeholder="Montant reçu (XOF)..."
-        value={amountReceived}
-        onChange={(e) => setAmountReceived(e.target.value)}
-        className="w-full bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 lg:py-2 text-xs lg:text-sm font-black text-white outline-none focus:border-primary text-center placeholder:text-zinc-600"
-      />
-      {change > 0 && (
-        <div className="flex justify-between items-center px-2 py-1 bg-emerald-500/10 rounded-md border border-emerald-500/20">
-          <span className="text-[9px] font-black uppercase text-emerald-400">À rendre :</span>
-          <span className="text-xs font-black text-emerald-400">{change.toLocaleString()} XOF</span>
-        </div>
-      )}
-    </div>
-  ) : (
-    <div className="grid grid-cols-3 gap-1">
-      {["WAVE", "ORANGE", "MTN"].map((p) => (
-        <button
-          key={p}
-          onClick={() => setMobileProvider(p as any)}
-          className={`py-1.5 rounded-md text-[10px] font-black border transition-all ${mobileProvider === p ? "bg-primary text-white border-primary" : "border-white/10 text-zinc-400 bg-white/5"}`}
-        >
-          {p}
-        </button>
-      ))}
-    </div>
-  )}
-
-  <Button
-    onClick={handleCheckout}
-    variant="primary"
-    className="h-10 lg:h-11 w-full text-xs font-black uppercase tracking-wider shadow-md"
-    loading={isProcessing}
-    disabled={cart.length === 0}
-  >
-    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-    Encaisser
-  </Button>
-</div>
-</div>
-  );
+  /* ────────────────────────────────────────────────────────
+     RENDU
+  ──────────────────────────────────────────────────────── */
   return (
     <AppLayout title="Point de Vente" subtitle={currentShop?.name || "Caisse"}>
-      {/* BANNIÈRE SESSION DE CAISSE */}
-      {!cashSession ? (
-        <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 rounded-2xl flex flex-col md:flex-row items-center gap-4">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="p-3 bg-amber-500/10 rounded-xl">
-              <Wallet className="h-5 w-5 text-amber-600" />
+      <div className="pos-root">
+
+        {/* ── Bannière session ── */}
+        {!cashSession ? (
+          <div className="pos-session-banner pos-session-closed-banner">
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+              <Wallet size={16} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 12 }}>Ouvrir la caisse</div>
+                <div style={{ fontSize: 11, opacity: .75 }}>Déclarez votre fond initial avant de vendre</div>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-black text-amber-700 dark:text-amber-400">
-                Ouverture obligatoire de session
-              </p>
-              <p className="text-xs text-amber-600/70">
-                Veuillez renseigner le fond de caisse initial pour démarrer.
-              </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="number"
+                placeholder="Fond initial (XOF)"
+                value={openingBalance}
+                onChange={(e) => setOpeningBalance(e.target.value)}
+                className="pos-session-input"
+              />
+              <button
+                className="pos-session-btn"
+                onClick={handleOpenSession}
+                disabled={isOpeningSession}
+              >
+                {isOpeningSession ? "…" : "Ouvrir"}
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <input
-              type="number"
-              placeholder="Fond initial (XOF)"
-              value={openingBalance}
-              onChange={(e) => setOpeningBalance(e.target.value)}
-              className="px-4 py-2 bg-white dark:bg-zinc-900 border border-amber-200 dark:border-amber-800 rounded-xl text-sm font-bold w-full md:w-40 outline-none"
-            />
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleOpenSession}
-              loading={isOpeningSession}
-            >
-              Valider
-            </Button>
+        ) : (
+          <div className="pos-session-banner pos-session-open-banner">
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="pos-session-dot" />
+              <span style={{ fontWeight: 700 }}>
+                Caisse ouverte — Fond : {fmt(cashSession.openingBalance)} XOF
+              </span>
+            </div>
+            <button className="pos-close-session-btn" onClick={handleCloseSession}>
+              Fermer la caisse
+            </button>
+          </div>
+        )}
+
+        {/* ── Layout principal ── */}
+        <div className="pos-layout">
+
+          {/* ────── SIDEBAR CATÉGORIES (desktop) ────── */}
+          <aside className="pos-sidebar">
+            <div className="pos-sidebar-logo">
+              <ShoppingBag size={18} />
+              <div>
+                GestShop
+                <div className="pos-sidebar-shop">{currentShop?.name || "Boutique"}</div>
+              </div>
+            </div>
+
+            <div className="pos-cats-list">
+              {/* Bouton "Tous" */}
+              <button
+                className={`pos-cat-btn ${!selectedCategory ? "active" : ""}`}
+                onClick={() => setSelectedCategory(null)}
+              >
+                <LayoutGrid size={14} />
+                Tous
+                <span className="pos-cat-count">{products.length}</span>
+              </button>
+
+              {categories.map((cat) => {
+                const count = products.filter((p) => p.categoryId === cat.id).length;
+                return (
+                  <button
+                    key={cat.id}
+                    className={`pos-cat-btn ${selectedCategory === cat.id ? "active" : ""}`}
+                    onClick={() => setSelectedCategory(cat.id)}
+                  >
+                    <Package size={14} />
+                    {cat.name}
+                    <span className="pos-cat-count">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pos-session-bar">
+              {cashSession ? (
+                <div className="pos-session-open">
+                  <span><span className="pos-session-dot" />Session active</span>
+                  <span style={{ fontSize: 10, opacity: .7 }}>{fmt(cashSession.openingBalance)} XOF</span>
+                </div>
+              ) : (
+                <div className="pos-session-closed">⚠ Caisse fermée</div>
+              )}
+            </div>
+          </aside>
+
+          {/* ────── CATALOGUE PRODUITS ────── */}
+          <div className="pos-catalog">
+
+            {/* ── Header mobile : search + catégories toujours visibles ── */}
+            <div className="pos-mobile-header">
+              <div className="pos-mobile-search-wrap">
+                <Search />
+                <input
+                  className="pos-mobile-search"
+                  type="text"
+                  placeholder="Rechercher un produit…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="pos-mobile-cats">
+                <button
+                  className={`pos-mob-cat ${!selectedCategory ? "active" : ""}`}
+                  onClick={() => setSelectedCategory(null)}
+                >
+                  Tous
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    className={`pos-mob-cat ${selectedCategory === cat.id ? "active" : ""}`}
+                    onClick={() => setSelectedCategory(cat.id)}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Header desktop */}
+            <div className="pos-catalog-header">
+              <div className="pos-search-wrap">
+                <Search />
+                <input
+                  className="pos-search"
+                  type="text"
+                  placeholder="Nom, SKU, code-barre…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="pos-view-toggle">
+                <button
+                  className={`pos-view-btn ${viewMode === "grid" ? "active" : ""}`}
+                  onClick={() => setViewMode("grid")}
+                  title="Vue grille"
+                >
+                  <LayoutGrid size={16} />
+                </button>
+                <button
+                  className={`pos-view-btn ${viewMode === "list" ? "active" : ""}`}
+                  onClick={() => setViewMode("list")}
+                  title="Vue liste"
+                >
+                  <List size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Produits */}
+            <div className="pos-products-wrap">
+              {loading ? (
+                <div style={{ textAlign: "center", padding: "40px", opacity: .5 }}>
+                  <RefreshCw size={24} style={{ animation: "spin 1s linear infinite" }} />
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "40px", opacity: .4, fontSize: 13 }}>
+                  Aucun produit trouvé
+                </div>
+              ) : viewMode === "grid" ? (
+                /* ── VUE GRILLE ── */
+                <div className="pos-product-grid">
+                  {filteredProducts.map((p) => {
+                    const ci = inCart(p.id);
+                    const noStock = p.stockQty <= 0;
+                    return (
+                      <div
+                        key={p.id}
+                        className={`pos-prod-card ${noStock ? "no-stock" : ""}`}
+                        onClick={() => !noStock && addToCart(p)}
+                      >
+                        {ci && <div className="pos-in-cart-badge">{ci.quantity}</div>}
+                        <div className="pos-prod-cat">{p.category?.name || "—"}</div>
+                        <div className="pos-prod-name">{p.name}</div>
+                        <div className="pos-prod-price">
+                          {fmt(p.sellingPrice)} <small>XOF</small>
+                        </div>
+                        <div className={`pos-prod-stock ${p.stockQty <= (p.minStockQty || 5) && p.stockQty > 0 ? "low" : ""}`}>
+                          {noStock ? "Rupture de stock" : p.stockQty <= (p.minStockQty || 5) ? `⚠ ${p.stockQty} restants` : `${p.stockQty} en stock`}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* ── VUE LISTE ── */
+                <div className="pos-product-list">
+                  {filteredProducts.map((p) => {
+                    const ci = inCart(p.id);
+                    const noStock = p.stockQty <= 0;
+                    return (
+                      <div
+                        key={p.id}
+                        className={`pos-prod-row ${noStock ? "no-stock" : ""}`}
+                        onClick={() => !noStock && addToCart(p)}
+                      >
+                        <div className="pos-prod-row-info">
+                          <div className="pos-prod-row-name">{p.name}</div>
+                          <div className="pos-prod-row-sub">{p.category?.name || "—"} · {p.sku || p.barcode || ""}</div>
+                        </div>
+                        {ci && <span className="pos-prod-row-qty-badge">{ci.quantity}×</span>}
+                        <div className="pos-prod-row-price">{fmt(p.sellingPrice)} <small style={{ fontSize: 10, fontWeight: 400, color: "var(--pos-text3)" }}>XOF</small></div>
+                        <div className={`pos-prod-row-stock ${p.stockQty <= (p.minStockQty || 5) && p.stockQty > 0 ? "low" : ""}`}>
+                          {noStock ? "Rupture" : p.stockQty <= (p.minStockQty || 5) ? `⚠ ${p.stockQty}` : p.stockQty}
+                        </div>
+                        <button className="pos-row-add-btn" onClick={(e) => { e.stopPropagation(); if (!noStock) addToCart(p); }}>
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ────── PANNEAU PANIER & PAIEMENT ────── */}
+          <div
+            className="pos-cart"
+            style={{
+              // Mobile: drawer en bas
+              ...(typeof window !== "undefined" && window.innerWidth <= 1024
+                ? {
+                    display: "flex",
+                    position: "fixed",
+                    bottom: 0, left: 0, right: 0,
+                    zIndex: 200,
+                    maxHeight: "90dvh",
+                    borderRadius: "20px 20px 0 0",
+                    transform: mobileCartOpen ? "translateY(0)" : "translateY(100%)",
+                    transition: "transform .3s cubic-bezier(.32,.72,0,1)",
+                  }
+                : {}),
+            }}
+          >
+            {/* En-tête */}
+            <div className="pos-cart-head">
+              <div className="pos-cart-title">
+                <ShoppingCart size={14} />
+                Panier
+                <span className="pos-cart-badge">{totalItems}</span>
+              </div>
+              <button className="pos-cart-clear-btn" onClick={() => setCart([])}>Vider</button>
+            </div>
+
+            {/* Sélection client */}
+            <div className="pos-cust-wrap">
+              <div className="pos-cust-label">
+                <User size={12} style={{ display: "inline", marginRight: 4, verticalAlign: -2 }} />
+                Client
+              </div>
+              {selectedCustomer ? (
+                <div className="pos-cust-selected">
+                  <div className="pos-cust-name">
+                    <User size={13} />
+                    {selectedCustomer.name}
+                  </div>
+                  <button className="pos-cust-clear" onClick={() => setSelectedCustomer(null)}>
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <select
+                  className="pos-cust-select"
+                  onChange={(e) => setSelectedCustomer(customers.find((c) => c.id === e.target.value) || null)}
+                  value=""
+                >
+                  <option value="">— Client de passage —</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}{c.phone ? ` (${c.phone})` : ""}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Articles */}
+            <div className="pos-cart-items">
+              {cart.length === 0 ? (
+                <div className="pos-cart-empty">
+                  <ShoppingCart size={36} />
+                  <p>Panier vide</p>
+                </div>
+              ) : (
+                cart.map((item) => (
+                  <div key={item.product.id} className="pos-ci">
+                    <div className="pos-ci-name">{item.product.name}</div>
+                    <div className="pos-ci-meta">
+                      <span>{fmt(item.product.sellingPrice)} XOF</span>
+                      <span>× {item.quantity}</span>
+                    </div>
+                    <div className="pos-ci-controls">
+                      <div className="pos-ci-total">{fmt(item.product.sellingPrice * item.quantity)}</div>
+                      <div className="pos-ci-qty-row">
+                        <button
+                          className="pos-ci-btn del"
+                          onClick={() => updateQuantity(item.product.id, -1)}
+                        >
+                          <Minus size={11} />
+                        </button>
+                        <span className="pos-ci-qty">{item.quantity}</span>
+                        <button
+                          className="pos-ci-btn"
+                          onClick={() => updateQuantity(item.product.id, 1)}
+                        >
+                          <Plus size={11} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Totaux */}
+            <div className="pos-totals">
+              <div className="pos-tot-row">
+                <span>Sous-total</span>
+                <span className="pos-tot-val">{fmt(subtotal)} XOF</span>
+              </div>
+              <div className="pos-tot-row pos-discount-row">
+                <label>
+                  <Scissors size={12} />
+                  Remise
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    className="pos-discount-input"
+                    type="number"
+                    min={0}
+                    max={subtotal}
+                    placeholder="0"
+                    value={discountAmount || ""}
+                    onChange={(e) => setDiscountAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+                  />
+                  <span className="pos-discount-unit">XOF</span>
+                </div>
+              </div>
+              <div className="pos-tot-main">
+                <span className="pos-tot-main-label">Total</span>
+                <span className="pos-tot-main-val">{fmt(total)} XOF</span>
+              </div>
+            </div>
+
+            {/* Paiement */}
+            <div className="pos-payment">
+              <div className="pos-pay-label">Mode de paiement</div>
+              <div className="pos-pay-methods">
+                <button
+                  className={`pos-pay-btn ${paymentMethod === "CASH" ? "active" : ""}`}
+                  onClick={() => setPaymentMethod("CASH")}
+                >
+                  <Banknote size={16} />Espèces
+                </button>
+                <button
+                  className={`pos-pay-btn ${paymentMethod === "MOBILE_MONEY" ? "active" : ""}`}
+                  onClick={() => setPaymentMethod("MOBILE_MONEY")}
+                >
+                  <Smartphone size={16} />Mobile
+                </button>
+              </div>
+
+              {paymentMethod === "CASH" ? (
+                <div className="pos-cash-wrap">
+                  <input
+                    className="pos-cash-input"
+                    type="number"
+                    placeholder="Montant reçu…"
+                    value={amountReceived}
+                    onChange={(e) => setAmountReceived(e.target.value)}
+                  />
+                  {received > 0 && cart.length > 0 && (
+                    <div className="pos-change-row">
+                      <span className="pos-change-label">Monnaie à rendre</span>
+                      <span className="pos-change-val">{fmt(change)} XOF</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="pos-mobile-ops">
+                  {(["WAVE", "ORANGE", "MTN"] as const).map((op) => (
+                    <button
+                      key={op}
+                      className={`pos-mobile-op ${mobileProvider === op ? "active" : ""}`}
+                      onClick={() => setMobileProvider(op)}
+                    >
+                      {op}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <button
+                className="pos-checkout-btn"
+                onClick={handleCheckout}
+                disabled={cart.length === 0 || isProcessing}
+              >
+                <CheckCircle2 size={18} />
+                {isProcessing ? "Traitement…" : `Valider · ${fmt(total)} XOF`}
+              </button>
+            </div>
           </div>
         </div>
-      ) : (
-        <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 rounded-2xl flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">
-              Session Active — Fond de caisse:{" "}
-              {cashSession.openingBalance.toLocaleString()} XOF
-            </p>
-          </div>
+
+        {/* ────── BOUTON PANIER MOBILE (FAB) ────── */}
+        <div
+          style={{
+            position: "fixed", bottom: 0, left: 0, right: 0,
+            padding: "10px 16px",
+            background: "var(--pos-surface)",
+            borderTop: "1px solid var(--pos-border)",
+            display: "flex", alignItems: "center", gap: 12,
+            zIndex: 99,
+          }}
+          className="lg:hidden" // Tailwind : caché sur desktop
+        >
+          <span style={{ fontWeight: 700, fontSize: 15, fontVariantNumeric: "tabular-nums" }}>
+            {fmt(total)} XOF
+          </span>
           <button
-            onClick={handleCloseSession}
-            className="px-3 py-1 bg-red-500/10 text-red-600 rounded-lg text-xs font-bold hover:bg-red-500/20"
+            onClick={() => setMobileCartOpen((v) => !v)}
+            style={{
+              flex: 1, padding: "13px", background: "var(--pos-primary)",
+              color: "#fff", border: "none", borderRadius: 12,
+              fontSize: 13, fontWeight: 700, textTransform: "uppercase",
+              letterSpacing: ".06em", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              fontFamily: "inherit",
+            }}
           >
-            Clôturer la caisse
+            <ShoppingCart size={18} />
+            Panier
+            <span style={{
+              background: "var(--pos-accent)", color: "#fff", fontSize: 11,
+              fontWeight: 700, padding: "2px 8px", borderRadius: 12,
+            }}>
+              {totalItems}
+            </span>
+            <ChevronUp size={16} style={{ marginLeft: 4, transform: mobileCartOpen ? "rotate(180deg)" : "none", transition: "transform .3s" }} />
           </button>
         </div>
-      )}
-      {/* STRATÉGIE RESPONSIVE DE GRILLE SANS CONFLIT */}
-      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-180px)] overflow-hidden relative">
-        {" "}
-        {/* LE CATALOGUE PRODUIT : Prend toute la largeur sur Mobile, et 65% sur Écran Large */}
-        <div className="flex-1 lg:w-[60%] xl:w-[62%] flex flex-col gap-4 h-full overflow-hidden">
-          {" "}
-          {/* Barre recherche & toggles */}
-          <div className="flex gap-3 shrink-0">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 h-5 w-5" />
-              <input
-                type="text"
-                placeholder="Rechercher un produit (Nom, Barcode, SKU)..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl text-sm font-bold outline-none focus:border-primary shadow-sm"
-              />
-            </div>
-            <div className="hidden sm:flex gap-1 bg-zinc-100 dark:bg-zinc-800 p-1 rounded-2xl">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-2 rounded-xl ${viewMode === "grid" ? "bg-white dark:bg-zinc-700 text-primary shadow" : "text-zinc-400"}`}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-2 rounded-xl ${viewMode === "list" ? "bg-white dark:bg-zinc-700 text-primary shadow" : "text-zinc-400"}`}
-              >
-                <List className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          {/* Catégories de produits */}
-          {/* <div className="flex gap-2 overflow-x-auto pb-2 shrink-0 scrollbar-none">
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition-all ${!selectedCategory ? "bg-primary text-white" : "bg-white dark:bg-zinc-900 text-zinc-500 border border-zinc-200"}`}
-            >
-              Tous
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold shrink-0 transition-all ${selectedCategory === cat.id ? "bg-primary text-white" : "bg-white dark:bg-zinc-900 text-zinc-500 border border-zinc-200"}`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div> */}
-          {/* Grille Principale Dynamique avec Scroll Autonome */}
-          <div className="flex-1 overflow-y-auto pr-1">
-            <div
-              className={
-                viewMode === "grid"
-                  ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
-                  : "flex flex-col gap-2"
-              }
-            >
-              {filteredProducts.map((product) => (
-                <button
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className={`group bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:border-primary/50 transition-all text-left shadow-sm active:scale-[0.98] ${viewMode === "grid" ? "flex flex-col p-4 h-32 justify-between" : "flex items-center justify-between p-3"}`}
-                >
-                  <div className="flex flex-col min-w-0">
-                    <h3 className="text-xs font-black text-zinc-800 dark:text-zinc-200 truncate">
-                      {product.name}
-                    </h3>
-                    <span className="text-[11px] font-medium text-zinc-400 mt-0.5">
-                      SKU: {product.sku || "N/A"}
-                    </span>
-                  </div>
-                  <div
-                    className={`flex items-center justify-between mt-2 ${viewMode === "list" && "gap-6"}`}
-                  >
-                    <span className="text-sm font-black text-primary">
-                      {product.sellingPrice.toLocaleString()} XOF
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${product.stockQty <= product.minStockQty ? "bg-red-50 text-red-600" : "bg-zinc-100 text-zinc-600"}`}
-                    >
-                      Stock: {product.stockQty}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        {/* PANIER DESKTOP SYSTEM : Fixe à droite (35% de l'espace), masqué sur mobile */}
-              {/* PANIER DESKTOP SYSTEM : Fixe à droite (35% de l'espace), masqué sur mobile */}
-        <div className="hidden lg:block lg:w-[40%] xl:w-[38%] h-[calc(100vh-4rem)] border-l border-zinc-200 dark:border-zinc-800 pl-4 overflow-hidden">
-          <Card className="h-full flex flex-col !p-0 overflow-hidden border-none shadow-xl rounded-3xl bg-white dark:bg-zinc-900">
-            {renderCartContent()}
-          </Card>
-        </div>
-        {/* ACTION MOBILE : Bouton flottant moderne pour appeler le Panier */}
-        {cart.length > 0 && (
-          <div className="lg:hidden fixed bottom-6 left-4 right-4 z-40 animate-bounce">
-            <button
-              onClick={() => setIsMobileCartOpen(true)}
-              className="w-full bg-primary text-white h-14 rounded-2xl flex items-center justify-between px-6 shadow-2xl font-black text-sm uppercase tracking-wider"
-            >
-              <div className="flex items-center gap-3">
-                <div className="bg-white text-primary w-6 h-6 rounded-full flex items-center justify-center text-xs">
-                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
-                </div>
-                <span>Voir le Panier</span>
-              </div>
-              <span>{total.toLocaleString()} XOF</span>
-            </button>
-          </div>
-        )}
-        {/* TIROIR (DRAWER) MOBILE : S'ouvre en plein écran par-dessus le catalogue */}
-        {isMobileCartOpen && (
-          <div className="lg:hidden fixed inset-0 bg-black/60 z-50 flex flex-col justify-end transition-opacity duration-300">
-            <div className="bg-white dark:bg-zinc-900 w-full h-[92vh] rounded-t-[2.5rem] overflow-hidden flex flex-col shadow-2xl border-t border-zinc-200">
-              {/* Entête de fermeture pour le mobile */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 bg-zinc-50">
-                <button
-                  onClick={() => setIsMobileCartOpen(false)}
-                  className="flex items-center gap-2 text-zinc-600 text-xs font-bold"
-                >
-                  <ArrowLeft className="h-4 w-4" /> Retour boutique
-                </button>
-                <span className="text-xs font-black uppercase text-zinc-400">
-                  Finalisation de commande
-                </span>
-              </div>
-              <div className="flex-1 overflow-hidden">
-                {renderCartContent()}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Zone de rendu d'impression masquée */}
-      <div className="hidden">
-        <TicketReceipt
-          ref={componentRef}
-          shop={currentShop}
-          user={user}
-          items={cart}
-          total={total}
-          paymentMethod={paymentMethod}
-          amountReceived={parseInt(amountReceived) || total}
-          change={change}
-          saleId={lastSaleId}
-        />
+        {/* Overlay mobile quand panier ouvert */}
+        {mobileCartOpen && (
+          <div
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,.5)",
+              zIndex: 199, backdropFilter: "blur(2px)",
+            }}
+            onClick={() => setMobileCartOpen(false)}
+          />
+        )}
+
+        {/* Ticket caché pour impression */}
+        <div style={{ display: "none" }}>
+          <TicketReceipt
+            ref={componentRef}
+            shop={currentShop}
+            user={user}
+            items={cart}
+            total={total}
+            paymentMethod={paymentMethod}
+            amountReceived={parseInt(amountReceived) || total}
+            change={change}
+            saleId={lastSaleId}
+          />
+        </div>
       </div>
     </AppLayout>
   );
