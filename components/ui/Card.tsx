@@ -13,8 +13,11 @@ export default function Card({
   onClick,
   hoverable = false,
 }: CardProps) {
-  const baseClasses =
-    "bg-card text-card-foreground p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300";
+  const hasPadding = /p[trblxy]?-/.test(className);
+  const paddingClass = hasPadding ? "" : "p-6";
+
+  const baseClasses = `bg-card text-card-foreground rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all duration-300 ${paddingClass}`;
+  
   const hoverClasses = hoverable
     ? "hover:shadow-xl hover:shadow-primary/5 hover:border-primary/30 dark:hover:border-primary/40 cursor-pointer active:scale-[0.98]"
     : "";

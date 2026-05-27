@@ -33,7 +33,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
-         <AuthProvider>
+         {/* <AuthProvider> */}
         <ThemeProvider>
           <ToastProvider>
             <SidebarProvider>
@@ -41,7 +41,7 @@ export default function RootLayout({
             </SidebarProvider>
           </ToastProvider>
         </ThemeProvider>
-         </AuthProvider>
+         {/* </AuthProvider> */}
       </body>
     </html>
   );
