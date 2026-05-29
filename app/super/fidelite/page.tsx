@@ -173,7 +173,7 @@ export default function SuperFidelitePage() {
 
   // === KPIs ===
   const totalClients = customers.length;
-  const totalDebt = customers.reduce((acc, c) => acc + (c.totalDebt || 0), 0);
+  const totalDebt = customers.reduce((acc, c) => acc + Number(c.totalDebt || 0), 0);
   const clientsWithDebt = customers.filter((c) => (c.totalDebt || 0) > 0).length;
 
   // === Colonnes du tableau ===

@@ -105,7 +105,7 @@ export default function ProfilePage() {
 
   return (
     <AppLayout title="Mon Profil" subtitle="Gérez vos informations et votre sécurité">
-      <div className="flex flex-col gap-8 max-w-5xl mx-auto pb-12">
+      <div className="flex flex-col gap-8 max-w-5xl mx-auto pb-28 md:pb-12">
         
         {/* Header Profile Section */}
         <div className="relative flex flex-col items-center sm:flex-row sm:items-end gap-6 pb-6 border-b border-zinc-200/60 dark:border-zinc-800/60">

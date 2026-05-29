@@ -25,7 +25,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row min-h-screen bg-background text-foreground select-none transition-colors duration-300">
+    <div className="flex flex-col sm:flex-row min-h-screen bg-background text-foreground select-none transition-colors duration-300 pb-28 md:pb-12">
       <Sidebar />
       <main className="flex-1 max-w-4xl mx-auto px-4 py-8 w-full flex flex-col gap-6">
         <div>

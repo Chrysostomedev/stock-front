@@ -522,8 +522,8 @@ export default function SuperCaissePage() {
       catch { prodRes = await ProductService.getAll({ shopId: user.shopId }); }
 
       let catRes;
-      try { catRes = await CategoryService.getAll({ limit: 1000 }); }
-      catch { catRes = await CategoryService.getAll(); }
+      try { catRes = await CategoryService.getByShop(user.shopId, { limit: 1000 }); }
+      catch { catRes = await CategoryService.getByShop(user.shopId); }
 
       const [shopRes, custRes] = await Promise.all([
         user.shopId
@@ -1004,7 +1004,6 @@ export default function SuperCaissePage() {
                 ))
               )}
             </div>
-
             {/* Totaux */}
             <div className="pos-totals">
               <div className="pos-tot-row">
@@ -1034,7 +1033,6 @@ export default function SuperCaissePage() {
                 <span className="pos-tot-main-val">{fmt(total)} XOF</span>
               </div>
             </div>
-
             {/* Paiement */}
             <div className="pos-payment">
               <div className="pos-pay-label">Mode de paiement</div>
@@ -1052,7 +1050,6 @@ export default function SuperCaissePage() {
                   <Smartphone size={16} />Mobile
                 </button>
               </div>
-
               {paymentMethod === "CASH" ? (
                 <div className="pos-cash-wrap">
                   <input

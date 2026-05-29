@@ -1,5 +1,4 @@
 import axiosInstance from "../core/axios";
-
 /**
  * Interface pour une catégorie telle que retournée par le backend
  */
@@ -9,8 +8,8 @@ export interface Category {
   description?: string;
   colorHex?: string;
   iconName?: string;
-  parentId?: string;
-  shopId?: string;
+  parentId?: string | null;
+  shopId?: string | null;
   parent?: Category;
   children?: Category[];
   createdAt: string;
@@ -25,10 +24,9 @@ export interface CreateCategoryDto {
   description?: string;
   colorHex?: string;
   iconName?: string;
-  parentId?: string;
-  shopId?: string;
+  parentId?: string | null;
+  shopId?: string | null;
 }
-
 const CategoryService = {
   /**
    * Récupérer toutes les catégories
@@ -36,6 +34,15 @@ const CategoryService = {
    */
   async getAll(params?: any) {
     const response = await axiosInstance.get("/categories", { params });
+    return response.data;
+  },
+  /**
+   * Récupérer les catégories d'une boutique
+   * @param shopId UUID de la boutique
+   * @param params Filtres et pagination
+   */
+  async getByShop(shopId: string, params?: any) {
+    const response = await axiosInstance.get(`/categories/shop/${shopId}`, { params });
     return response.data;
   },
 

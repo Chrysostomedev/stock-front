@@ -130,7 +130,7 @@ export default function SuperProduitsPage() {
         </button>
       }
     >
-      <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12">
+      <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-24 md:pb-12">
         {/* Stats Section */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-4 shadow-sm">
