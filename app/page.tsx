@@ -349,7 +349,6 @@ export default function Home() {
                 Fluidité totale pour les transactions à fort volume. Caisse de vente code-barres, gestion de stocks par lot, alertes de péremption de produits et fidélisation client intégrée.
               </p>
             </div>
-
             <ul className="flex flex-col gap-2.5 text-xs font-bold text-slate-300 border-t border-slate-800/60 pt-4">
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-blue-500" /> Enregistrement de vente instantané
