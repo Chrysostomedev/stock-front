@@ -141,9 +141,9 @@ export default function AdminClientsPage() {
   });
 
   // KPI Calculations
-  const totalOutstandingDebt = customers.reduce((acc, c) => acc + (c.totalDebt || 0), 0);
+  const totalOutstandingDebt = customers.reduce((acc, c) => acc + Number(c.totalDebt || 0), 0);
   const activeDebtorsCount = customers.filter(c => c.totalDebt > 0).length;
-  const totalApprovedLimits = customers.reduce((acc, c) => acc + (c.creditLimit || 0), 0);
+  const totalApprovedLimits = customers.reduce((acc, c) => acc + Number(c.creditLimit || 0), 0);
 
   // Column definitions for Tab 1: Directory
   const directoryColumns = [
