@@ -1,26 +1,15 @@
 /**
- * ============================================================================
- * SERVICE : SESSIONS DE CAISSE (Cash Sessions)
- * ============================================================================
- * 
- * Gère le cycle de vie d'une session de caisse :
- *   1. OUVERTURE → Le caissier déclare son fond de caisse initial
- *   2. VENTES    → Toutes les ventes sont rattachées à la session active
- *   3. FERMETURE → Le caissier compte le montant réel en caisse
- * 
- * Le backend compare automatiquement le solde théorique (ouverture + ventes - dépenses)
- * au solde réel déclaré à la fermeture pour détecter les écarts.
- * 
- * Endpoints backend :
- *   POST   /api/v1/cash-sessions/open            → Ouvrir une session
- *   PATCH  /api/v1/cash-sessions/:id/close        → Fermer une session
- *   GET    /api/v1/cash-sessions/active/:userId    → Récupérer la session active
- * 
- * @see back-spservice/src/modules/cash-session
- * ============================================================================
+ * super/cashSession.service.ts — Sessions de caisse avec fallback offline
+ * ─────────────────────────────────────────────────────────────────────────────
+ * OFFLINE :
+ *  - open()      → enqueued (CashSession/CREATE) + résultat optimiste
+ *  - close()     → enqueued (CashSession/UPDATE) + résultat optimiste
+ *  - getActive() → cache localStorage (TTL 24h)
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import axiosInstance from "../../core/axios";
+import { withOfflineFallback, withOfflineCache } from "../../core/offline-wrapper";
 import {
   CashSession,
   OpenCashSessionDto,
@@ -29,49 +18,71 @@ import {
 
 const CashSessionService = {
   /**
-   * Ouvrir une nouvelle session de caisse.
-   * 
-   * ⚠️ IMPORTANT : Le backend interdit d'ouvrir une session si une session
-   * est déjà active pour cet utilisateur (erreur 409 Conflict).
-   * 
-   * @param dto - Données d'ouverture (shopId, userId, openingBalance, notes?)
-   * @returns La session nouvellement créée
-   * @throws 409 si une session est déjà active pour cet utilisateur
+   * Ouvrir une session de caisse.
+   * OFFLINE : enqueued → résultat optimiste retourné immédiatement.
+   * ⚠️ En mode offline, le backend local SQLite gère la contrainte 409.
    */
   async open(dto: OpenCashSessionDto): Promise<CashSession> {
-    const response = await axiosInstance.post("/cash-sessions/open", dto);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "CashSession",
+      operation: "CREATE",
+      payload: dto as unknown as Record<string, unknown>,
+      apiCall: () =>
+        axiosInstance.post("/cash-sessions/open", dto).then((r) => r.data),
+      optimisticResult: {
+        ...dto,
+        id: `local_${Date.now()}`,
+        openedAt: new Date().toISOString(),
+        closedAt: null,
+        closingBalance: null,
+        expectedBalance: null,
+        difference: null,
+        syncStatus: "PENDING",
+      } as unknown as CashSession,
+    });
   },
 
   /**
-   * Fermer une session de caisse active.
-   * 
-   * Le caissier doit compter l'argent en caisse et déclarer le montant réel.
-   * Le backend calcule automatiquement l'écart entre le théorique et le réel.
-   * 
-   * @param id - UUID de la session à fermer
-   * @param dto - Données de fermeture (closingBalance, notes?)
-   * @returns La session mise à jour avec les données de fermeture
-   * @throws 404 si la session n'existe pas
+   * Fermer une session de caisse.
+   * OFFLINE : enqueued → résultat optimiste avec closedAt = maintenant.
    */
   async close(id: string, dto: CloseCashSessionDto): Promise<CashSession> {
-    const response = await axiosInstance.patch(`/cash-sessions/${id}/close`, dto);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "CashSession",
+      operation: "UPDATE",
+      payload: { id, ...dto } as Record<string, unknown>,
+      apiCall: () =>
+        axiosInstance
+          .patch(`/cash-sessions/${id}/close`, dto)
+          .then((r) => r.data),
+      optimisticResult: {
+        id,
+        ...dto,
+        closedAt: new Date().toISOString(),
+        syncStatus: "PENDING",
+      } as unknown as CashSession,
+    });
   },
 
   /**
-   * Récupérer la session de caisse active d'un utilisateur.
-   * 
-   * Retourne `null` si aucune session n'est active.
-   * Cette méthode est appelée au chargement de la page Caisse pour
-   * déterminer si le caissier doit ouvrir une nouvelle session.
-   * 
-   * @param userId - UUID de l'utilisateur (caissier)
-   * @returns La session active ou null
+   * Session active d'un utilisateur.
+   * OFFLINE : retourne le cache si disponible, sinon null.
    */
   async getActive(userId: string): Promise<CashSession | null> {
-    const response = await axiosInstance.get(`/cash-sessions/active/${userId}`);
-    return response.data;
+    return withOfflineCache(
+      `cash_session_active_${userId}`,
+      async () => {
+        const response = await axiosInstance.get(
+          `/cash-sessions/active/${userId}`
+        );
+        const session = response.data;
+        // Le backend retourne null/"" quand pas de session active
+        return session && typeof session === "object" && session.id
+          ? session
+          : null;
+      },
+      null
+    );
   },
 };
 

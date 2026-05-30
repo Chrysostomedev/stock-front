@@ -3,7 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
-import PwaInstaller from "@/components/ui/PwaInstaller";
+import { ShopSettingsProvider } from "@/contexts/ShopSettingsContext";
+// NetworkProvider : gestion offline, détection réseau, sync automatique
+import { NetworkProvider } from "@/contexts/NetworkContext";
 import "./globals.css";
 import { AuthProvider } from "./context/useContext";
 
@@ -35,16 +37,24 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
-         {/* <AuthProvider> */}
-        <ThemeProvider>
-          <ToastProvider>
-            <SidebarProvider>
-              {children}
-              <PwaInstaller />
-            </SidebarProvider>
-          </ToastProvider>
-        </ThemeProvider>
-         {/* </AuthProvider> */}
+        <AuthProvider>
+          <ShopSettingsProvider>
+            <ThemeProvider>
+              <ToastProvider>
+                {/*
+                  NetworkProvider doit être DANS ToastProvider (pour pouvoir
+                  afficher des toasts lors des syncs) et DANS AuthProvider
+                  (pour avoir accès au token JWT lors des appels sync).
+                */}
+                <NetworkProvider>
+                  <SidebarProvider>
+                    {children}
+                  </SidebarProvider>
+                </NetworkProvider>
+              </ToastProvider>
+            </ThemeProvider>
+          </ShopSettingsProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -64,11 +64,13 @@ export default function Sidebar() {
     { href: "/super/fidelite", label: "Fidélité Clients", icon: <Users className="h-5 w-5" />, roles: ["CASHIER"] },
     { href: "/super/depenses", label: "Dépenses Boutique", icon: <Wallet className="h-5 w-5" />, roles: ["CASHIER"] },
     { href: "/super/transferts", label: "Transferts Stock", icon: <Layers className="h-5 w-5" />, roles: ["CASHIER"] },
+    { href: "/super/settings", label: "Paramètres Boutique", icon: <Settings className="h-5 w-5" />, roles: ["CASHIER"] },
 
     // Gérant Quincaillerie
     { href: "/quinc", label: "Dashboard Quinc.", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/caisse", label: "Caisse Quinc.", icon: <ShoppingCart className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/produits", label: "Stock Matériaux", icon: <Package className="h-5 w-5" />, roles: ["MANAGER"] },
+    { href: "/quinc/commandes", label: "Historique Ventes", icon: <FileText className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/devis", label: "Bons de Commande", icon: <FileText className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/credits", label: "Clients & Crédits", icon: <Users className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/fournisseurs", label: "Fournisseurs", icon: <Building2 className="h-5 w-5" />, roles: ["MANAGER"] },
@@ -106,59 +108,57 @@ export default function Sidebar() {
         }`}
       >
         <div className="flex flex-col gap-6">
-          {/* Logo visible uniquement sur ordinateur */}
-          <Link
-            href={userRole === "ADMIN" || userRole === "SUPER_ADMIN" ? "/admin" : `/${userRole === "CASHIER" ? "super" : "quinc"}`}
-            onClick={close}
-            className="hidden sm:flex items-center gap-2 px-2.5"
-          >
-            <span className="text-xl font-black tracking-tighter text-primary">
-              SP SERVICES Stock
-            </span>
-          </Link>
+          {/* Logo & Company Info */}
+          <div className="flex flex-col gap-3 px-2">
+            <Link
+              href={
+                userRole === "ADMIN" || userRole === "SUPER_ADMIN"
+                  ? "/admin"
+                  : userRole === "CASHIER"
+                  ? "/super"
+                  : userRole === "MANAGER"
+                  ? "/quinc"
+                  : "/login"
+              }
+              onClick={close}
+              className="flex items-center gap-3"
+            >
+              <img
+                src="/img/logo.png"
+                alt="SP SERVICES Logo"
+                className="h-10 w-auto object-contain rounded-lg"
+              />
+              <div className="flex flex-col">
+                <span className="text-sm font-black tracking-tighter text-foreground leading-none">
+                  SP SERVICES
+                </span> 
 
-          {/* En-tête de la sidebar sur Mobile */}
-          <div className="flex sm:hidden items-center justify-between px-2.5 mb-2">
-            <span className="text-lg font-black tracking-tighter text-primary">
-              Autres Menus
-            </span>
-            <button onClick={close} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800">
-              <X className="h-5 w-5" />
-            </button>
+              </div>
+              {/* Close button for mobile */}
+              <div className="flex sm:hidden items-end justify-between px-2.5 mb-2">
+
+                <button onClick={close} className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </Link>
+
+
           </div>
 
-          {/* Système de Navigation */}
-          <nav className="flex flex-col gap-1 overflow-y-auto max-h-[70vh] pr-1">
-            {/* SUR DESKTOP : On affiche TOUT le catalogue de liens normalement */}
-            <div className="hidden sm:flex flex-col gap-1">
-              {allowedLinks.map((link, idx) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={`desk-${idx}`}
-                    href={link.href}
-                    className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl font-bold text-sm transition-all ${
-                      isActive ? "bg-primary/10 text-primary shadow-sm" : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
-                    }`}
-                  >
-                    <span className={isActive ? "text-primary" : "text-zinc-400"}>{link.icon}</span>
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </div>
 
-            {/* SUR MOBILE : On cache les 4 boutons du bas pour éviter les doublons */}
-            <div className="flex sm:hidden flex-col gap-1">
-              {sidebarLinks.map((link, idx) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={`mob-side-${idx}`}
-                    href={link.href}
-                    onClick={close}
-                    className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl font-bold text-sm transition-all ${
-                      isActive ? "bg-primary/10 text-primary shadow-sm" : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
+          {/* Navigation links */}
+          <nav className="flex flex-col gap-1">
+            {links.map((link, idx) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={idx}
+                  href={link.href}
+                  onClick={close}
+                  className={`flex items-center gap-3.5 px-3.5 py-3 rounded-xl font-bold text-sm transition-all select-none cursor-pointer ${isActive
+                    ? "bg-primary/10 text-primary shadow-sm"
+                    : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200"
                     }`}
                   >
                     <span className={isActive ? "text-primary" : "text-zinc-400"}>{link.icon}</span>

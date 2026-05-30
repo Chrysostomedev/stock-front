@@ -1,15 +1,23 @@
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+// URL de l'API — injectée au build depuis .env (NEXT_PUBLIC_API_URL)
+// Fallback sur Railway en production
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://back-spservice-production.up.railway.app/api/v1";
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
+  // Timeout de 15s — évite les loaders infinis sur réseau lent (mobile/Electron)
+  timeout: 15000,
 });
 
-// Intercepteur pour ajouter le token à chaque requête
+// ─────────────────────────────────────────────
+// INTERCEPTEUR REQUEST — injecte le JWT
+// ─────────────────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
@@ -23,19 +31,19 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Intercepteur pour gérer les erreurs globales (ex: 401 Unauthorized)
+// ─────────────────────────────────────────────
+// INTERCEPTEUR RESPONSE — gestion des erreurs globales
+//
+// ⚠️  NE PAS rediriger automatiquement sur 401 ici.
+//     Le AuthProvider gère lui-même le refresh token et la déconnexion.
+//     Une redirection automatique ici crée une boucle infinie sur
+//     Electron et mobile (le 401 de /auth/me au démarrage déclenchait
+//     une redirect → rechargement → 401 → redirect → ∞).
+// ─────────────────────────────────────────────
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Redirection vers login si non autorisé (sauf si on est déjà sur login)
-      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("user_id");
-        window.location.href = "/login";
-      }
-    }
+    // On propage l'erreur telle quelle — chaque service/contexte la gère
     return Promise.reject(error);
   }
 );

@@ -1,4 +1,8 @@
+/**
+ * shop.service.ts — Service boutiques racine avec fallback offline
+ */
 import axiosInstance from "../core/axios";
+import { withOfflineFallback, withOfflineCache } from "../core/offline-wrapper";
 
 export interface Shop {
   id: string;
@@ -10,35 +14,76 @@ export interface Shop {
   logoUrl?: string;
   currency: string;
   isActive: boolean;
+  syncStatus?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 const ShopService = {
+  /** Toutes les boutiques. OFFLINE : cache. */
   async getAll() {
-    const response = await axiosInstance.get("/shops");
-    return response.data;
+    return withOfflineCache(
+      "shops_all",
+      () => axiosInstance.get("/shops").then((r) => r.data),
+      []
+    );
   },
 
+  /** Détail boutique. OFFLINE : cache. */
   async getById(id: string): Promise<Shop> {
-    const response = await axiosInstance.get(`/shops/${id}`);
-    return response.data;
+    return withOfflineCache(
+      `shop_${id}`,
+      () => axiosInstance.get(`/shops/${id}`).then((r) => r.data)
+    );
   },
 
+  /** Créer une boutique. OFFLINE : enqueued. */
   async create(data: any): Promise<Shop> {
-    const response = await axiosInstance.post("/shops", data);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "Product",
+      operation: "CREATE",
+      payload: { _type: "Shop", ...data },
+      apiCall: () => axiosInstance.post("/shops", data).then((r) => r.data),
+      optimisticResult: {
+        ...data,
+        id: `local_${Date.now()}`,
+        currency: "XOF",
+        isActive: true,
+        syncStatus: "PENDING",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Shop,
+    });
   },
 
+  /** Mettre à jour une boutique. OFFLINE : enqueued. */
   async update(id: string, data: any): Promise<Shop> {
-    const response = await axiosInstance.put(`/shops/${id}`, data);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "Product",
+      operation: "UPDATE",
+      payload: { _type: "Shop", id, ...data },
+      apiCall: () =>
+        axiosInstance.put(`/shops/${id}`, data).then((r) => r.data),
+      optimisticResult: {
+        id,
+        ...data,
+        syncStatus: "PENDING",
+        updatedAt: new Date().toISOString(),
+      } as unknown as Shop,
+    });
   },
 
+  /** Supprimer une boutique. OFFLINE : enqueued. */
   async delete(id: string) {
-    const response = await axiosInstance.delete(`/shops/${id}`);
-    return response.data;
-  }
+    return withOfflineFallback({
+      entityType: "Product",
+      operation: "DELETE",
+      payload: { _type: "Shop", id },
+      apiCall: () =>
+        axiosInstance.delete(`/shops/${id}`).then((r) => r.data),
+      optimisticResult: { success: true, id },
+    });
+  },
 };
 
 export default ShopService;

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+// Next.js 16 : la fonction doit s'appeler "proxy" (anciennement "middleware")
+export function proxy(request: NextRequest) {
   const token = request.cookies.get('access_token')?.value || request.cookies.get('token')?.value;
   const userRole = request.cookies.get('userRole')?.value;
   const { pathname } = request.nextUrl;
@@ -36,7 +37,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Configurer les chemins sur lesquels le middleware s'exécute
+// Configurer les chemins sur lesquels le proxy s'exécute
 export const config = {
   matcher: [
     '/',

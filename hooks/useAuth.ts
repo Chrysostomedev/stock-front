@@ -1,15 +1,64 @@
 "use client";
 
+/**
+ * useAuth.ts
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Hook d'authentification compatible Web + Electron + Capacitor.
+ *
+ * Stratégie de lecture du token :
+ *  1. Cookies (web standard)
+ *  2. localStorage (Electron / Capacitor — les cookies ne persistent pas)
+ *
+ * Stratégie de lecture du user :
+ *  1. localStorage["user"] — disponible immédiatement, pas de requête réseau
+ *  2. GET /auth/me — si localStorage vide (première connexion ou cache expiré)
+ *
+ * Cela évite :
+ *  - La sidebar blanche sur Electron/mobile (user null car cookie absent)
+ *  - Les 401 en boucle sur /auth/me quand le CORS bloque
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
 import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
 import { User, UserRole } from "../types/auth";
 import AuthService from "../services/auth.service";
 import { useRouter } from "next/navigation";
 
+/** Lit le token depuis cookies OU localStorage (fallback Electron/mobile) */
+function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return (
+    Cookies.get("access_token") ||
+    localStorage.getItem("access_token") ||
+    null
+  );
+}
+
+/** Lit le user depuis localStorage (évite un appel réseau au démarrage) */
+function getStoredUser(): User | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as User;
+    // Compatibilité multi-boutique
+    if (!parsed.shopId && (parsed as any).shopAccesses?.length > 0) {
+      parsed.shopId = (parsed as any).shopAccesses[0].shopId;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  // Initialisation immédiate depuis localStorage — évite le flash blanc
+  const [user, setUser] = useState<User | null>(() => getStoredUser());
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => !!getStoredToken()
+  );
   const router = useRouter();
 
   useEffect(() => {
@@ -18,14 +67,39 @@ export function useAuth() {
       console.log("token:", token);
       if (!token) {
         setLoading(false);
+        setIsAuthenticated(false);
+        setUser(null);
         return;
       }
 
+      // Si on a déjà le user en cache localStorage → on l'utilise directement
+      // et on tente quand même /auth/me en arrière-plan pour rafraîchir
+      const cachedUser = getStoredUser();
+      if (cachedUser) {
+        setUser(cachedUser);
+        setIsAuthenticated(true);
+        setLoading(false);
+        // Rafraîchissement silencieux en arrière-plan (ne bloque pas l'UI)
+        AuthService.getProfile()
+          .then((profile) => {
+            let finalUser = profile;
+            if (!profile.shopId && (profile as any).shopAccesses?.length > 0) {
+              finalUser = { ...profile, shopId: (profile as any).shopAccesses[0].shopId };
+            }
+            setUser(finalUser);
+            localStorage.setItem("user", JSON.stringify(finalUser));
+          })
+          .catch(() => {
+            // Silencieux — on garde le cache localStorage
+          });
+        return;
+      }
+
+      // Pas de cache → appel réseau obligatoire
       try {
         const profile = await AuthService.getProfile();
 
         let finalUser = profile;
-        // Compatibilité Multi-boutique: si shopId n'est pas direct, on prend le premier accès
         if (!profile.shopId && (profile as any).shopAccesses?.length > 0) {
           finalUser = {
             ...profile,
@@ -35,17 +109,12 @@ export function useAuth() {
 
         setUser(finalUser);
         setIsAuthenticated(true);
-      } catch (error) {
-        console.error("Auth check failed:", error);
-        Cookies.remove("access_token");
-        Cookies.remove("token");
-        Cookies.remove("userRole");
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("user_id");
-        localStorage.removeItem("user");
-        localStorage.removeItem("userRole");
+        localStorage.setItem("user", JSON.stringify(finalUser));
+      } catch {
+        // Token invalide → nettoyage
+        _clearStorage();
+        setUser(null);
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
@@ -56,18 +125,15 @@ export function useAuth() {
 
   const login = async (credentials: any) => {
     const response = await AuthService.login(credentials);
-    // Le back renvoie { user, token: { accessToken, refreshToken } }
     const accessToken = response.accessToken || response.token?.accessToken;
     const refreshToken = response.refreshToken || response.token?.refreshToken;
-    const user = response.user;
-    console.log("accessToken", accessToken);
-    console.log("RefreshToken", refreshToken);
+    const userData = response.user;
 
     if (!accessToken) {
       throw new Error("Erreur d'authentification : Token manquant");
     }
 
-    // Stockage dans Cookies pour le Middleware
+    // Cookies (web)
     Cookies.set("access_token", accessToken, { expires: 7 });
     Cookies.set("token", accessToken, { expires: 7 });
     Cookies.set("userRole", user.role, { expires: 7 });
@@ -75,18 +141,18 @@ export function useAuth() {
     // Stockage dans LocalStorage pour l'UI
     localStorage.setItem("access_token", accessToken);
     localStorage.setItem("token", accessToken);
-    if (refreshToken) {
-      localStorage.setItem("refresh_token", refreshToken);
-    }
-    localStorage.setItem("user_id", user.id);
-    localStorage.setItem("user", JSON.stringify(user));
-    localStorage.setItem("userRole", user.role);
+    if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
+    localStorage.setItem("user_id", userData.id);
+    localStorage.setItem("userRole", userData.role);
 
-    // Compatibilité Multi-boutique
-    let finalUser = user;
-    if (!user.shopId && (user.shopAccesses?.length || 0) > 0) {
-      finalUser = { ...user, shopId: user.shopAccesses![0].shopId };
+    // Compatibilité multi-boutique
+    let finalUser = userData;
+    if (!userData.shopId && (userData.shopAccesses?.length || 0) > 0) {
+      finalUser = { ...userData, shopId: userData.shopAccesses![0].shopId };
     }
+
+    // Sauvegarder le user complet pour éviter /auth/me au prochain démarrage
+    localStorage.setItem("user", JSON.stringify(finalUser));
 
     setUser(finalUser);
     setIsAuthenticated(true);
@@ -101,24 +167,16 @@ export function useAuth() {
       router.push("/admin"); // Lecture seule, même interface admin
     else router.push("/admin"); // Fallback pour tout rôle inconnu
 
-    return user;
+    return finalUser;
   };
 
   const logout = async () => {
     try {
       await AuthService.logout();
-    } catch (e) {
-      console.error("Logout error", e);
+    } catch {
+      // Silencieux
     }
-    Cookies.remove("access_token");
-    Cookies.remove("token");
-    Cookies.remove("userRole");
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user_id");
-    localStorage.removeItem("user");
-    localStorage.removeItem("userRole");
+    _clearStorage();
     setUser(null);
     setIsAuthenticated(false);
     router.push("/login");
@@ -131,4 +189,19 @@ export function useAuth() {
     logout,
     role: user?.role as UserRole,
   };
+}
+
+/** Nettoie tous les tokens et données utilisateur */
+function _clearStorage() {
+  Cookies.remove("access_token");
+  Cookies.remove("token");
+  Cookies.remove("userRole");
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("user");
+    localStorage.removeItem("userRole");
+  }
 }

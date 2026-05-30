@@ -518,12 +518,20 @@ export default function SuperCaissePage() {
     setLoading(true);
     try {
       let prodRes;
-      try { prodRes = await ProductService.getAll({ shopId: user.shopId, limit: 1000 }); }
-      catch { prodRes = await ProductService.getAll({ shopId: user.shopId }); }
+      try {
+        prodRes = await ProductService.getAll({ shopId: user.shopId, limit: 200 });
+      } catch (err) {
+        console.warn("Retrying ProductService.getAll without limit due to backend error:", err);
+        prodRes = await ProductService.getAll({ shopId: user.shopId });
+      }
 
       let catRes;
-      try { catRes = await CategoryService.getByShop(user.shopId, { limit: 1000 }); }
-      catch { catRes = await CategoryService.getByShop(user.shopId); }
+      try {
+        catRes = await CategoryService.getAll({ limit: 200 });
+      } catch (err) {
+        console.warn("Retrying CategoryService.getAll without limit due to backend error:", err);
+        catRes = await CategoryService.getAll();
+      }
 
       const [shopRes, custRes] = await Promise.all([
         user.shopId
@@ -1156,6 +1164,68 @@ export default function SuperCaissePage() {
           />
         </div>
       </div>
+      {/* Modal des Paniers en attente */}
+      {showPendingModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="p-5 border-b border-zinc-150 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900/50">
+              <div className="flex items-center gap-2.5">
+                <Clock className="h-5 w-5 text-amber-500" />
+                <div>
+                  <h3 className="text-sm font-black text-zinc-900 dark:text-zinc-50 uppercase tracking-wider">Paniers en attente</h3>
+                  <p className="text-[10px] text-zinc-400 font-bold mt-0.5">{pendingCarts.length} paniers suspendus</p>
+                </div>
+              </div>
+              <button onClick={() => setShowPendingModal(false)} className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors">
+                <X className="h-4 w-4 text-zinc-400" />
+              </button>
+            </div>
+            
+            <div className="p-4 max-h-[360px] overflow-y-auto flex flex-col gap-2.5">
+              {pendingCarts.map((item) => (
+                <div key={item.id} className="p-4 bg-zinc-50 dark:bg-zinc-850 rounded-2xl border border-zinc-150/40 dark:border-zinc-800 flex justify-between items-center group">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-black text-zinc-800 dark:text-zinc-200 truncate">{item.name}</span>
+                      <span className="text-[9px] font-bold text-zinc-400 bg-zinc-200/50 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{item.timestamp}</span>
+                    </div>
+                    <p className="text-[9px] font-bold text-zinc-400 mt-1">
+                      {item.items.reduce((acc, it) => acc + it.quantity, 0)} articles • {item.total.toLocaleString()} XOF
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleRestoreCart(item)}
+                      className="px-3 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                    >
+                      Récupérer
+                    </button>
+                    <button
+                      onClick={() => handleDeletePendingCart(item.id, item.name)}
+                      className="p-2 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-xl transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              
+              {pendingCarts.length === 0 && (
+                <div className="py-12 flex flex-col items-center justify-center opacity-30 text-center">
+                  <Clock className="h-10 w-10 text-zinc-400 mb-2" />
+                  <p className="text-xs font-black uppercase tracking-widest">Aucun panier suspendu</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/50 border-t border-zinc-150 dark:border-zinc-800 flex justify-end">
+              <Button onClick={() => setShowPendingModal(false)} variant="outline" size="sm" className="text-[10px] font-black tracking-widest uppercase">
+                Fermer
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

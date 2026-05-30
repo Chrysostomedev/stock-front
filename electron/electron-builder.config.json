@@ -1,0 +1,35 @@
+{
+  "appId": "com.sp.services",
+  "productName": "SP Services",
+  "directories": {
+    "buildResources": "resources"
+  },
+  "files": [
+    "assets/**/*",
+    "build/**/*",
+    "capacitor.config.*",
+    "app/**/*"
+  ],
+  "publish": null,
+  "nsis": {
+    "allowElevation": true,
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "installerIcon": "assets/icons/icons/win/icon.ico",
+    "uninstallerIcon": "assets/icons/icons/win/icon.ico",
+    "installerHeaderIcon": "assets/icons/icons/win/icon.ico"
+  },
+  "win": {
+    "target": "nsis",
+    "icon": "assets/icons/icons/win/icon.ico"
+  },
+  "mac": {
+    "category": "public.app-category.business",
+    "target": "dmg",
+    "icon": "assets/icons/icons/mac/icon.icns"
+  },
+  "linux": {
+    "target": "AppImage",
+    "icon": "assets/icons/icons/png"
+  }
+}

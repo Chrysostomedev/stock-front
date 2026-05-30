@@ -1,48 +1,43 @@
 /**
- * ============================================================================
- * SERVICE : FOURNISSEURS (Suppliers)
- * ============================================================================
- * 
- * Gère les fournisseurs de la superette — les entreprises ou personnes
- * qui approvisionnent la boutique en produits.
- * 
- * Un fournisseur peut être lié à des bons de commande (purchase-orders)
- * pour suivre les approvisionnements et les dettes fournisseur.
- * 
- * Endpoints backend :
- *   POST   /api/v1/suppliers      → Créer un fournisseur
- *   GET    /api/v1/suppliers      → Lister tous (avec pagination)
- *   GET    /api/v1/suppliers/:id  → Détail d'un fournisseur
- *   PUT    /api/v1/suppliers/:id  → Modifier un fournisseur
- *   DELETE /api/v1/suppliers/:id  → Supprimer un fournisseur
- * 
- * @see back-spservice/src/modules/supplier
- * ============================================================================
+ * super/supplier.service.ts — Fournisseurs avec fallback offline
+ * ─────────────────────────────────────────────────────────────────────────────
+ * OFFLINE :
+ *  - create()  → enqueued (proxy Product/CREATE avec _type: "Supplier")
+ *  - getAll()  → cache localStorage
+ *  - getById() → cache localStorage
+ *  - update()  → enqueued (proxy Product/UPDATE)
+ *  - delete()  → enqueued (proxy Product/DELETE)
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import axiosInstance from "../../core/axios";
+import { withOfflineFallback, withOfflineCache } from "../../core/offline-wrapper";
 import { Supplier, CreateSupplierDto } from "../../types/super";
 
 const SupplierService = {
   /**
-   * Créer un nouveau fournisseur.
-   * 
-   * Le champ `name` est obligatoire (min 2 caractères, max 100).
-   * Tous les autres champs sont optionnels.
-   * 
-   * @param dto - Données du fournisseur (name, contact?, phone?, email?, address?, notes?)
-   * @returns Le fournisseur nouvellement créé
+   * Créer un fournisseur. OFFLINE : enqueued.
    */
   async create(dto: CreateSupplierDto): Promise<Supplier> {
-    const response = await axiosInstance.post("/suppliers", dto);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "Product", // proxy — Supplier n'est pas dans SyncQueue backend
+      operation: "CREATE",
+      payload: { _type: "Supplier", ...dto } as Record<string, unknown>,
+      apiCall: () =>
+        axiosInstance.post("/suppliers", dto).then((r) => r.data),
+      optimisticResult: {
+        ...dto,
+        id: `local_${Date.now()}`,
+        isActive: true,
+        syncStatus: "PENDING",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as unknown as Supplier,
+    });
   },
 
   /**
-   * Récupérer tous les fournisseurs avec pagination optionnelle.
-   * 
-   * @param params - Filtres optionnels (page, limit, search, isActive)
-   * @returns Liste paginée de fournisseurs ou tableau direct
+   * Lister les fournisseurs. OFFLINE : cache.
    */
   async getAll(params?: {
     page?: number;
@@ -50,46 +45,56 @@ const SupplierService = {
     search?: string;
     isActive?: boolean;
   }): Promise<any> {
-    const response = await axiosInstance.get("/suppliers", { params });
-    return response.data;
+    return withOfflineCache(
+      `suppliers_${JSON.stringify(params ?? {})}`,
+      () =>
+        axiosInstance.get("/suppliers", { params }).then((r) => r.data),
+      { data: [], total: 0 }
+    );
   },
 
   /**
-   * Récupérer un fournisseur par son ID.
-   * 
-   * @param id - UUID du fournisseur
-   * @returns Détail complet du fournisseur
-   * @throws 404 si le fournisseur n'existe pas
+   * Détail d'un fournisseur. OFFLINE : cache.
    */
   async getById(id: string): Promise<Supplier> {
-    const response = await axiosInstance.get(`/suppliers/${id}`);
-    return response.data;
+    return withOfflineCache(
+      `supplier_${id}`,
+      () => axiosInstance.get(`/suppliers/${id}`).then((r) => r.data)
+    );
   },
 
   /**
-   * Mettre à jour un fournisseur existant.
-   * 
-   * @param id - UUID du fournisseur
-   * @param dto - Champs à mettre à jour (partiel)
-   * @returns Le fournisseur mis à jour
+   * Mettre à jour un fournisseur. OFFLINE : enqueued.
    */
   async update(id: string, dto: Partial<CreateSupplierDto>): Promise<Supplier> {
-    const response = await axiosInstance.put(`/suppliers/${id}`, dto);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "Product",
+      operation: "UPDATE",
+      payload: { _type: "Supplier", id, ...dto } as Record<string, unknown>,
+      apiCall: () =>
+        axiosInstance.put(`/suppliers/${id}`, dto).then((r) => r.data),
+      optimisticResult: {
+        id,
+        ...dto,
+        syncStatus: "PENDING",
+        updatedAt: new Date().toISOString(),
+      } as unknown as Supplier,
+    });
   },
 
   /**
-   * Supprimer un fournisseur.
-   * 
-   * ⚠️ Attention : La suppression peut échouer si le fournisseur est lié
-   * à des bons de commande existants (intégrité référentielle).
-   * 
-   * @param id - UUID du fournisseur
-   * @returns Confirmation de suppression
+   * Supprimer un fournisseur. OFFLINE : enqueued.
+   * ⚠️ Peut échouer à la sync si lié à des bons de commande.
    */
   async delete(id: string): Promise<{ success: boolean; message: string }> {
-    const response = await axiosInstance.delete(`/suppliers/${id}`);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "Product",
+      operation: "DELETE",
+      payload: { _type: "Supplier", id },
+      apiCall: () =>
+        axiosInstance.delete(`/suppliers/${id}`).then((r) => r.data),
+      optimisticResult: { success: true, message: "Supprimé localement" },
+    });
   },
 };
 

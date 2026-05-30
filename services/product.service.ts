@@ -1,8 +1,13 @@
-import axiosInstance from "../core/axios";
-
 /**
- * Interface pour un produit telle que retournée par le backend
+ * product.service.ts — Service produits avec fallback offline
+ * ─────────────────────────────────────────────────────────────────────────────
+ * CREATE / UPDATE / DELETE → enqueued en offline
+ * GET → cache localStorage (TTL 24h)
+ * ─────────────────────────────────────────────────────────────────────────────
  */
+import axiosInstance from "../core/axios";
+import { withOfflineFallback, withOfflineCache } from "../core/offline-wrapper";
+
 export interface Product {
   id: string;
   name: string;
@@ -23,13 +28,11 @@ export interface Product {
   unitId?: string;
   category?: { name: string };
   shop?: { name: string };
+  syncStatus?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-/**
- * DTO pour la création d'un produit
- */
 export interface CreateProductDto {
   name: string;
   barcode?: string;
@@ -51,106 +54,111 @@ export interface CreateProductDto {
 
 const ProductService = {
   /**
-   * Récupérer tous les produits avec filtres
+   * Récupérer tous les produits avec pagination automatique.
+   * OFFLINE : retourne le cache.
    */
   async getAll(params?: any) {
-    try {
-      const response = await axiosInstance.get("/products", { params });
-      return response.data;
-    } catch (err: any) {
-      console.warn("ProductService.getAll failed with params, trying auto-pagination fallback:", err);
-      try {
-        const cleanParams = { ...params };
-        delete cleanParams.limit;
-        
-        const firstPageResponse = await axiosInstance.get("/products", { 
-          params: { ...cleanParams, page: 1 } 
-        });
-        
-        const resData = firstPageResponse.data;
-        const total = resData.total || 0;
-        const limit = resData.limit || 10;
-        const totalPages = resData.totalPages || Math.ceil(total / limit);
-        
-        const firstPageList = resData.data || resData;
-        const allData = Array.isArray(firstPageList) ? [...firstPageList] : [];
-        
-        if (totalPages <= 1 || !Array.isArray(resData.data)) {
-          return {
-            ...resData,
-            data: allData
-          };
-        }
-        
-        const pagePromises = [];
-        for (let p = 2; p <= totalPages; p++) {
-          pagePromises.push(
-            axiosInstance.get("/products", { params: { ...cleanParams, page: p } })
-          );
-        }
-        
-        const pagesResults = await Promise.all(pagePromises);
-        pagesResults.forEach((pageRes) => {
-          const pageList = pageRes.data?.data || pageRes.data;
-          if (Array.isArray(pageList)) {
-            allData.push(...pageList);
+    const cacheKey = `products_${JSON.stringify(params ?? {})}`;
+    return withOfflineCache(
+      cacheKey,
+      async () => {
+        try {
+          const response = await axiosInstance.get("/products", { params });
+          return response.data;
+        } catch {
+          // Fallback pagination automatique
+          const firstPage = await axiosInstance.get("/products", {
+            params: { ...params, page: 1 },
+          });
+          const resData = firstPage.data;
+          const totalPages = resData.totalPages ?? 1;
+          const allData = [...(resData.data ?? [])];
+          if (totalPages > 1) {
+            const pages = await Promise.all(
+              Array.from({ length: totalPages - 1 }, (_, i) =>
+                axiosInstance.get("/products", {
+                  params: { ...params, page: i + 2 },
+                })
+              )
+            );
+            pages.forEach((p) => allData.push(...(p.data?.data ?? [])));
           }
-        });
-        
-        return {
-          ...resData,
-          data: allData,
-          page: 1,
-          limit: allData.length,
-          totalPages: 1,
-          total: allData.length
-        };
-      } catch (fallbackError) {
-        console.error("Auto-pagination fallback failed:", fallbackError);
-        throw err;
-      }
-    }
+          return { ...resData, data: allData, totalPages: 1 };
+        }
+      },
+      { data: [], total: 0, page: 1, limit: 10, totalPages: 0 }
+    );
   },
 
-  /**
-   * Récupérer un produit par ID
-   */
+  /** Récupérer un produit par ID. OFFLINE : cache. */
   async getById(id: string): Promise<Product> {
-    const response = await axiosInstance.get(`/products/${id}`);
-    return response.data;
+    return withOfflineCache(
+      `product_${id}`,
+      () => axiosInstance.get(`/products/${id}`).then((r) => r.data)
+    );
   },
 
-  /**
-   * Créer un nouveau produit
-   */
+  /** Créer un produit. OFFLINE : enqueued. */
   async create(data: CreateProductDto): Promise<Product> {
-    const response = await axiosInstance.post("/products", data);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "Product",
+      operation: "CREATE",
+      payload: data as unknown as Record<string, unknown>,
+      apiCall: () => axiosInstance.post("/products", data).then((r) => r.data),
+      optimisticResult: {
+        ...data,
+        id: `local_${Date.now()}`,
+        stockQty: data.stockQty ?? 0,
+        minStockQty: data.minStockQty ?? 5,
+        hasBatchTracking: data.hasBatchTracking ?? false,
+        isActive: data.isActive ?? true,
+        syncStatus: "PENDING",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as Product,
+    });
   },
 
-  /**
-   * Mettre à jour un produit
-   */
+  /** Mettre à jour un produit. OFFLINE : enqueued. */
   async update(id: string, data: Partial<CreateProductDto>): Promise<Product> {
-    const response = await axiosInstance.put(`/products/${id}`, data);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "Product",
+      operation: "UPDATE",
+      payload: { id, ...data } as Record<string, unknown>,
+      apiCall: () =>
+        axiosInstance.put(`/products/${id}`, data).then((r) => r.data),
+      optimisticResult: {
+        id,
+        ...data,
+        syncStatus: "PENDING",
+        updatedAt: new Date().toISOString(),
+      } as unknown as Product,
+    });
   },
 
-  /**
-   * Supprimer un produit
-   */
+  /** Supprimer un produit. OFFLINE : enqueued. */
   async delete(id: string) {
-    const response = await axiosInstance.delete(`/products/${id}`);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "Product",
+      operation: "DELETE",
+      payload: { id },
+      apiCall: () =>
+        axiosInstance.delete(`/products/${id}`).then((r) => r.data),
+      optimisticResult: { success: true, id, syncStatus: "PENDING" },
+    });
   },
 
-  /**
-   * Récupérer les alertes de stock pour une boutique
-   */
+  /** Alertes stock. OFFLINE : cache. */
   async getStockAlerts(shopId: string): Promise<Product[]> {
-    const response = await axiosInstance.get(`/products/alerts/${shopId}`);
-    return response.data;
-  }
+    return withOfflineCache(
+      `stock_alerts_${shopId}`,
+      () =>
+        axiosInstance
+          .get(`/products/alerts/${shopId}`)
+          .then((r) => r.data),
+      []
+    );
+  },
 };
 
 export default ProductService;

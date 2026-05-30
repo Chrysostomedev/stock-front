@@ -1,47 +1,54 @@
+/**
+ * quinc/sale.service.ts — Ventes quincaillerie avec fallback offline
+ */
 import axiosInstance from "../../core/axios";
+import { withOfflineFallback, withOfflineCache } from "../../core/offline-wrapper";
 import { Sale } from "../../types/quinc";
 
 class QuincSaleService {
-  /**
-   * Crée une nouvelle vente (Caisse ou Devis)
-   */
+  /** Créer une vente. OFFLINE : enqueued + résultat optimiste. */
   async create(data: Partial<Sale>): Promise<Sale> {
-    try {
-      const response = await axiosInstance.post("/sales", data);
-      return response.data;
-    } catch (error) {
-      console.error("Erreur lors de la création de la vente:", error);
-      throw error;
-    }
+    return withOfflineFallback({
+      entityType: "Sale",
+      operation: "CREATE",
+      payload: data as Record<string, unknown>,
+      apiCall: () => axiosInstance.post("/sales", data).then((r) => r.data),
+      optimisticResult: {
+        ...data,
+        id: `local_${Date.now()}`,
+        receiptNumber: `SP-OFFLINE-${Date.now()}`,
+        status: "COMPLETED",
+        syncStatus: "PENDING",
+        createdAt: new Date().toISOString(),
+      } as unknown as Sale,
+    });
   }
 
-  /**
-   * Récupère les ventes d'une quincaillerie avec des filtres (par défaut du jour)
-   */
+  /** Lister les ventes. OFFLINE : cache. */
   async getAll(shopId: string, filters?: any): Promise<Sale[]> {
-    try {
-      const response = await axiosInstance.get("/sales", {
-        params: { shopId, ...filters },
-      });
-      const data = response.data?.data || response.data;
-      return Array.isArray(data) ? data : [];
-    } catch (error) {
-      console.error("Erreur lors de la récupération des ventes:", error);
-      throw error;
-    }
+    return withOfflineCache(
+      `quinc_sales_${shopId}_${JSON.stringify(filters ?? {})}`,
+      async () => {
+        const response = await axiosInstance.get("/sales", {
+          params: { shopId, ...filters },
+        });
+        const data = response.data?.data || response.data;
+        return Array.isArray(data) ? data : [];
+      },
+      []
+    );
   }
 
-  /**
-   * Annule une vente (VOID)
-   */
+  /** Annuler une vente. OFFLINE : enqueued. */
   async voidSale(id: string): Promise<Sale> {
-    try {
-      const response = await axiosInstance.patch(`/sales/${id}/void`);
-      return response.data;
-    } catch (error) {
-      console.error("Erreur lors de l'annulation de la vente:", error);
-      throw error;
-    }
+    return withOfflineFallback({
+      entityType: "Sale",
+      operation: "UPDATE",
+      payload: { id, status: "VOIDED" },
+      apiCall: () =>
+        axiosInstance.patch(`/sales/${id}/void`).then((r) => r.data),
+      optimisticResult: { id, status: "VOIDED", syncStatus: "PENDING" } as unknown as Sale,
+    });
   }
 }
 

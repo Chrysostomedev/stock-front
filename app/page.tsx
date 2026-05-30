@@ -76,9 +76,10 @@ export default function Home() {
         "#3B82F6"
       ],
       transition: {
-        type: "spring" as const,
-        stiffness: 300,
-        damping: 12
+        y: { type: "spring" as const, stiffness: 300, damping: 12 },
+        scale: { type: "spring" as const, stiffness: 300, damping: 12 },
+        rotate: { duration: 0.4, ease: "easeInOut" as const },
+        color: { duration: 0.8, ease: "easeInOut" as const }
       }
     }
   };

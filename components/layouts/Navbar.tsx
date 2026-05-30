@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Bell, UserCircle, LogOut, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebar } from "@/contexts/SidebarContext";
+// Badge réseau : affiche l'état online/offline + items en attente de sync
+import NetworkStatusBadge from "@/components/ui/NetworkStatusBadge";
 
 interface NavbarProps {
   title: string;
@@ -54,6 +56,9 @@ export default function Navbar({ title, subtitle, backUrl, rightElement }: Navba
 
         {/* Right Part: Profile, Notification or Custom Element */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
+          {/* Badge réseau — toujours visible, compact en mobile */}
+          <NetworkStatusBadge variant="badge" showSyncButton={true} />
+
           {rightElement ? (
             rightElement
           ) : (

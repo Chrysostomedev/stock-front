@@ -1,86 +1,81 @@
 /**
- * ============================================================================
- * SERVICE : VERSEMENTS CLIENTS (Credit Payments)
- * ============================================================================
- * 
- * Gère les paiements de crédit des clients fidèles.
- * 
- * Quand un client achète à crédit, sa dette (totalDebt) augmente.
- * Quand il effectue un versement via ce service, sa dette diminue
- * automatiquement grâce au backend (opération atomique).
- * 
- * Cas d'usage :
- *   - Client VIP qui paye en fin de mois
- *   - Client qui fait un acompte
- *   - Remboursement partiel ou total
- * 
- * Endpoints backend :
- *   POST   /api/v1/credit-payments                      → Enregistrer un versement
- *   GET    /api/v1/credit-payments/paginate             → Paginer les versements
- *   GET    /api/v1/credit-payments/customer/:customerId → Historique d'un client
- *   GET    /api/v1/credit-payments/:id                  → Détail d'un versement
- * 
- * @see back-spservice/src/modules/credit-payment
- * ============================================================================
+ * super/creditPayment.service.ts — Versements clients avec fallback offline
+ * ─────────────────────────────────────────────────────────────────────────────
+ * OFFLINE :
+ *  - create()       → enqueued (CreditPayment/CREATE)
+ *  - paginate()     → cache localStorage
+ *  - getByCustomer()→ cache localStorage
+ *  - getById()      → cache localStorage
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 import axiosInstance from "../../core/axios";
+import { withOfflineFallback, withOfflineCache } from "../../core/offline-wrapper";
 import { CreditPayment, CreateCreditPaymentDto } from "../../types/super";
 
 const CreditPaymentService = {
   /**
-   * Enregistrer un nouveau versement (remboursement de dette client).
-   * 
-   * ⚠️ Le backend réduit automatiquement le champ `totalDebt` du client.
-   * Le montant ne peut pas dépasser la dette actuelle du client.
-   * 
-   * @param dto - Données du versement (customerId, amount, method, reference?, notes?)
-   * @returns Le versement enregistré
-   * @throws 400 si le montant dépasse la dette du client
+   * Enregistrer un versement (remboursement de dette client).
+   * OFFLINE : enqueued → résultat optimiste.
+   * ⚠️ Le backend réduit automatiquement totalDebt du client à la sync.
    */
   async create(dto: CreateCreditPaymentDto): Promise<CreditPayment> {
-    const response = await axiosInstance.post("/credit-payments", dto);
-    return response.data;
+    return withOfflineFallback({
+      entityType: "CreditPayment",
+      operation: "CREATE",
+      payload: dto as unknown as Record<string, unknown>,
+      apiCall: () =>
+        axiosInstance.post("/credit-payments", dto).then((r) => r.data),
+      optimisticResult: {
+        ...dto,
+        id: `local_${Date.now()}`,
+        syncStatus: "PENDING",
+        createdAt: new Date().toISOString(),
+      } as unknown as CreditPayment,
+    });
   },
 
   /**
-   * Paginer tous les versements avec filtres.
-   * 
-   * @param params - Paramètres de pagination (page, limit, customerId?)
-   * @returns Résultat paginé { data: [], meta: { total, page, limit } }
+   * Paginer les versements. OFFLINE : cache.
    */
   async paginate(params?: {
     page?: number;
     limit?: number;
     customerId?: string;
   }): Promise<any> {
-    const response = await axiosInstance.get("/credit-payments/paginate", { params });
-    return response.data;
+    return withOfflineCache(
+      `credit_payments_paginate_${JSON.stringify(params ?? {})}`,
+      () =>
+        axiosInstance
+          .get("/credit-payments/paginate", { params })
+          .then((r) => r.data),
+      { data: [], total: 0, page: 1, limit: 10, totalPages: 0 }
+    );
   },
 
   /**
-   * Récupérer l'historique des versements d'un client spécifique.
-   * 
-   * Utile dans la fiche client pour voir tous les remboursements
-   * effectués, avec les dates et les montants.
-   * 
-   * @param customerId - UUID du client
-   * @returns Liste des versements ordonnés par date décroissante
+   * Historique des versements d'un client. OFFLINE : cache.
    */
   async getByCustomer(customerId: string): Promise<CreditPayment[]> {
-    const response = await axiosInstance.get(`/credit-payments/customer/${customerId}`);
-    return response.data;
+    return withOfflineCache(
+      `credit_payments_customer_${customerId}`,
+      () =>
+        axiosInstance
+          .get(`/credit-payments/customer/${customerId}`)
+          .then((r) => r.data),
+      []
+    );
   },
 
   /**
-   * Récupérer les détails d'un versement par son ID.
-   * 
-   * @param id - UUID du versement
-   * @returns Détail du versement incluant les infos client
+   * Détail d'un versement. OFFLINE : cache.
    */
   async getById(id: string): Promise<CreditPayment> {
-    const response = await axiosInstance.get(`/credit-payments/${id}`);
-    return response.data;
+    return withOfflineCache(
+      `credit_payment_${id}`,
+      () =>
+        axiosInstance.get(`/credit-payments/${id}`).then((r) => r.data)
+    );
   },
 };
 
