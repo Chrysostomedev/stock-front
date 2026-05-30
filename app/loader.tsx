@@ -15,7 +15,7 @@ export default function Loader({ size = "md", text }: LoaderProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 p-4">
       <div
-        className={`${sizeClasses[size]} border-zinc-200 border-t-emerald-500 rounded-full animate-spin`}
+        className={`${sizeClasses[size]} border-zinc-200 border-t-blue-500 rounded-full animate-spin`}
         role="status"
       />
       {text && (
