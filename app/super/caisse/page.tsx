@@ -1,5 +1,6 @@
 "use client";
 
+import Button from "@/components/ui/Button";
 import React, { useState, useEffect, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import AppLayout from "@/components/layouts/AppLayout";
@@ -21,7 +22,8 @@ import {
   ShoppingCart, Search, Plus, Minus, CheckCircle2,
   Smartphone, Banknote, Wallet, User, X, LayoutGrid,
   List, Apple, Droplets, ShoppingBag, Package,
-  ChevronUp, Scissors, RefreshCw,
+  ChevronUp, Scissors, RefreshCw,  Trash2,
+  Clock
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────────────────
@@ -464,6 +466,9 @@ export default function SuperCaissePage() {
   const { showToast } = useToast();
   const { user } = useAuth();
   const componentRef = useRef<HTMLDivElement>(null);
+// États pour les paniers en attente
+  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [pendingCarts, setPendingCarts] = useState<any[]>([]);
 
   /* Données */
   const [products, setProducts] = useState<Product[]>([]);
@@ -683,6 +688,15 @@ export default function SuperCaissePage() {
     } finally { setIsProcessing(false); }
   };
 
+
+const handleRestoreCart = (item: any) => {
+    setCart(item.items);
+    setShowPendingModal(false);
+  };
+
+  const handleDeletePendingCart = (id: string, name: string) => {
+    setPendingCarts((prev) => prev.filter((c) => c.id !== id));
+  };
   /* ────────────────────────────────────────────────────────
      RENDU
   ──────────────────────────────────────────────────────── */
@@ -1190,7 +1204,7 @@ export default function SuperCaissePage() {
                       <span className="text-[9px] font-bold text-zinc-400 bg-zinc-200/50 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{item.timestamp}</span>
                     </div>
                     <p className="text-[9px] font-bold text-zinc-400 mt-1">
-                      {item.items.reduce((acc, it) => acc + it.quantity, 0)} articles • {item.total.toLocaleString()} XOF
+                      {item.items.reduce((acc: number, it: any) => acc + it.quantity, 0)} articles • {item.total.toLocaleString()} XOF
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

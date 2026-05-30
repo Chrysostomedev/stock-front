@@ -136,7 +136,7 @@ export function useAuth() {
     // Cookies (web)
     Cookies.set("access_token", accessToken, { expires: 7 });
     Cookies.set("token", accessToken, { expires: 7 });
-    Cookies.set("userRole", user.role, { expires: 7 });
+    Cookies.set("userRole", userData.role, { expires: 7 });
 
     // Stockage dans LocalStorage pour l'UI
     localStorage.setItem("access_token", accessToken);
@@ -159,13 +159,12 @@ export function useAuth() {
 
     // Redirection automatique selon le rôle
     // Backend roles : SUPER_ADMIN, ADMIN, MANAGER, CASHIER, AUDITOR
-    if (user.role === "SUPER_ADMIN" || user.role === "ADMIN")
-      router.push("/admin");
-    else if (user.role === "CASHIER") router.push("/super");
-    else if (user.role === "MANAGER") router.push("/quinc");
-    else if (user.role === "AUDITOR")
-      router.push("/admin"); // Lecture seule, même interface admin
-    else router.push("/admin"); // Fallback pour tout rôle inconnu
+   if (finalUser.role === "SUPER_ADMIN" || finalUser.role === "ADMIN")
+  router.push("/admin");
+else if (finalUser.role === "CASHIER") router.push("/super");
+else if (finalUser.role === "MANAGER") router.push("/quinc");
+else if (finalUser.role === "AUDITOR") router.push("/admin");
+else router.push("/admin");
 
     return finalUser;
   };

@@ -213,10 +213,9 @@ export default function SuperCommandesPage() {
             </div>
             <div className="w-full sm:w-auto">
               <button 
-                onClick={() => showToast("Filtre activé", "info")}
-                className="flex items-center gap-2 px-4 py-3 bg-zinc-100 dark:bg-zinc-800 rounded-2xl text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 hover:bg-primary/10 hover:text-primary transition-all cursor-pointer"
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 hover:bg-primary/10 hover:text-primary transition-all"
-              >
+  onClick={() => showToast("Filtre activé", "info")}
+  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 hover:bg-primary/10 hover:text-primary transition-all"
+>
                 <Calendar className="h-3.5 w-3.5" />
                 Mois en cours
               </button>

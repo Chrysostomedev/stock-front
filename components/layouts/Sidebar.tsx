@@ -149,7 +149,7 @@ export default function Sidebar() {
 
           {/* Navigation links */}
           <nav className="flex flex-col gap-1">
-            {links.map((link, idx) => {
+            {sidebarLinks.map((link, idx) => {
               const isActive = pathname === link.href;
               return (
                 <Link
@@ -166,7 +166,7 @@ export default function Sidebar() {
                   </Link>
                 );
               })}
-            </div>
+            
           </nav>
         </div>
 
