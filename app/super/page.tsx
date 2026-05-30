@@ -17,13 +17,12 @@ import {
   ArrowRight,
   TrendingUp,
   History,
-  RefreshCw,
-  CheckCircle2
+  RefreshCw
 } from "lucide-react";
 
 /**
  * Dashboard principal pour le module Supérette
- * Centralise les indicateurs clés de performance (KPI)
+ * Centralise les indicateurs clés de performance (KPI) et les raccourcis modules
  */
 export default function SuperDashboardPage() {
   const { user } = useAuth();
@@ -38,16 +37,14 @@ export default function SuperDashboardPage() {
     if (!user?.shopId) return;
     setLoading(true);
     try {
-      // Charger les ventes pour calculer le CA du jour
       const salesRes = await SaleService.getAll({ shopId: user.shopId });
       const sales = salesRes.data && Array.isArray(salesRes.data) ? salesRes.data : (Array.isArray(salesRes) ? salesRes : []);
 
       const today = new Date().toLocaleDateString();
       const todaySales = sales.filter((s: any) => new Date(s.createdAt).toLocaleDateString() === today);
 
-      const revenue = todaySales.reduce((acc: number, s: any) => acc + (s.totalAmount || s.total || 0), 0);
+      const revenue = todaySales.reduce((acc: number, s: any) => acc + Number(s.totalAmount || s.total || 0), 0);
 
-      // Charger les produits pour les alertes
       const prodRes = await ProductService.getAll({ shopId: user.shopId });
       const prods = prodRes.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
       const criticalCount = prods.filter((p: any) => p.stockQty <= p.minStockQty).length;
@@ -70,46 +67,58 @@ export default function SuperDashboardPage() {
 
   const modules = [
     {
-      title: "Caisse Supérette",
+      title: "Caisse",
+      fullTitle: "Caisse Supérette",
       description: "Interface de vente rapide avec calcul de monnaie automatique.",
-      icon: <ShoppingCart className="h-7 w-7 text-primary" />,
+      icon: <ShoppingCart className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />,
       href: "/super/caisse",
       color: "border-l-primary",
+      bgLight: "bg-primary/10",
     },
     {
-      title: "Gestion des Stocks",
+      title: "Stocks",
+      fullTitle: "Gestion des Stocks",
       description: "Suivi des arrivages, prix et quantités en rayon.",
-      icon: <Package className="h-7 w-7 text-emerald-600" />,
+      icon: <Package className="h-6 w-6 sm:h-7 sm:w-7 text-emerald-600" />,
       href: "/super/produits",
       color: "border-l-emerald-500",
+      bgLight: "bg-emerald-500/10",
     },
     {
-      title: "Historique des Ventes",
+      title: "Ventes",
+      fullTitle: "Historique des Ventes",
       description: "Consultez tous les tickets de caisse émis.",
-      icon: <FileText className="h-7 w-7 text-zinc-600" />,
+      icon: <FileText className="h-6 w-6 sm:h-7 sm:w-7 text-zinc-600" />,
       href: "/super/commandes",
       color: "border-l-zinc-500",
+      bgLight: "bg-zinc-500/10",
     },
     {
-      title: "Pertes & Périmés",
+      title: "Périmés",
+      fullTitle: "Pertes & Périmés",
       description: "Suivi des produits proches de la date limite ou cassés.",
-      icon: <AlertCircle className="h-7 w-7 text-red-600" />,
+      icon: <AlertCircle className="h-6 w-6 sm:h-7 sm:w-7 text-red-600" />,
       href: "/super/perimes",
       color: "border-l-red-500",
+      bgLight: "bg-red-500/10",
     },
     {
-      title: "Fidélité Clients",
+      title: "Fidélité",
+      fullTitle: "Fidélité Clients",
       description: "Gestion des points et remises clients réguliers.",
-      icon: <Users className="h-7 w-7 text-amber-600" />,
+      icon: <Users className="h-6 w-6 sm:h-7 sm:w-7 text-amber-600" />,
       href: "/super/fidelite",
       color: "border-l-amber-500",
+      bgLight: "bg-amber-500/10",
     },
     {
-      title: "Dépenses Boutique",
+      title: "Dépenses",
+      fullTitle: "Dépenses Boutique",
       description: "Petites charges opérationnelles quotidiennes.",
-      icon: <Wallet className="h-7 w-7 text-orange-600" />,
+      icon: <Wallet className="h-6 w-6 sm:h-7 sm:w-7 text-orange-600" />,
       href: "/super/depenses",
       color: "border-l-orange-500",
+      bgLight: "bg-orange-500/10",
     },
   ];
 
@@ -123,64 +132,89 @@ export default function SuperDashboardPage() {
         </button>
       }
     >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 max-w-7xl mx-auto">
-        {/* Métrique CA du jour */}
-        <div className="flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl shadow-sm">
-          <div className="p-3 bg-primary/10 text-primary rounded-xl">
+      {/* 📊 Section Indicateurs / KPI */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 sm:mb-8 max-w-7xl mx-auto">
+        {/* CA du jour */}
+        <div className="flex items-center gap-4 p-4 sm:p-5 bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl shadow-sm">
+          <div className="p-3 bg-primary/10 text-primary rounded-xl shrink-0">
             <TrendingUp className="h-5 w-5" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">CA du Jour</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-[9px] sm:text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-0.5">CA du Jour</span>
             <div className="flex items-baseline gap-1">
-              <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">
+              <h4 className="text-lg sm:text-xl font-black text-zinc-900 dark:text-zinc-50 truncate">
                 {new Intl.NumberFormat('fr-FR').format(stats.todayRevenue)}
               </h4>
-              <span className="text-xs font-bold text-zinc-400">XOF</span>
+              <span className="text-[10px] font-bold text-zinc-400">XOF</span>
             </div>
           </div>
         </div>
 
-        {/* Métrique Tickets */}
-        <div className="flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl shadow-sm">
-          <div className="p-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-xl">
+        {/* Tickets Émis */}
+        <div className="flex items-center gap-4 p-4 sm:p-5 bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl shadow-sm">
+          <div className="p-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-xl shrink-0">
             <History className="h-5 w-5" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-1">Tickets Émis</span>
-            <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">
-              {stats.todaySalesCount} <span className="text-sm font-medium text-zinc-500">tickets</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-[9px] sm:text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-0.5">Tickets Émis</span>
+            <h4 className="text-lg sm:text-xl font-black text-zinc-900 dark:text-zinc-50">
+              {stats.todaySalesCount} <span className="text-xs font-medium text-zinc-500">tickets</span>
             </h4>
           </div>
         </div>
 
-        {/* Métrique Alertes */}
-        <div className="flex items-center gap-4 p-5 bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl shadow-sm">
-          <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl">
+        {/* Alertes Stock */}
+        <div className="flex items-center gap-4 p-4 sm:p-5 bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800 rounded-2xl shadow-sm">
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl shrink-0">
             <AlertCircle className="h-5 w-5" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black text-red-500/80 uppercase tracking-widest mb-1">Alertes Stock</span>
-            <h4 className="text-xl font-black text-red-600">
-              {stats.criticalStockCount} <span className="text-sm font-medium text-red-500/70">articles</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-[9px] sm:text-[10px] font-black text-red-500/80 uppercase tracking-widest mb-0.5">Alertes Stock</span>
+            <h4 className="text-lg sm:text-xl font-black text-red-600">
+              {stats.criticalStockCount} <span className="text-xs font-medium text-red-500/70">articles</span>
             </h4>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-7xl mx-auto">
+      {/* 📱 💻 GRILLE DE MODULES MUTABLE (Grid de 3 sur mobile, cartes détaillées sur desktop) */}
+      <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 max-w-7xl mx-auto pb-10">
         {modules.map((mod, idx) => (
-          <Link href={mod.href} key={idx}>
-            <Card hoverable className={`p-6 flex flex-col h-full border-l-4 ${mod.color} transition-all group rounded-3xl bg-white dark:bg-zinc-900 shadow-sm hover:shadow-xl`}>
-              <div className="flex items-start justify-between mb-6">
-                <div className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+          <Link href={mod.href} key={idx} className="w-full">
+            <Card 
+              hoverable 
+              className={`
+                /* Style global & Desktop */
+                flex flex-col justify-between transition-all duration-300 group rounded-2xl sm:rounded-3xl bg-white dark:bg-zinc-900 shadow-sm hover:shadow-xl
+                
+                /* Ajustement Mobile : Grille à 3 icônes type Springboard */
+                p-3 items-center text-center h-auto border-t-4 sm:border-t-0 sm:border-l-4 ${mod.color}
+              `}
+            >
+              {/* Conteneur d'icône adaptatif */}
+              <div className="flex sm:w-full items-center justify-between mb-2 sm:mb-6">
+                <div className={`p-3 sm:p-4 bg-zinc-50 dark:bg-zinc-800 ${mod.bgLight} sm:bg-zinc-50 rounded-xl sm:rounded-2xl group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}>
                   {mod.icon}
                 </div>
-                <div className="h-10 w-10 flex items-center justify-center rounded-full bg-zinc-50 dark:bg-zinc-800 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                
+                {/* Flèche masquée sur mobile pour gagner de la place */}
+                <div className="hidden sm:flex h-10 w-10 items-center justify-center rounded-full bg-zinc-50 dark:bg-zinc-800 group-hover:bg-primary group-hover:text-white transition-all duration-300">
                   <ArrowRight className="h-5 w-5" />
                 </div>
               </div>
-              <h3 className="text-lg font-black text-zinc-900 dark:text-zinc-50 mb-2 tracking-tight uppercase tracking-tighter">{mod.title}</h3>
-              <p className="text-xs font-bold text-zinc-500 leading-relaxed">{mod.description}</p>
+              {/* Contenu textuel adaptatif */}
+              <div className="flex flex-col items-center sm:items-start w-full min-w-0">
+                {/* Titre court sur mobile, Titre complet sur Desktop */}
+                <h3 className="text-[11px] sm:text-lg font-black text-zinc-900 dark:text-zinc-50 tracking-tight uppercase sm:normal-case line-clamp-1 sm:line-clamp-none">
+                  <span className="block sm:hidden">{mod.title}</span>
+                  <span className="hidden sm:block">{mod.fullTitle}</span>
+                </h3>
+                
+                {/* Description masquée sur mobile */}
+                <p className="hidden sm:block text-xs font-bold text-zinc-500 leading-relaxed mt-2 text-left">
+                  {mod.description}
+                </p>
+              </div>
             </Card>
           </Link>
         ))}

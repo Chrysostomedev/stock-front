@@ -8,36 +8,81 @@ import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useToast } from "@/contexts/ToastContext";
-import { 
-  Plus, 
-  Search, 
-  Edit2, 
+import {
+  Plus,
+  Search,
+  Edit2,
   Power,
   Key,
   Phone,
   ShieldCheck,
   Building2,
   Trash2,
-  Clock
+  Clock,
+  User,
 } from "lucide-react";
 import { useUsers } from "@/hooks/admin/useUsers";
 import AdminShopService from "@/services/admin/shop.service";
 import { UserAccount, Shop } from "@/types/admin";
 import { UserRole } from "@/types/auth";
 
-export default function AdminUtilisateursPage() {
-  const { users, loading, error, shopAccesses, addUser, updateUser, deleteUser, toggleStatus, refresh, fetchShopAccesses } = useUsers();
+// Hook réactif pour détecter le mobile
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < breakpoint);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [breakpoint]);
+  return isMobile;
+}
 
-  const formatDate = (dateString?: string | Date) => {
-    if (!dateString) return "Jamais";
-    try {
-      return new Date(dateString).toLocaleString("fr-FR");
-    } catch (e) {
-      return "Jamais";
-    }
+// Couleur de badge selon le rôle
+function roleBadgeVariant(role: string): "secondary" | "outline" | "warning" {
+  if (role === "ADMIN" || role === "SUPER_ADMIN") return "secondary";
+  if (role === "AUDITOR") return "warning";
+  return "outline";
+}
+
+// Label lisible du rôle
+function roleLabel(role: string) {
+  const map: Record<string, string> = {
+    CASHIER: "Caissière",
+    MANAGER: "Gérant",
+    ADMIN: "Admin",
+    SUPER_ADMIN: "Super Admin",
+    AUDITOR: "Auditeur",
   };
+  return map[role] ?? role;
+}
+
+function formatDate(dateString?: string | Date) {
+  if (!dateString) return "Jamais";
+  try {
+    return new Date(dateString).toLocaleString("fr-FR");
+  } catch {
+    return "Jamais";
+  }
+}
+
+export default function AdminUtilisateursPage() {
+  const {
+    users,
+    loading,
+    error,
+    shopAccesses,
+    addUser,
+    updateUser,
+    deleteUser,
+    toggleStatus,
+    refresh,
+    fetchShopAccesses,
+  } = useUsers();
 
   const { showToast } = useToast();
+  const isMobile = useIsMobile();
+
   const [shops, setShops] = useState<Shop[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -45,16 +90,14 @@ export default function AdminUtilisateursPage() {
   const [isShopsModalOpen, setIsShopsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserAccount | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-console.log("shopAccesses",shopAccesses)
-  // Form state
+
   const [formData, setFormData] = useState<Partial<UserAccount>>({
     name: "",
-    username: "",
     phone: "",
     role: "CASHIER",
     pin: "1234",
     isActive: true,
-    shopId: ""
+    shopId: "",
   });
 
   useEffect(() => {
@@ -62,7 +105,7 @@ console.log("shopAccesses",shopAccesses)
       try {
         const response = await AdminShopService.getAllShops();
         const res = response as any;
-        const list = Array.isArray(res) ? res : (res.data || []);
+        const list = Array.isArray(res) ? res : res.data || [];
         setShops(list);
       } catch (err) {
         console.error("Failed to load shops", err);
@@ -80,7 +123,7 @@ console.log("shopAccesses",shopAccesses)
         role: selectedUser.role,
         pin: selectedUser.pin,
         isActive: selectedUser.isActive,
-        shopId: selectedUser.shopId
+        shopId: selectedUser.shopId,
       });
     } else {
       setFormData({
@@ -90,7 +133,7 @@ console.log("shopAccesses",shopAccesses)
         role: "CASHIER",
         pin: "1234",
         isActive: true,
-        shopId: ""
+        shopId: "",
       });
     }
   }, [selectedUser, isModalOpen]);
@@ -110,21 +153,114 @@ console.log("shopAccesses",shopAccesses)
     }
   };
 
-  const filteredUsers = Array.isArray(users) ? users.filter(u => {
-    if (!u) return false;
-    const nameMatch = u.name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const usernameMatch = u.username?.toLowerCase().includes(searchTerm.toLowerCase());
-    const phoneMatch = u.phone?.includes(searchTerm);
-    return nameMatch || usernameMatch || phoneMatch;
-  }) : [];
+  const filteredUsers = Array.isArray(users)
+    ? users.filter((u) => {
+        if (!u) return false;
+        return (
+          u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          u.phone?.includes(searchTerm)
+        );
+      })
+    : [];
 
-  const columns: { header: string; accessor: keyof UserAccount | ((item: UserAccount) => React.ReactNode); className?: string }[] = [
+  // Initiales de l'utilisateur
+  const initials = (u: UserAccount) =>
+    (u.name ? u.name[0] : u.username?.[0] ?? "?").toUpperCase();
+
+  // ---- VUE CARTE MOBILE ----
+  const MobileUserCard = ({ u }: { u: UserAccount }) => (
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-2xl p-4 shadow-sm">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-black text-primary shrink-0">
+            {initials(u)}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-black text-foreground truncate">{u.name}</p>
+            <p className="text-[10px] text-zinc-400 font-bold tracking-wider truncate">{u.username}</p>
+          </div>
+        </div>
+        <Badge variant={u.isActive ? "success" : "outline"} className="shrink-0">
+          {u.isActive ? "Actif" : "Inactif"}
+        </Badge>
+      </div>
+
+      {/* Infos */}
+      <div className="flex flex-col gap-1.5 mb-4">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+          <Badge variant={roleBadgeVariant(u.role)}>{roleLabel(u.role)}</Badge>
+        </div>
+        {u.phone && (
+          <div className="flex items-center gap-2">
+            <Phone className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+            <span className="text-xs font-bold text-zinc-600 dark:text-zinc-300">{u.phone}</span>
+          </div>
+        )}
+        {u.lastLoginAt && (
+          <div className="flex items-center gap-2">
+            <Clock className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+            <span className="text-[10px] text-zinc-400 font-bold">{formatDate(u.lastLoginAt)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-1 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+        <button
+          onClick={() => { setSelectedUser(u); setIsModalOpen(true); }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-primary transition-all"
+        >
+          <Edit2 className="h-3.5 w-3.5" />
+          Modifier
+        </button>
+        <button
+          onClick={() => {
+            setSelectedUser(u);
+            setIsShopsModalOpen(true);
+            if (u.id) fetchShopAccesses(u.id);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:text-blue-600 transition-all"
+        >
+          <Building2 className="h-3.5 w-3.5" />
+          Boutiques
+        </button>
+        <button
+          onClick={() => { setSelectedUser(u); setIsConfirmOpen(true); }}
+          className={`p-2 rounded-lg transition-all ${
+            u.isActive
+              ? "hover:bg-red-50 text-zinc-400 hover:text-red-600"
+              : "hover:bg-green-50 text-zinc-400 hover:text-green-600"
+          }`}
+          title={u.isActive ? "Désactiver" : "Activer"}
+        >
+          <Power className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={() => { setSelectedUser(u); setIsDeleteConfirmOpen(true); }}
+          className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg text-zinc-400 hover:text-red-600 transition-all"
+          title="Supprimer"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+
+  // ---- COLONNES DESKTOP ----
+  const columns: {
+    header: string;
+    accessor: keyof UserAccount | ((item: UserAccount) => React.ReactNode);
+    className?: string;
+  }[] = [
     {
       header: "Utilisateur",
       accessor: (u: UserAccount) => (
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary">
-            {u.name ? u.name[0] : u.username[0]}
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary shrink-0">
+            {initials(u)}
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-black text-foreground">{u.name}</span>
@@ -138,9 +274,7 @@ console.log("shopAccesses",shopAccesses)
       accessor: (u: UserAccount) => (
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-3 w-3 text-zinc-400" />
-          <Badge variant={u.role === "ADMIN" || u.role === "SUPER_ADMIN" ? "secondary" : "outline"}>
-            {u.role}
-          </Badge>
+          <Badge variant={roleBadgeVariant(u.role)}>{roleLabel(u.role)}</Badge>
         </div>
       ),
     },
@@ -165,32 +299,36 @@ console.log("shopAccesses",shopAccesses)
       header: "Actions",
       accessor: (u: UserAccount) => (
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={() => { setSelectedUser(u); setIsModalOpen(true); }}
             className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-primary transition-all"
             title="Modifier"
           >
             <Edit2 className="h-4 w-4" />
           </button>
-          <button 
-            onClick={() => { 
-              setSelectedUser(u); 
-              setIsShopsModalOpen(true); 
-              if (u.id) fetchShopAccesses(u.id); 
+          <button
+            onClick={() => {
+              setSelectedUser(u);
+              setIsShopsModalOpen(true);
+              if (u.id) fetchShopAccesses(u.id);
             }}
             className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-blue-500 transition-all"
             title="Voir les boutiques"
           >
             <Building2 className="h-4 w-4" />
           </button>
-          <button 
+          <button
             onClick={() => { setSelectedUser(u); setIsConfirmOpen(true); }}
-            className={`p-2 rounded-lg transition-all ${u.isActive ? 'hover:bg-red-50 text-zinc-400 hover:text-red-600' : 'hover:bg-green-50 text-zinc-400 hover:text-green-600'}`}
+            className={`p-2 rounded-lg transition-all ${
+              u.isActive
+                ? "hover:bg-red-50 text-zinc-400 hover:text-red-600"
+                : "hover:bg-green-50 text-zinc-400 hover:text-green-600"
+            }`}
             title={u.isActive ? "Désactiver" : "Activer"}
           >
             <Power className="h-4 w-4" />
           </button>
-          <button 
+          <button
             onClick={() => { setSelectedUser(u); setIsDeleteConfirmOpen(true); }}
             className="p-2 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg text-zinc-400 hover:text-red-600 transition-all"
             title="Supprimer"
@@ -202,27 +340,33 @@ console.log("shopAccesses",shopAccesses)
       className: "text-right",
     },
   ];
+
   return (
     <AppLayout
       title="Gestion des Utilisateurs"
       subtitle="Créez et gérez les accès des caissiers et gérants"
       rightElement={
-        <Button variant="primary" size="sm" onClick={() => { setSelectedUser(null); setIsModalOpen(true); }}>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => { setSelectedUser(null); setIsModalOpen(true); }}
+        >
           <Plus className="h-4 w-4 mr-2" />
-          Nouvel Utilisateur
+          {isMobile ? "Nouveau" : "Nouvel Utilisateur"}
         </Button>
       }
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 pb-24 md:pb-12">
         {error && (
           <div className="p-4 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100">
             {error}
             <button onClick={refresh} className="ml-4 underline">Réessayer</button>
           </div>
         )}
-        
-        <Card className="p-6">
-          <div className="relative max-w-md mb-6">
+
+        <Card className="p-4 md:p-6">
+          {/* Barre de recherche */}
+          <div className="relative mb-5">
             <Search className="absolute left-4 top-3 h-4 w-4 text-zinc-400" />
             <input
               type="text"
@@ -232,64 +376,70 @@ console.log("shopAccesses",shopAccesses)
               className="w-full pl-11 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
             />
           </div>
-          
+
           {loading ? (
             <div className="py-20 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
               Chargement des utilisateurs...
             </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="py-16 text-center">
+              <User className="h-10 w-10 text-zinc-200 dark:text-zinc-700 mx-auto mb-3" />
+              <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                Aucun utilisateur trouvé
+              </p>
+            </div>
+          ) : isMobile ? (
+            // ---- VUE MOBILE : cartes ----
+            <div className="flex flex-col gap-3">
+              {filteredUsers.map((u) => (
+                <MobileUserCard key={u.id} u={u} />
+              ))}
+            </div>
           ) : (
+            // ---- VUE DESKTOP : tableau ----
             <DataTable columns={columns} data={filteredUsers} />
           )}
         </Card>
       </div>
 
-      {/* Add/Edit User Modal */}
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      {/* ---- MODAL Ajout / Modification ---- */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         title={selectedUser ? "Modifier Utilisateur" : "Nouvel Utilisateur"}
       >
         <div className="flex flex-col gap-4">
+          {/* Nom complet */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-black text-zinc-500 uppercase">Nom complet</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Ex: Jean Dupont"
               className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
             />
           </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Identifiant (Login)</label>
-              <input 
-                type="text" 
-                value={formData.username}
-                onChange={(e) => setFormData({...formData, username: e.target.value})}
-                placeholder="Ex: j.dupont"
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Téléphone</label>
-              <input 
-                type="text" 
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                placeholder="Ex: 0701020304"
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-              />
-            </div>
+
+          {/* Téléphone */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-black text-zinc-500 uppercase">Téléphone</label>
+            <input
+              type="text"
+              value={formData.phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              placeholder="Ex: 0701020304"
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Rôle + PIN */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-black text-zinc-500 uppercase">Rôle</label>
-              <select 
+              <select
                 value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value as UserRole})}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
               >
                 <option value="CASHIER">Caissière (Superette)</option>
@@ -301,12 +451,12 @@ console.log("shopAccesses",shopAccesses)
             </div>
             {!selectedUser && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-zinc-500 uppercase">Code PIN (4 chiffres)</label>
-                <input 
-                  type="text" 
+                <label className="text-xs font-black text-zinc-500 uppercase">Code PIN</label>
+                <input
+                  type="text"
                   maxLength={4}
                   value={formData.pin}
-                  onChange={(e) => setFormData({...formData, pin: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
                   placeholder="Ex: 1234"
                   className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all tracking-[0.5em]"
                 />
@@ -314,78 +464,91 @@ console.log("shopAccesses",shopAccesses)
             )}
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-black text-zinc-500 uppercase">Assigner à une boutique</label>
-            <select 
-              value={formData.shopId}
-              onChange={(e) => setFormData({...formData, shopId: e.target.value})}
-              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-            >
-              <option value="">-- Choisir une boutique --</option>
-              {shops.map(shop => (
-                <option key={shop.id} value={shop.id}>{shop.name} ({shop.type})</option>
-              ))}
-            </select>
-          </div>
-          
+          {/* Encart info PIN */}
           {!selectedUser && (
             <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl flex items-center gap-3">
-              <div className="p-2 bg-primary/10 text-primary rounded-lg">
+              <div className="p-2 bg-primary/10 text-primary rounded-lg shrink-0">
                 <Key className="h-4 w-4" />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Information</span>
-                <span className="text-xs font-bold text-foreground tracking-tight">Le mot de passe initial sera identique au PIN.</span>
+                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">
+                  Information
+                </span>
+                <span className="text-xs font-bold text-foreground tracking-tight">
+                  Le mot de passe initial sera identique au PIN.
+                </span>
               </div>
             </div>
           )}
 
-          <Button 
-            variant="primary" 
-            className="mt-2" 
+          <Button
+            variant="primary"
+            className="mt-2"
             onClick={handleSubmit}
-            disabled={!formData.name || !formData.username || (!selectedUser && (!formData.pin || formData.pin.length !== 4))}
+            disabled={
+              !formData.name ||
+              (!selectedUser && (!formData.pin || formData.pin.length !== 4))
+            }
           >
             {selectedUser ? "Mettre à jour l'accès" : "Créer le compte"}
           </Button>
         </div>
       </Modal>
 
-      {/* Shops Access Modal */}
+      {/* ---- MODAL Boutiques assignées ---- */}
       <Modal
         isOpen={isShopsModalOpen}
         onClose={() => setIsShopsModalOpen(false)}
-        title={`Boutiques assignées — ${selectedUser?.name}`}
+        title={`Boutiques — ${selectedUser?.name}`}
       >
         <div className="flex flex-col gap-4">
+          {/* Dernière connexion */}
           <div className="flex items-center gap-2 px-3.5 py-2.5 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border border-blue-100/50 dark:border-blue-900/30 rounded-xl text-xs font-bold self-start">
-            <Clock className="h-4 w-4" />
-            <span>Dernière connexion : <span className="font-black text-blue-900 dark:text-blue-200">{formatDate(selectedUser?.lastLoginAt)}</span></span>
+            <Clock className="h-4 w-4 shrink-0" />
+            <span>
+              Dernière connexion :{" "}
+              <span className="font-black text-blue-900 dark:text-blue-200">
+                {formatDate(selectedUser?.lastLoginAt)}
+              </span>
+            </span>
           </div>
+
           {loading ? (
             <div className="flex justify-center p-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
             </div>
           ) : shopAccesses && shopAccesses.length > 0 ? (
             <div className="flex flex-col gap-2">
               {shopAccesses.map((access: any) => (
-                <div key={access.shopId} className="p-3 border rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 flex justify-between items-center">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-sm text-foreground">{access.shop?.name}</span>
-                    <span className="text-xs text-zinc-500">{access.shop?.address}</span>
+                <div
+                  key={access.shopId}
+                  className="p-3 border rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700 flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Building2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm text-foreground truncate">{access.shop?.name}</p>
+                      <p className="text-xs text-zinc-500 truncate">{access.shop?.address}</p>
+                    </div>
                   </div>
-                  <Badge variant="outline">{access.shop?.type === "superette" ? "Supérette" : "Quincaillerie"}</Badge>
+                  <Badge variant="outline" className="shrink-0">
+                    {access.shop?.type === "superette" ? "Supérette" : "Quincaillerie"}
+                  </Badge>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="p-4 text-center text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700">
-              Aucune boutique n'est assignée à cet utilisateur.
+            <div className="p-6 text-center text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
+              <Building2 className="h-8 w-8 text-zinc-300 dark:text-zinc-600 mx-auto mb-2" />
+              <p className="text-xs font-bold">Aucune boutique assignée à cet utilisateur.</p>
             </div>
           )}
         </div>
       </Modal>
-      {/* Activation/Deactivation Confirm Modal */}
+
+      {/* ---- MODAL Activer / Désactiver ---- */}
       <ConfirmModal
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
@@ -396,12 +559,14 @@ console.log("shopAccesses",shopAccesses)
           }
         }}
         title={selectedUser?.isActive ? "Désactiver l'utilisateur" : "Activer l'utilisateur"}
-        message={`Voulez-vous vraiment ${selectedUser?.isActive ? 'désactiver' : 'activer'} le compte de "${selectedUser?.name}" ?`}
+        message={`Voulez-vous vraiment ${
+          selectedUser?.isActive ? "désactiver" : "activer"
+        } le compte de "${selectedUser?.name}" ?`}
         confirmLabel={selectedUser?.isActive ? "Désactiver" : "Activer"}
         variant={selectedUser?.isActive ? "danger" : "primary"}
       />
 
-      {/* Delete Confirm Modal */}
+      {/* ---- MODAL Suppression ---- */}
       <ConfirmModal
         isOpen={isDeleteConfirmOpen}
         onClose={() => setIsDeleteConfirmOpen(false)}
@@ -412,7 +577,7 @@ console.log("shopAccesses",shopAccesses)
           }
         }}
         title="Supprimer l'utilisateur"
-        message={`Attention: Cette action est irréversible. Voulez-vous vraiment supprimer définitivement le compte de "${selectedUser?.name}" ?`}
+        message={`Attention : cette action est irréversible. Voulez-vous vraiment supprimer définitivement le compte de "${selectedUser?.name}" ?`}
         confirmLabel="Supprimer définitivement"
         variant="danger"
       />

@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
@@ -20,25 +19,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import AuthService from "@/services/auth.service";
 
-/**
- * ============================================================================
- * PAGE : PROFIL UTILISATEUR
- * ============================================================================
- * 
- * Permet à l'utilisateur de :
- *   1. Voir ses informations (nom, téléphone, rôle)
- *   2. Modifier son nom et téléphone
- *   3. Changer son mot de passe (le passwordHash)
- * 
- * ⚠️ Le backend n'utilise que le "passwordHash" pour l'authentification.
- *    Le PIN n'est pas utilisé pour le login, on ne l'expose pas ici.
- * 
- * Endpoint : PATCH /api/v1/auth/update/:id
- * Le backend hash automatiquement le passwordHash avec bcrypt.
- * 
- * @see back-spservice/src/modules/auth/users/application/usecases/update-user.usecase.ts
- * ============================================================================
- */
+
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const { showToast } = useToast();
@@ -124,7 +105,7 @@ export default function ProfilePage() {
 
   return (
     <AppLayout title="Mon Profil" subtitle="Gérez vos informations et votre sécurité">
-      <div className="flex flex-col gap-8 max-w-5xl mx-auto pb-12">
+      <div className="flex flex-col gap-8 max-w-5xl mx-auto pb-28 md:pb-12">
         
         {/* Header Profile Section */}
         <div className="relative flex flex-col items-center sm:flex-row sm:items-end gap-6 pb-6 border-b border-zinc-200/60 dark:border-zinc-800/60">

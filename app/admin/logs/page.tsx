@@ -233,7 +233,7 @@ export default function AdminLogsPage() {
         </Button>
       }
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 pb-24 md:pb-4">
         {/* KPI Summaries */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="border-none shadow-lg bg-gradient-to-br from-indigo-500/5 to-indigo-100/5 flex items-center justify-between">
@@ -247,7 +247,6 @@ export default function AdminLogsPage() {
               <Shield className="h-6 w-6" />
             </div>
           </Card>
-
           <Card className="border-none shadow-lg bg-gradient-to-br from-amber-500/5 to-amber-100/5 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Modifications Catalogues</p>
@@ -259,7 +258,6 @@ export default function AdminLogsPage() {
               <AlertTriangle className="h-6 w-6" />
             </div>
           </Card>
-
           <Card className="border-none shadow-lg bg-gradient-to-br from-emerald-500/5 to-emerald-100/5 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Opérateurs Actifs</p>

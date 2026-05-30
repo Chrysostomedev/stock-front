@@ -63,8 +63,8 @@ export function useAuth() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = getStoredToken();
-
+      const token = Cookies.get("access_token");
+      console.log("token:", token);
       if (!token) {
         setLoading(false);
         setIsAuthenticated(false);
@@ -98,10 +98,15 @@ export function useAuth() {
       // Pas de cache → appel réseau obligatoire
       try {
         const profile = await AuthService.getProfile();
+
         let finalUser = profile;
         if (!profile.shopId && (profile as any).shopAccesses?.length > 0) {
-          finalUser = { ...profile, shopId: (profile as any).shopAccesses[0].shopId };
+          finalUser = {
+            ...profile,
+            shopId: (profile as any).shopAccesses[0].shopId,
+          };
         }
+
         setUser(finalUser);
         setIsAuthenticated(true);
         localStorage.setItem("user", JSON.stringify(finalUser));
@@ -131,9 +136,9 @@ export function useAuth() {
     // Cookies (web)
     Cookies.set("access_token", accessToken, { expires: 7 });
     Cookies.set("token", accessToken, { expires: 7 });
-    Cookies.set("userRole", userData.role, { expires: 7 });
+    Cookies.set("userRole", user.role, { expires: 7 });
 
-    // localStorage (Electron + Capacitor + web)
+    // Stockage dans LocalStorage pour l'UI
     localStorage.setItem("access_token", accessToken);
     localStorage.setItem("token", accessToken);
     if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
@@ -152,12 +157,15 @@ export function useAuth() {
     setUser(finalUser);
     setIsAuthenticated(true);
 
-    // Redirection selon le rôle
-    if (userData.role === "SUPER_ADMIN" || userData.role === "ADMIN") router.push("/admin");
-    else if (userData.role === "CASHIER") router.push("/super");
-    else if (userData.role === "MANAGER") router.push("/quinc");
-    else if (userData.role === "AUDITOR") router.push("/admin");
-    else router.push("/admin");
+    // Redirection automatique selon le rôle
+    // Backend roles : SUPER_ADMIN, ADMIN, MANAGER, CASHIER, AUDITOR
+    if (user.role === "SUPER_ADMIN" || user.role === "ADMIN")
+      router.push("/admin");
+    else if (user.role === "CASHIER") router.push("/super");
+    else if (user.role === "MANAGER") router.push("/quinc");
+    else if (user.role === "AUDITOR")
+      router.push("/admin"); // Lecture seule, même interface admin
+    else router.push("/admin"); // Fallback pour tout rôle inconnu
 
     return finalUser;
   };
@@ -173,7 +181,6 @@ export function useAuth() {
     setIsAuthenticated(false);
     router.push("/login");
   };
-
   return {
     user,
     loading,

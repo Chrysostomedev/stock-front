@@ -25,10 +25,6 @@ import {
   ShoppingBag
 } from "lucide-react";
 
-/**
- * Page d'Historique des Ventes (Commandes)
- * Connectée au SaleService
- */
 export default function SuperCommandesPage() {
   const { showToast } = useToast();
   const { user } = useAuth();
@@ -45,7 +41,6 @@ export default function SuperCommandesPage() {
     setLoading(true);
     try {
       const response = await SaleService.getAll({ shopId: user.shopId });
-      // Le backend peut renvoyer un tableau direct ou un objet paginé { data: [...] }
       const list = response.data && Array.isArray(response.data) ? response.data : (Array.isArray(response) ? response : []);
       setSales(list);
     } catch (error) {
@@ -65,7 +60,8 @@ export default function SuperCommandesPage() {
            (s.customer?.name && s.customer.name.toLowerCase().includes(search.toLowerCase()));
   });
 
-  const columns: { header: string; accessor: (item: any) => React.ReactNode; className?: string }[] = [
+  // Colonnes pour la version Ordinateur / Tablette large
+  const columns = [
     {
       header: "N° Vente",
       accessor: (s: any) => (
@@ -122,6 +118,7 @@ export default function SuperCommandesPage() {
     },
     {
       header: "Actions",
+      className: "text-right",
       accessor: (s: any) => (
         <div className="flex items-center gap-2">
           <Button
@@ -147,12 +144,10 @@ export default function SuperCommandesPage() {
           </button>
         </div>
       ),
-      className: "text-right",
     },
   ];
-
-  const totalCA = sales.reduce((acc, s) => acc + (s.totalAmount || s.total || 0), 0);
-
+  const totalCA = sales.reduce((acc, s) => acc + Number(s.totalAmount || s.total || 0), 0);
+  const venteMoyenne = sales.length > 0 ? Math.round(totalCA / sales.length) : 0;
   return (
     <AppLayout
       title="Historique des Ventes"
@@ -166,68 +161,137 @@ export default function SuperCommandesPage() {
         </button>
       }
     >
-      <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-12">
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-4 shadow-sm">
-            <div className="p-4 bg-emerald-500/10 text-emerald-600 rounded-2xl">
-              <TrendingUp className="h-6 w-6" />
+      <div className="flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto pb-12 px-2 sm:px-0">
+        {/*  Section Indicateurs / KPI */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          <div className="p-4 sm:p-6 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-zinc-100 dark:border-zinc-800/50 flex items-center gap-4 shadow-sm">
+            <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-xl sm:rounded-2xl shrink-0">
+              <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <div>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Chiffre d'Affaires</p>
-              <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">
-                {new Intl.NumberFormat('fr-FR').format(totalCA)} FCFA
+            <div className="min-w-0">
+              <p className="text-[9px] sm:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Chiffre d'Affaires</p>
+              <h4 className="text-base sm:text-xl font-black text-zinc-900 dark:text-zinc-50 truncate">
+                {new Intl.NumberFormat('fr-FR').format(totalCA)} <span className="text-[10px] font-medium text-zinc-400">XOF</span>
               </h4>
             </div>
           </div>
-          
-          <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-4 shadow-sm">
-            <div className="p-4 bg-primary/10 text-primary rounded-2xl">
-              <FileText className="h-6 w-6" />
+          <div className="p-4 sm:p-6 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-zinc-100 dark:border-zinc-800/50 flex items-center gap-4 shadow-sm">
+            <div className="p-3 bg-primary/10 text-primary rounded-xl sm:rounded-2xl shrink-0">
+              <FileText className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Tickets Émis</p>
-              <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">{sales.length}</h4>
+              <p className="text-[9px] sm:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Tickets Émis</p>
+              <h4 className="text-base sm:text-xl font-black text-zinc-900 dark:text-zinc-50">{sales.length}</h4>
             </div>
           </div>
 
-          <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 flex items-center gap-4 shadow-sm">
-            <div className="p-4 bg-amber-500/10 text-amber-600 rounded-2xl">
-              <Clock className="h-6 w-6" />
+          <div className="p-4 sm:p-6 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-zinc-100 dark:border-zinc-800/50 flex items-center gap-4 shadow-sm">
+            <div className="p-3 bg-amber-500/10 text-amber-600 rounded-xl sm:rounded-2xl shrink-0">
+              <Clock className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <div>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Vente Moyenne</p>
-              <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">
-                {sales.length > 0 ? new Intl.NumberFormat('fr-FR').format(Math.round(totalCA / sales.length)) : 0} FCFA
+            <div className="min-w-0">
+              <p className="text-[9px] sm:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Vente Moyenne</p>
+              <h4 className="text-base sm:text-xl font-black text-zinc-900 dark:text-zinc-50 truncate">
+                {new Intl.NumberFormat('fr-FR').format(venteMoyenne)} <span className="text-[10px] font-medium text-zinc-400">XOF</span>
               </h4>
             </div>
           </div>
         </div>
 
-        <Card className="p-0 overflow-hidden border-none shadow-xl">
-          <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-800">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+        {/*  Zone Recherche & Contenu Principal */}
+        <Card className="p-0 overflow-hidden border-none shadow-xl bg-white dark:bg-zinc-900">
+          <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
               <input
                 type="text"
-                placeholder="Rechercher par N° ticket ou client..."
+                placeholder="Rechercher un ticket..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-12 pr-4 py-3.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-2xl text-xs font-bold outline-none focus:border-primary transition-all"
+                className="w-full pl-11 pr-4 py-2.5 sm:py-3.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl sm:rounded-2xl text-xs font-bold outline-none focus:border-primary transition-all shadow-sm"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="w-full sm:w-auto">
               <button 
                 onClick={() => showToast("Filtre activé", "info")}
                 className="flex items-center gap-2 px-4 py-3 bg-zinc-100 dark:bg-zinc-800 rounded-2xl text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 hover:bg-primary/10 hover:text-primary transition-all cursor-pointer"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-[10px] font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 hover:bg-primary/10 hover:text-primary transition-all"
               >
-                <Calendar className="h-4 w-4" />
+                <Calendar className="h-3.5 w-3.5" />
                 Mois en cours
               </button>
             </div>
           </div>
 
-          <DataTable columns={columns} data={filteredSales} isLoading={loading} />
+          {/* 💻 RENDU ORDINATEUR : Vrai tableau visible dès l'écran MD (Tablette+) */}
+          <div className="hidden md:block w-full">
+            <DataTable columns={columns} data={filteredSales} isLoading={loading} />
+          </div>
+
+          {/* 📱 RENDU MOBILE-FIRST : Remplacé par une liste de cartes épurées et ultra-rapides */}
+          <div className="block md:hidden w-full divide-y divide-zinc-100 dark:divide-zinc-800">
+            {loading ? (
+              <div className="flex justify-center items-center p-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredSales.length > 0 ? (
+              filteredSales.map((s, idx) => {
+                const method = s.payments?.[0]?.method || "CASH";
+                return (
+                  <div key={idx} className="p-4 flex items-center justify-between bg-white dark:bg-zinc-900 active:bg-zinc-50 dark:active:bg-zinc-800/50 transition-colors">
+                    {/* Infos Gauche */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-2.5 bg-zinc-50 dark:bg-zinc-800 rounded-xl text-zinc-500 shrink-0">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-black text-sm text-zinc-900 dark:text-zinc-50">#{s.id.slice(-6).toUpperCase()}</span>
+                          <span className={`w-1.5 h-1.5 rounded-full ${method === "CASH" ? "bg-emerald-500" : "bg-primary"}`}></span>
+                        </div>
+                        <span className="text-[11px] font-bold text-zinc-500 truncate mb-0.5">
+                          {s.customer?.name || "Client de passage"}
+                        </span>
+                        <span className="text-[10px] font-medium text-zinc-400">
+                          {new Date(s.createdAt).toLocaleDateString("fr-FR")} à {new Date(s.createdAt).toLocaleTimeString("fr-FR", { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Infos Droite & Actions rapides */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex flex-col items-end">
+                        <span className="text-sm font-black text-primary">
+                          {new Intl.NumberFormat('fr-FR').format(s.totalAmount || s.total || 0)} F
+                        </span>
+                        <div className="flex items-center gap-1 mt-1">
+                          {/* Bouton imprimer mobile */}
+                          <button 
+                            onClick={() => showToast("Impression en cours...", "info")}
+                            className="p-1.5 text-zinc-400 hover:text-primary active:scale-95 transition-all"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                          </button>
+                          {/* Bouton supprimer mobile */}
+                          <button 
+                            onClick={() => { setSelectedSale(s); setIsConfirmOpen(true); }}
+                            className="p-1.5 text-zinc-400 hover:text-red-500 active:scale-95 transition-all"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-8 text-center text-xs font-bold text-zinc-400">
+                Aucune vente trouvée
+              </div>
+            )}
+          </div>
+
         </Card>
       </div>
 

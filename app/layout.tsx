@@ -22,6 +22,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SP Management Services",
   description: "Application globale de gestion et de suivi des stocks pour les commerçants",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
