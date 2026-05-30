@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
+import PwaInstaller from "@/components/ui/PwaInstaller";
 import "./globals.css";
 import { AuthProvider } from "./context/useContext";
 
@@ -19,6 +20,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SP Management Services",
   description: "Application globale de gestion et de suivi des stocks pour les commerçants",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -38,6 +40,7 @@ export default function RootLayout({
           <ToastProvider>
             <SidebarProvider>
               {children}
+              <PwaInstaller />
             </SidebarProvider>
           </ToastProvider>
         </ThemeProvider>
