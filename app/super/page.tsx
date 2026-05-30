@@ -202,7 +202,6 @@ export default function SuperDashboardPage() {
                   <ArrowRight className="h-5 w-5" />
                 </div>
               </div>
-
               {/* Contenu textuel adaptatif */}
               <div className="flex flex-col items-center sm:items-start w-full min-w-0">
                 {/* Titre court sur mobile, Titre complet sur Desktop */}
