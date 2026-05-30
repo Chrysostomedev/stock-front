@@ -304,7 +304,7 @@ export default function AdminBilanPage() {
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
         >
           <Eye className="h-3.5 w-3.5" />
-          Consulter le rapport d'audit
+          Consulter le rapport d&apos;audit
         </button>
       </div>
     );
@@ -324,7 +324,7 @@ export default function AdminBilanPage() {
             <option value="7days">7 Derniers Jours</option>
             <option value="month">Mois en Cours</option>
             <option value="year">Année en Cours</option>
-            <option value="all">Tout l'Historique</option>
+            <option value="all">Tout l&apos;Historique</option>
           </select>
           <Button onClick={loadBilanData} variant="secondary" className="gap-2">
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -333,7 +333,7 @@ export default function AdminBilanPage() {
         </div>
       }
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 pb-28 md:pb-12">
 
         {/* ── KPIs globaux ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -387,7 +387,7 @@ export default function AdminBilanPage() {
                   <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 uppercase tracking-widest text-[9px]">
                     <th className="py-4 px-4">Boutique</th>
                     <th className="py-4 px-4 text-center">Transactions</th>
-                    <th className="py-4 px-4 text-right">Chiffre d'Affaires</th>
+                    <th className="py-4 px-4 text-right">Chiffre d&apos;Affaires</th>
                     <th className="py-4 px-4 text-right">Coût Achat (COGS)</th>
                     <th className="py-4 px-4 text-right">Dépenses</th>
                     <th className="py-4 px-4 text-right text-emerald-500">Bénéfice Net</th>
@@ -494,7 +494,7 @@ export default function AdminBilanPage() {
             {/* CA par catégories */}
             <div>
               <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">
-                Chiffre d'Affaires par catégories
+                Chiffre d&apos;Affaires par catégories
               </h4>
               <div className="flex flex-col gap-2">
                 {Object.entries(selectedBoutique.categoryBreakdown).length === 0 ? (

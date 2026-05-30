@@ -22,8 +22,8 @@ import {
   ShoppingCart, Search, Plus, Minus, CheckCircle2,
   Smartphone, Banknote, Wallet, User, X, LayoutGrid,
   List, Apple, Droplets, ShoppingBag, Package,
-  ChevronUp, Scissors, RefreshCw,  Trash2,
-  Clock
+  ChevronUp, Scissors, RefreshCw, Trash2,
+  Clock, Pause
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────────────────
@@ -468,7 +468,12 @@ export default function SuperCaissePage() {
   const componentRef = useRef<HTMLDivElement>(null);
 // États pour les paniers en attente
   const [showPendingModal, setShowPendingModal] = useState(false);
-  const [pendingCarts, setPendingCarts] = useState<any[]>([]);
+  const [pendingCarts, setPendingCarts] = useState<{ id: string; name: string; items: CartItem[]; timestamp: string; total: number }[]>(() => {
+    try {
+      const saved = localStorage.getItem("super_pending_carts");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
 
   /* Données */
   const [products, setProducts] = useState<Product[]>([]);
@@ -689,13 +694,39 @@ export default function SuperCaissePage() {
   };
 
 
-const handleRestoreCart = (item: any) => {
+  const handlePutOnHold = () => {
+    if (cart.length === 0) { showToast("Le panier est vide !", "error"); return; }
+    const name = prompt("Nom ou note pour ce panier :", `Client #${pendingCarts.length + 1}`);
+    if (name === null) return;
+    const nameVal = name.trim() || `Client #${pendingCarts.length + 1}`;
+    const newPending = {
+      id: Math.random().toString(36).slice(-6),
+      name: nameVal,
+      items: [...cart],
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      total,
+    };
+    const updated = [newPending, ...pendingCarts];
+    setPendingCarts(updated);
+    localStorage.setItem("super_pending_carts", JSON.stringify(updated));
+    setCart([]);
+    showToast(`Panier de "${nameVal}" mis en attente.`, "success");
+  };
+
+  const handleRestoreCart = (item: { id: string; name: string; items: CartItem[]; total: number }) => {
     setCart(item.items);
+    const updated = pendingCarts.filter((c) => c.id !== item.id);
+    setPendingCarts(updated);
+    localStorage.setItem("super_pending_carts", JSON.stringify(updated));
     setShowPendingModal(false);
+    showToast(`Panier de "${item.name}" restauré !`, "success");
   };
 
   const handleDeletePendingCart = (id: string, name: string) => {
-    setPendingCarts((prev) => prev.filter((c) => c.id !== id));
+    const updated = pendingCarts.filter((c) => c.id !== id);
+    setPendingCarts(updated);
+    localStorage.setItem("super_pending_carts", JSON.stringify(updated));
+    showToast(`Panier de "${name}" supprimé.`, "success");
   };
   /* ────────────────────────────────────────────────────────
      RENDU
@@ -954,7 +985,27 @@ const handleRestoreCart = (item: any) => {
                 Panier
                 <span className="pos-cart-badge">{totalItems}</span>
               </div>
-              <button className="pos-cart-clear-btn" onClick={() => setCart([])}>Vider</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {pendingCarts.length > 0 && (
+                  <button
+                    onClick={() => setShowPendingModal(true)}
+                    style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 700, color: "#7B93C8", background: "rgba(37,99,235,.12)", padding: "4px 8px", borderRadius: 8, border: "none", cursor: "pointer", textTransform: "uppercase", letterSpacing: ".06em" }}
+                  >
+                    <Clock size={11} />
+                    {pendingCarts.length} en attente
+                  </button>
+                )}
+                {cart.length > 0 && (
+                  <button
+                    onClick={handlePutOnHold}
+                    style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 700, color: "#7B93C8", background: "rgba(37,99,235,.12)", padding: "4px 8px", borderRadius: 8, border: "none", cursor: "pointer", textTransform: "uppercase", letterSpacing: ".06em" }}
+                  >
+                    <Pause size={11} />
+                    Attente
+                  </button>
+                )}
+                <button className="pos-cart-clear-btn" onClick={() => setCart([])}>Vider</button>
+              </div>
             </div>
 
             {/* Sélection client */}
@@ -1204,7 +1255,7 @@ const handleRestoreCart = (item: any) => {
                       <span className="text-[9px] font-bold text-zinc-400 bg-zinc-200/50 dark:bg-zinc-800 px-2 py-0.5 rounded-full">{item.timestamp}</span>
                     </div>
                     <p className="text-[9px] font-bold text-zinc-400 mt-1">
-                      {item.items.reduce((acc: number, it: any) => acc + it.quantity, 0)} articles • {item.total.toLocaleString()} XOF
+                      {item.items.reduce((acc: number, it: CartItem) => acc + it.quantity, 0)} articles • {fmt(item.total)} XOF
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

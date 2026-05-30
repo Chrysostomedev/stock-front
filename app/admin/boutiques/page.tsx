@@ -198,12 +198,12 @@ export default function AdminBoutiquesPage() {
         groups[dateStr] = { date, sales: [], totalAmount: 0 };
       }
       groups[dateStr].sales.push(s);
-      groups[dateStr].totalAmount += (s.totalAmount || s.total || 0);
+      groups[dateStr].totalAmount += Number(s.totalAmount || s.total || 0);
     });
     return Object.entries(groups).sort((a, b) => b[1].date.getTime() - a[1].date.getTime());
   }, [sales]);
 
-  const totalShopsCA = sales.reduce((acc, s) => acc + (s.totalAmount || s.total || 0), 0);
+  const totalShopsCA = sales.reduce((acc, s) => acc + Number(s.totalAmount || s.total || 0), 0);
 
   // Icône selon le type de boutique
   const ShopIcon = ({ type }: { type: string }) =>
@@ -330,7 +330,7 @@ export default function AdminBoutiquesPage() {
           </Button>
         }
       >
-        <div className="flex flex-col gap-6 max-w-6xl mx-auto pb-12">
+        <div className="flex flex-col gap-6 max-w-6xl mx-auto pb-28 md:pb-12">
           {/* Stats rapides */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-150 dark:border-zinc-800 flex items-center gap-4 shadow-sm">
@@ -338,7 +338,7 @@ export default function AdminBoutiquesPage() {
                 <TrendingUp className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Chiffre d'Affaires Cumulé</p>
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Chiffre d&apos;Affaires Cumulé</p>
                 <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">
                   {new Intl.NumberFormat("fr-FR").format(totalShopsCA)} FCFA
                 </h4>
@@ -374,11 +374,11 @@ export default function AdminBoutiquesPage() {
 
             {salesLoading ? (
               <div className="py-20 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
-                Chargement de l'activité...
+                Chargement de l&apos;activité...
               </div>
             ) : salesByDay.length === 0 ? (
               <Card className="p-12 text-center text-zinc-400 font-bold text-sm">
-                Aucune vente n'a encore été enregistrée pour cette boutique.
+                Aucune vente n&apos;a encore été enregistrée pour cette boutique.
               </Card>
             ) : (
               salesByDay.map(([dayStr, group]) => {

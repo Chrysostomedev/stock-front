@@ -66,7 +66,6 @@ export default function QuincProduitsPage() {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     loadData();
   }, [user]);
@@ -195,7 +194,7 @@ export default function QuincProduitsPage() {
       subtitle="Gestion du catalogue de la quincaillerie"
 
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 pb-24 md:pb-12 ">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="p-5 flex flex-col gap-2 border-l-4 border-l-primary">
             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valeur Totale Stock</span>
