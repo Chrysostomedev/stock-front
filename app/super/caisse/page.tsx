@@ -23,7 +23,7 @@ import {
   Smartphone, Banknote, Wallet, User, X, LayoutGrid,
   List, Apple, Droplets, ShoppingBag, Package,
   ChevronUp, Scissors, RefreshCw, Trash2,
-  Clock, Pause
+  Clock, Pause, Printer
 } from "lucide-react";
 import { POS_STYLES } from "@/types/post-caise-super";
 
@@ -86,6 +86,9 @@ export default function SuperCaissePage() {
 
   /* Mobile drawer */
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
+
+  /* Confirmation impression */
+  const [showPrintConfirm, setShowPrintConfirm] = useState(false);
 
   /* Inject styles */
   useEffect(() => {
@@ -256,20 +259,22 @@ export default function SuperCaissePage() {
       } as any);
       setLastSaleId(res.id);
       showToast("Vente validée !", "success");
-      setTimeout(() => {
-        handlePrint();
-        setCart([]);
-        setAmountReceived("");
-        setSelectedCustomer(null);
-        setDiscountAmount(0);
-        setMobileCartOpen(false);
-        loadData();
-      }, 300);
+      setShowPrintConfirm(true);
     } catch (e) {
       console.error(e);
       showToast("Erreur lors de la vente. Vérifiez les stocks.", "error");
     } finally { setIsProcessing(false); }
   };
+  const resetAfterSuperSale = () => {
+    setShowPrintConfirm(false);
+    setCart([]);
+    setAmountReceived("");
+    setSelectedCustomer(null);
+    setDiscountAmount(0);
+    setMobileCartOpen(false);
+    loadData();
+  };
+
   const handlePutOnHold = () => {
     if (cart.length === 0) { showToast("Le panier est vide !", "error"); return; }
     const name = prompt("Nom ou note pour ce panier :", `Client #${pendingCarts.length + 1}`);
@@ -855,6 +860,37 @@ export default function SuperCaissePage() {
               <Button onClick={() => setShowPendingModal(false)} variant="outline" size="sm" className="text-[10px] font-black tracking-widest uppercase">
                 Fermer
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal confirmation impression ── */}
+      {showPrintConfirm && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 20, padding: 28, maxWidth: 340, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,.25)", display: "flex", flexDirection: "column", gap: 20, fontFamily: "inherit" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Printer size={24} style={{ color: "#2563EB" }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#0F1E3D" }}>Imprimer le ticket ?</div>
+                <div style={{ fontSize: 12, color: "#8A9BBD", marginTop: 3 }}>Voulez-vous imprimer le reçu de cette vente ?</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={resetAfterSuperSale}
+                style={{ flex: 1, padding: "12px 0", border: "1.5px solid #D0DBF0", borderRadius: 12, fontSize: 12, fontWeight: 700, color: "#4A5A7A", background: "#fff", cursor: "pointer", textTransform: "uppercase", letterSpacing: ".06em", fontFamily: "inherit" }}
+              >
+                Non merci
+              </button>
+              <button
+                onClick={() => { handlePrint(); resetAfterSuperSale(); }}
+                style={{ flex: 1, padding: "12px 0", background: "#2563EB", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer", textTransform: "uppercase", letterSpacing: ".06em", fontFamily: "inherit" }}
+              >
+                Oui, imprimer
+              </button>
             </div>
           </div>
         </div>

@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useReactToPrint } from "react-to-print";
+import { TicketReceipt } from "@/components/ui/TicketReceipt";
 import AppLayout from "@/components/layouts/AppLayout";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +16,7 @@ import {
   ShoppingCart, Search, Plus, Minus, Trash2,
   Clock, Pause, X, LayoutGrid, List,
   Package, Banknote, Smartphone, CheckCircle2,
-  Wallet, Scissors, User, ChevronUp, Wrench,
+  Wallet, Scissors, User, ChevronUp, Wrench, Printer,
 } from "lucide-react";
 import { POS_STYLES } from "@/types/post_caise_style";
 
@@ -30,6 +32,10 @@ interface CartItem {
 export default function QuincaillerieCaissePage() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const componentRef = useRef<HTMLDivElement>(null);
+  const [lastSaleId, setLastSaleId] = useState("");
+  const [showPrintConfirm, setShowPrintConfirm] = useState(false);
+  const [saleCartSnapshot, setSaleCartSnapshot] = useState<typeof cart>([]);
 
   /* Données */
   const [products, setProducts] = useState<Product[]>([]);
@@ -221,6 +227,18 @@ export default function QuincaillerieCaissePage() {
     return matchQ && matchC;
   });
 
+  /* Print */
+  const handlePrint = useReactToPrint({ contentRef: componentRef, documentTitle: `Ticket_Quinc_${lastSaleId}` });
+
+  const resetAfterQuincSale = () => {
+    setShowPrintConfirm(false);
+    setCart([]);
+    setAmountReceived("");
+    setSelectedCustomer(null);
+    setDiscountAmount(0);
+    setMobileCartOpen(false);
+  };
+
   /* Checkout */
   const handleCheckout = async () => {
     if (cart.length === 0) return showToast("Panier vide", "error");
@@ -261,11 +279,8 @@ export default function QuincaillerieCaissePage() {
         })
       );
 
-      setCart([]);
-      setAmountReceived("");
-      setSelectedCustomer(null);
-      setDiscountAmount(0);
-      setMobileCartOpen(false);
+      setSaleCartSnapshot([...cart]);
+      setShowPrintConfirm(true);
     } catch {
       showToast("Erreur lors de la validation de la vente", "error");
     } finally {
@@ -567,7 +582,6 @@ export default function QuincaillerieCaissePage() {
                 <button className="qpos-cart-clear-btn" onClick={() => setCart([])}>Vider</button>
               </div>
             </div>
-
             {/* Sélection client */}
             <div className="qpos-cust-wrap">
               <div className="qpos-cust-label">
@@ -843,6 +857,52 @@ export default function QuincaillerieCaissePage() {
           </div>
         )}
       </div>
+
+      {/* Ticket caché pour impression */}
+      <div style={{ display: "none" }}>
+        <TicketReceipt
+          ref={componentRef}
+          shop={null}
+          user={user}
+          items={saleCartSnapshot.map((i) => ({ product: i.product, quantity: i.qty }))}
+          total={total}
+          paymentMethod={paymentMethod}
+          amountReceived={paymentMethod === "CASH" ? (received || total) : total}
+          change={change}
+          saleId={lastSaleId}
+        />
+      </div>
+
+      {/* Modal confirmation impression */}
+      {showPrintConfirm && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 20, padding: 28, maxWidth: 340, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,.25)", display: "flex", flexDirection: "column", gap: 20, fontFamily: "inherit" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Printer size={24} style={{ color: "#2563EB" }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#0F1E3D" }}>Imprimer le ticket ?</div>
+                <div style={{ fontSize: 12, color: "#8A9BBD", marginTop: 3 }}>Voulez-vous imprimer le reçu de cette vente ?</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={resetAfterQuincSale}
+                style={{ flex: 1, padding: "12px 0", border: "1.5px solid #D0DBF0", borderRadius: 12, fontSize: 12, fontWeight: 700, color: "#4A5A7A", background: "#fff", cursor: "pointer", textTransform: "uppercase", letterSpacing: ".06em", fontFamily: "inherit" }}
+              >
+                Non merci
+              </button>
+              <button
+                onClick={() => { handlePrint(); resetAfterQuincSale(); }}
+                style={{ flex: 1, padding: "12px 0", background: "#2563EB", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer", textTransform: "uppercase", letterSpacing: ".06em", fontFamily: "inherit" }}
+              >
+                Oui, imprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
