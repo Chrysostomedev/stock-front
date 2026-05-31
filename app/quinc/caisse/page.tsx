@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useReactToPrint } from "react-to-print";
 import { TicketReceipt } from "@/components/ui/TicketReceipt";
 import AppLayout from "@/components/layouts/AppLayout";
 import { useToast } from "@/contexts/ToastContext";
@@ -228,7 +227,26 @@ export default function QuincaillerieCaissePage() {
   });
 
   /* Print */
-  const handlePrint = useReactToPrint({ contentRef: componentRef, documentTitle: `Ticket_Quinc_${lastSaleId}` });
+  const handlePrint = () => {
+    const el = componentRef.current;
+    if (!el) { showToast("Ticket introuvable", "error"); return; }
+    const STYLE_ID = "sp-quinc-receipt-print-style";
+    const RECEIPT_ID = "sp-quinc-receipt-to-print";
+    document.getElementById(STYLE_ID)?.remove();
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `@media print{@page{size:80mm auto;margin:0}body>*{visibility:hidden!important}#${RECEIPT_ID},#${RECEIPT_ID} *{visibility:visible!important}#${RECEIPT_ID}{position:fixed!important;top:0!important;left:0!important;width:80mm!important;background:#fff!important}}`;
+    document.head.appendChild(style);
+    el.id = RECEIPT_ID;
+    const cleanup = () => {
+      el.removeAttribute("id");
+      document.getElementById(STYLE_ID)?.remove();
+      window.onafterprint = null;
+    };
+    window.onafterprint = cleanup;
+    window.print();
+    setTimeout(cleanup, 3000);
+  };
 
   const resetAfterQuincSale = () => {
     setShowPrintConfirm(false);
