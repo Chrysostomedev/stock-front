@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -33,8 +33,11 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const { isOpen, close, toggle } = useSidebar();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => { setMounted(true); }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -84,7 +87,9 @@ export default function Sidebar() {
   // Les menus cibles à placer en bas sur mobile
   const bottomMobileLabels = ["Administration", "Clients & Crédits", "Transferts de Stock", "Journal d'activité"];
 
-  const userRole = user?.role as UserRole;
+  // userRole est undefined pendant le SSR et le premier rendu client (avant useEffect)
+  // pour que le HTML serveur === HTML client → pas de mismatch d'hydratation
+  const userRole = (mounted ? user?.role : undefined) as UserRole | undefined;
   const allowedLinks = allLinks.filter((link) => userRole && link.roles.includes(userRole));
 
   // Filtrage des liens pour la vue mobile

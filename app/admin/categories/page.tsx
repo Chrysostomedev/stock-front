@@ -279,9 +279,9 @@ export default function AdminCategoriesPage() {
       title="Gestion des Catégories"
       subtitle="Organisez vos rayons et produits (Supérette & Quincaillerie)"
     >
-      {/* 📊 Section Statistiques adaptative (Grid 1 col sur mobile, 3 col sur tablette+) */}
+      {/* Section Statistiques adaptative (Grid 1 col sur mobile, 3 col sur tablette+) */}
       <div className="w-full mb-4 md:mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
           <div className="p-3 sm:p-4 bg-primary/5 rounded-2xl sm:rounded-3xl border border-primary/10 flex items-center gap-3 sm:gap-4">
             <div className="p-2 sm:p-3 bg-primary/10 text-primary rounded-xl sm:rounded-2xl shrink-0">
               <Layers className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -315,7 +315,7 @@ export default function AdminCategoriesPage() {
               <span className="text-[9px] sm:text-[10px] font-black text-zinc-500 uppercase tracking-widest truncate">Sous-catégories</span>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
 
       <div className="flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto pb-12 w-full">
