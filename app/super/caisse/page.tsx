@@ -14,7 +14,6 @@ import SaleService from "@/services/sale.service";
 import CashSessionService from "@/services/super/cashSession.service";
 import { CashSession } from "@/types/super";
 import { useAuth } from "@/hooks/useAuth";
-
 /* ─────────────────────────────────────────────────────────
    ICÔNES INLINE  (lucide-react reste disponible si besoin)
 ───────────────────────────────────────────────────────── */
@@ -151,9 +150,7 @@ export default function SuperCaissePage() {
       setLoading(false);
     }
   };
-
   useEffect(() => { loadData(); }, [user]);
-
   /* ── Session ── */
   const handleOpenSession = async () => {
     if (!user?.id) return;
@@ -536,19 +533,8 @@ export default function SuperCaissePage() {
           <div
             className="pos-cart"
             style={{
-              // Mobile: drawer en bas
-              ...(typeof window !== "undefined" && window.innerWidth <= 1024
-                ? {
-                    display: "flex",
-                    position: "fixed",
-                    bottom: 0, left: 0, right: 0,
-                    zIndex: 200,
-                    maxHeight: "90dvh",
-                    borderRadius: "20px 20px 0 0",
-                    transform: mobileCartOpen ? "translateY(0)" : "translateY(100%)",
-                    transition: "transform .3s cubic-bezier(.32,.72,0,1)",
-                  }
-                : {}),
+              transform: mobileCartOpen ? "translateY(0)" : "translateY(100%)",
+              transition: "transform .3s cubic-bezier(.32,.72,0,1)",
             }}
           >
             {/* En-tête */}
@@ -748,7 +734,7 @@ export default function SuperCaissePage() {
             display: "flex", alignItems: "center", gap: 12,
             zIndex: 99,
           }}
-          className="lg:hidden" // Tailwind : caché sur desktop
+          // FAB toujours visible
         >
           <span style={{ fontWeight: 700, fontSize: 15, fontVariantNumeric: "tabular-nums" }}>
             {fmt(total)} XOF
