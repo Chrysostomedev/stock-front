@@ -25,26 +25,25 @@ export const POS_STYLES = `
   --cart-text: #EEF2FF;
   --cart-text2: #7B93C8;
   font-family: 'IBM Plex Sans', system-ui, sans-serif;
-}
-
-/* ── Layout ── */
-.pos-layout {
-  display: grid;
-  grid-template-columns: 200px 1fr 390px;
-  height: calc(100vh - 64px);
-  gap: 0;
-  overflow: hidden;
-  background: var(--pos-bg);
-}
-
-/* ── Sidebar catégories (desktop) ── */
-.pos-sidebar {
-  background: var(--pos-surface);
-  border-right: 1px solid var(--pos-border);
+  /* pos-root prend toute la hauteur dispo sous le header AppLayout */
   display: flex;
   flex-direction: column;
+  height: calc(100vh - 64px);
   overflow: hidden;
 }
+
+/* ── Layout : catalogue pleine largeur, panier = drawer FAB ── */
+.pos-layout {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--pos-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Sidebar : toujours cachée, on utilise la barre horizontale en haut ── */
+.pos-sidebar { display: none; }
 .pos-sidebar-logo {
   padding: 14px 16px;
   border-bottom: 1px solid var(--pos-border);
@@ -119,7 +118,7 @@ export const POS_STYLES = `
   transition: all .15s;
 }
 .pos-view-btn.active { background: var(--pos-surface); color: var(--pos-text); }
-.pos-products-wrap { flex: 1; overflow-y: auto; padding: 14px; }
+.pos-products-wrap { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 88px; }
 .pos-product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -183,9 +182,15 @@ export const POS_STYLES = `
 .pos-row-add-btn:hover { background: var(--pos-primary); color: #fff; border-color: var(--pos-primary); }
 
 /* ── Panneau Panier ── */
+/* ── Panier : toujours drawer fixé en bas ── */
 .pos-cart {
   background: var(--cart-bg); color: var(--cart-text);
   display: flex; flex-direction: column; overflow: hidden;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 200;
+  max-height: 90dvh;
+  border-radius: 20px 20px 0 0;
 }
 .pos-cart-head {
   padding: 14px 20px; border-bottom: 1px solid var(--cart-border);
@@ -215,7 +220,7 @@ export const POS_STYLES = `
 .pos-cust-clear:hover { color: var(--pos-danger); }
 
 /* Articles panier */
-.pos-cart-items { flex: 1; overflow-y: auto; padding: 0 20px; }
+.pos-cart-items { flex: 1; min-height: 0; overflow-y: auto; padding: 0 20px; }
 .pos-cart-empty {
   height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 8px;
@@ -353,8 +358,15 @@ export const POS_STYLES = `
 }
 .pos-close-session-btn:hover { background: rgba(192,57,43,.2); }
 
-/* ── Mobile header fixe (search + cats) ── */
-.pos-mobile-header { display: none; }
+/* Header desktop caché, mobile header toujours actif */
+.pos-catalog-header { display: none; }
+.pos-mobile-header {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 10px 12px 8px;
+  background: var(--pos-surface);
+  border-bottom: 1px solid var(--pos-border);
+  position: sticky; top: 0; z-index: 10;
+}
 .pos-mobile-search-wrap { position: relative; }
 .pos-mobile-search-wrap svg {
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
@@ -385,22 +397,20 @@ export const POS_STYLES = `
   background: var(--pos-accent); color: #fff; border-color: var(--pos-accent);
 }
 
-/* ── Mobile ── */
-@media (max-width: 1024px) {
-  .pos-layout { grid-template-columns: 1fr; grid-template-rows: 1fr; }
-  .pos-sidebar { display: none; }
-  .pos-cart { display: none; }
-}
-@media (max-width: 768px) {
-  .pos-catalog-header { display: none; }
-  .pos-mobile-header {
-    display: flex; flex-direction: column; gap: 10px;
-    padding: 10px 12px 8px;
-    background: var(--pos-surface);
-    border-bottom: 1px solid var(--pos-border);
-    position: sticky; top: 0; z-index: 10;
+/* Grille produits adaptée selon l'écran */
+@media (min-width: 768px) {
+  .pos-product-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  /* Drawer centré et de largeur fixe sur desktop.
+     left: calc(50% - 240px) centre le panneau de 480px sans toucher au transform (axe Y seul). */
+  .pos-cart {
+    left: calc(50% - 240px);
+    right: auto;
+    width: 480px;
+    height: 90dvh;
+    max-height: 90dvh;
   }
-  .pos-products-wrap { padding: 10px 10px 80px; }
+}
+@media (max-width: 767px) {
   .pos-product-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
 }
 

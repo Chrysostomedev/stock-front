@@ -538,20 +538,10 @@ export default function QuincaillerieCaissePage() {
           {/* ── PANNEAU PANIER & PAIEMENT ── */}
           <div
             className="qpos-cart"
-            style={
-              typeof window !== "undefined" && window.innerWidth <= 1024
-                ? {
-                    display: "flex",
-                    position: "fixed",
-                    bottom: 0, left: 0, right: 0,
-                    zIndex: 200,
-                    maxHeight: "90dvh",
-                    borderRadius: "20px 20px 0 0",
-                    transform: mobileCartOpen ? "translateY(0)" : "translateY(100%)",
-                    transition: "transform .3s cubic-bezier(.32,.72,0,1)",
-                  }
-                : {}
-            }
+            style={{
+              transform: mobileCartOpen ? "translateY(0)" : "translateY(100%)",
+              transition: "transform .3s cubic-bezier(.32,.72,0,1)",
+            }}
           >
             {/* En-tête */}
             <div className="qpos-cart-head">
@@ -764,7 +754,6 @@ export default function QuincaillerieCaissePage() {
             display: "flex", alignItems: "center", gap: 12,
             zIndex: 99,
           }}
-          className="lg:hidden"
         >
           <span style={{ fontWeight: 700, fontSize: 15, fontVariantNumeric: "tabular-nums" }}>
             {fmt(total)} FCFA
@@ -772,7 +761,7 @@ export default function QuincaillerieCaissePage() {
           <button
             onClick={() => setMobileCartOpen((v) => !v)}
             style={{
-              flex: 1, padding: "13px", background: "#D97706",
+              flex: 1, padding: "13px", background: "var(--pos-primary)",
               color: "#fff", border: "none", borderRadius: 12,
               fontSize: 13, fontWeight: 700, textTransform: "uppercase",
               letterSpacing: ".06em", cursor: "pointer",
