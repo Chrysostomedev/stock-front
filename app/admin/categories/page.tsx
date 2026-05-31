@@ -162,7 +162,6 @@ export default function AdminCategoriesPage() {
         parentId: formData.parentId === "" ? null : formData.parentId,
         shopId: formData.shopId === "" ? null : formData.shopId
       };
-
       if (selectedCategory) {
         await CategoryService.update(selectedCategory.id, cleanedData);
         showToast("Catégorie mise à jour avec succès", "success");
@@ -250,7 +249,7 @@ export default function AdminCategoriesPage() {
     },
     {
       header: "Actions",
-      className: "text-right w-20 sticky right-0 bg-white dark:bg-zinc-900", // Fixe à droite si scroll mobile nécessaire
+      className: "text-right w-20",
       accessor: (item: Category) => (
         <div className="flex items-center justify-end gap-1 sm:gap-2">
           <button
@@ -281,7 +280,7 @@ export default function AdminCategoriesPage() {
       subtitle="Organisez vos rayons et produits (Supérette & Quincaillerie)"
     >
       {/* 📊 Section Statistiques adaptative (Grid 1 col sur mobile, 3 col sur tablette+) */}
-      <div className="w-full mb-24 md:mb-6">
+      <div className="w-full mb-4 md:mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
           <div className="p-3 sm:p-4 bg-primary/5 rounded-2xl sm:rounded-3xl border border-primary/10 flex items-center gap-3 sm:gap-4">
             <div className="p-2 sm:p-3 bg-primary/10 text-primary rounded-xl sm:rounded-2xl shrink-0">
@@ -349,7 +348,7 @@ export default function AdminCategoriesPage() {
           {/* Bloc Tableau : Devient scrollable horizontalement sans briser l'écran global */}
           <div className="lg:col-span-2 w-full overflow-hidden">
             <Card className="border-none shadow-xl h-full bg-white dark:bg-zinc-900">
-              <div className="w-full overflow-x-auto [webkit-overflow-scrolling:touch]">
+              <div className="w-full overflow-x-auto">
                 <DataTable
                   columns={columns}
                   data={filteredCategories}
