@@ -3,8 +3,7 @@ import axios from "axios";
 // URL de l'API — injectée au build depuis .env (NEXT_PUBLIC_API_URL)
 // Fallback sur Railway en production
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://back-spservice-production.up.railway.app/api/v1";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
@@ -45,7 +44,7 @@ axiosInstance.interceptors.response.use(
   (error) => {
     // On propage l'erreur telle quelle — chaque service/contexte la gère
     return Promise.reject(error);
-  }
+  },
 );
 
 export default axiosInstance;
