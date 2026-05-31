@@ -15,6 +15,17 @@ class QuincCategoryService {
     }
   }
 
+  async getByShop(shopId: string, params?: Record<string, unknown>): Promise<Category[]> {
+    try {
+      const response = await axiosInstance.get(`/categories/shop/${shopId}`, { params });
+      const data = response.data?.data || response.data;
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error("Erreur lors de la récupération des catégories par boutique:", error);
+      throw error;
+    }
+  }
+
   async create(data: Partial<Category>): Promise<Category> {
     try {
       const response = await axiosInstance.post("/categories", data);

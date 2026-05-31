@@ -1,15 +1,17 @@
+import { ShopType } from "@/services/shop.service";
 import { UserRole } from "./auth";
 
 export interface Shop {
   id: string;
   name: string;
-  type: "superette" | "quincaillerie";
   address: string;
   phone: string;
   email?: string;
   taxId?: string;
   currency: string;
   isActive: boolean;
+  shopType: ShopType;
+  shopTypeLabel: string;
 }
 
 export interface UserAccount {

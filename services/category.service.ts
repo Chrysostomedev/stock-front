@@ -3,7 +3,6 @@
  */
 import axiosInstance from "../core/axios";
 import { withOfflineFallback, withOfflineCache } from "../core/offline-wrapper";
-
 export interface Category {
   id: string;
   name: string;
