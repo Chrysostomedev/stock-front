@@ -570,6 +570,17 @@ export default function QuincaillerieCaissePage() {
                   </button>
                 )}
                 <button className="qpos-cart-clear-btn" onClick={() => setCart([])}>Vider</button>
+                {cart.length > 0 && (
+                  <button
+                    onClick={handleCheckout}
+                    disabled={isProcessing || !activeSession}
+                    style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 800, color: "#fff", background: (!activeSession || isProcessing) ? "#6B7280" : "#16A34A", padding: "5px 11px", borderRadius: 8, border: "none", cursor: (!activeSession || isProcessing) ? "not-allowed" : "pointer", textTransform: "uppercase", letterSpacing: ".05em", flexShrink: 0 }}
+                    title={!activeSession ? "Ouvrez la caisse d'abord" : ""}
+                  >
+                    <CheckCircle2 size={12} />
+                    {isProcessing ? "…" : fmt(total)}
+                  </button>
+                )}
               </div>
             </div>
             {/* Sélection client */}
@@ -847,8 +858,8 @@ export default function QuincaillerieCaissePage() {
         )}
       </div>
 
-      {/* Ticket caché pour impression */}
-      <div style={{ display: "none" }}>
+      {/* Ticket hors-écran pour impression (position:fixed off-screen, pas display:none) */}
+      <div style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "80mm", pointerEvents: "none", overflow: "hidden" }}>
         <TicketReceipt
           ref={componentRef}
           shop={null}
