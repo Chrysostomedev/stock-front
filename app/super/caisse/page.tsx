@@ -86,8 +86,11 @@ export default function SuperCaissePage() {
   /* Mobile drawer */
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
-  /* Confirmation impression */
+  /* Confirmation impression + snapshots vente */
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
+  const [saleCartSnapshot, setSaleCartSnapshot] = useState<CartItem[]>([]);
+  const [saleReceivedSnapshot, setSaleReceivedSnapshot] = useState(0);
+  const [saleChangeSnapshot, setSaleChangeSnapshot] = useState(0);
 
   /* Inject styles */
   useEffect(() => {
@@ -255,6 +258,10 @@ export default function SuperCaissePage() {
         notes: `Vente par ${user.name}`,
       } as any);
       setLastSaleId(res.id);
+      // Snapshots capturés avant que le panier soit vidé
+      setSaleCartSnapshot([...cart]);
+      setSaleReceivedSnapshot(received || total);
+      setSaleChangeSnapshot(change);
       showToast("Vente validée !", "success");
       setShowPrintConfirm(true);
     } catch (e) {
@@ -564,6 +571,16 @@ export default function SuperCaissePage() {
                   </button>
                 )}
                 <button className="pos-cart-clear-btn" onClick={() => setCart([])}>Vider</button>
+                {cart.length > 0 && (
+                  <button
+                    onClick={handleCheckout}
+                    disabled={isProcessing || cart.length === 0}
+                    style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 800, color: "#fff", background: isProcessing ? "#6B7280" : "#16A34A", padding: "5px 11px", borderRadius: 8, border: "none", cursor: isProcessing ? "not-allowed" : "pointer", textTransform: "uppercase", letterSpacing: ".05em", flexShrink: 0 }}
+                  >
+                    <CheckCircle2 size={12} />
+                    {isProcessing ? "…" : fmt(total)}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -773,17 +790,17 @@ export default function SuperCaissePage() {
           />
         )}
 
-        {/* Ticket caché pour impression */}
-        <div style={{ display: "none" }}>
+        {/* Ticket hors-écran pour impression (position:fixed off-screen, pas display:none) */}
+        <div style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "80mm", pointerEvents: "none", overflow: "hidden" }}>
           <TicketReceipt
             ref={componentRef}
             shop={currentShop}
             user={user}
-            items={cart}
+            items={saleCartSnapshot}
             total={total}
             paymentMethod={paymentMethod}
-            amountReceived={parseInt(amountReceived) || total}
-            change={change}
+            amountReceived={saleReceivedSnapshot}
+            change={saleChangeSnapshot}
             saleId={lastSaleId}
           />
         </div>
