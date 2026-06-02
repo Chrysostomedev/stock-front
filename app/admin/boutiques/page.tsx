@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -24,6 +25,7 @@ import {
   ChevronRight,
   TrendingUp,
   ShoppingBag,
+  ShoppingCart,
   Clock,
   User,
   Wrench,
@@ -31,7 +33,6 @@ import {
 import { useShops } from "@/hooks/admin/useShops";
 import { Shop } from "@/types/admin";
 import { ShopType } from "@/services/shop.service";
-
 const SHOP_TYPE_LABELS: Record<string, string> = {
   SUPERMARKET:  "Superette / Épicerie",
   HARDWARE:     "Quincaillerie / Matériaux",
@@ -64,12 +65,14 @@ function MobileShopCard({
   onToggle,
   onDelete,
   onViewSales,
+  onCaisse,
 }: {
   s: Shop;
   onEdit: () => void;
   onToggle: () => void;
   onDelete: () => void;
   onViewSales: () => void;
+  onCaisse: () => void;
 }) {
   return (
     <div className="p-4 bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 rounded-2xl flex flex-col gap-3 shadow-sm">
@@ -119,6 +122,14 @@ function MobileShopCard({
           <TrendingUp className="h-3.5 w-3.5 mr-1" /> Ventes
         </Button>
         <button
+          onClick={onCaisse}
+          className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-lg text-[10px] font-black uppercase transition-all border border-emerald-200 dark:border-emerald-800"
+          title="Accéder à la caisse"
+        >
+          <ShoppingCart className="h-3.5 w-3.5" />
+          Caisse
+        </button>
+        <button
           onClick={onEdit}
           className="p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-primary transition-all"
         >
@@ -142,6 +153,7 @@ function MobileShopCard({
 }
 
 export default function AdminBoutiquesPage() {
+  const router = useRouter();
   const {
     shops,
     loading,
@@ -381,6 +393,14 @@ export default function AdminBoutiquesPage() {
           >
             Ventes
           </Button>
+          <button
+            onClick={() => router.push(`/admin/caisse?shopId=${s.id}`)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border border-emerald-200 dark:border-emerald-800 hover:border-emerald-500"
+            title={`Accéder à la caisse de ${s.name}`}
+          >
+            <ShoppingCart className="h-3.5 w-3.5" />
+            Caisse
+          </button>
           <button
             onClick={() => {
               setSelectedShop(s);
@@ -838,7 +858,7 @@ export default function AdminBoutiquesPage() {
           </div>
         )}
 
-        <Card className="p-4 md:p-6">
+        <Card className="p-4 md:p-6 pb-28 md:pb-12">
           <div className="relative mb-5">
             <Search className="absolute left-4 top-3 h-4 w-4 text-zinc-400" />
             <input
@@ -880,6 +900,7 @@ export default function AdminBoutiquesPage() {
                     setIsDeleteConfirmOpen(true);
                   }}
                   onViewSales={() => setSalesViewShop(s)}
+                  onCaisse={() => router.push(`/admin/caisse?shopId=${s.id}`)}
                 />
               ))}
             </div>

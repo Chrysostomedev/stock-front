@@ -1,9 +1,9 @@
 "use client";
 
 import Button from "@/components/ui/Button";
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
-import { TicketReceipt } from "@/components/ui/TicketReceipt";
+import { printReceipt } from "@/lib/printReceipt";
 import { useToast } from "@/contexts/ToastContext";
 import ProductService, { Product } from "@/services/product.service";
 import CategoryService, { Category } from "@/services/category.service";
@@ -21,7 +21,7 @@ import {
   Smartphone, Banknote, Wallet, User, X, LayoutGrid,
   List, Apple, Droplets, ShoppingBag, Package,
   ChevronUp, Scissors, RefreshCw, Trash2,
-  Clock, Pause, Printer
+  Clock, Pause, Printer, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { POS_STYLES } from "@/types/post-caise-super";
 
@@ -43,7 +43,6 @@ interface CartItem {
 export default function SuperCaissePage() {
   const { showToast } = useToast();
   const { user } = useAuth();
-  const componentRef = useRef<HTMLDivElement>(null);
 // États pour les paniers en attente
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [pendingCarts, setPendingCarts] = useState<{ id: string; name: string; items: CartItem[]; timestamp: string; total: number }[]>(() => {
@@ -70,6 +69,13 @@ export default function SuperCaissePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
+  /* Pagination et recherche debouncée */
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(12);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+
   /* Panier */
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -88,8 +94,14 @@ export default function SuperCaissePage() {
   /* Confirmation impression + snapshots vente */
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
   const [saleCartSnapshot, setSaleCartSnapshot] = useState<CartItem[]>([]);
+  const [saleTotalSnapshot, setSaleTotalSnapshot] = useState(0);
+  const [saleSubtotalSnapshot, setSaleSubtotalSnapshot] = useState(0);
+  const [saleDiscountSnapshot, setSaleDiscountSnapshot] = useState(0);
   const [saleReceivedSnapshot, setSaleReceivedSnapshot] = useState(0);
   const [saleChangeSnapshot, setSaleChangeSnapshot] = useState(0);
+  const [saleCustomerSnapshot, setSaleCustomerSnapshot] = useState<string | undefined>(undefined);
+  const [salePayMethodSnapshot, setSalePayMethodSnapshot] = useState<string>("CASH");
+  const [saleMobileProvSnapshot, setSaleMobileProvSnapshot] = useState<string | undefined>(undefined);
 
   /* Inject styles */
   useEffect(() => {
@@ -101,24 +113,27 @@ export default function SuperCaissePage() {
     return () => { document.getElementById("pos-styles")?.remove(); };
   }, []);
 
-  /* ── Chargement données ── */
-  const loadData = async () => {
+  // Debounce sur la recherche
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Réinitialiser la page courante si le terme de recherche ou la catégorie change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, selectedCategory]);
+
+  /* ── Chargement des données statiques ── */
+  const loadStaticData = async () => {
     if (!user) return;
     if (!user.shopId) {
       showToast("Erreur: compte non associé à une boutique.", "error");
-      setLoading(false);
       return;
     }
-    setLoading(true);
     try {
-      let prodRes;
-      try {
-        prodRes = await ProductService.getAll({ shopId: user.shopId, limit: 200 });
-      } catch (err) {
-        console.warn("Retrying ProductService.getAll without limit due to backend error:", err);
-        prodRes = await ProductService.getAll({ shopId: user.shopId });
-      }
-
       let catRes;
       try {
         catRes = await CategoryService.getByShop(user.shopId, { limit: 100 });
@@ -137,7 +152,6 @@ export default function SuperCaissePage() {
       const toList = (r: any) =>
         r?.data && Array.isArray(r.data) ? r.data : Array.isArray(r) ? r : [];
 
-      setProducts(toList(prodRes));
       setCategories(toList(catRes));
       setCustomers(toList(custRes));
       setCurrentShop(shopRes);
@@ -148,11 +162,51 @@ export default function SuperCaissePage() {
       }
     } catch {
       showToast("Erreur lors du chargement des données", "error");
+    }
+  };
+
+  /* ── Chargement dynamique des produits paginés ── */
+  const loadProducts = async () => {
+    if (!user?.shopId) return;
+    setLoading(true);
+    try {
+      const params: any = {
+        shopId: user.shopId,
+        page,
+        limit,
+      };
+      if (debouncedSearch) {
+        params.search = debouncedSearch;
+      }
+      if (selectedCategory) {
+        params.categoryId = selectedCategory;
+      }
+
+      const prodRes = await ProductService.getAll(params);
+      const prodList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
+      
+      setProducts(prodList);
+      setTotalPages(prodRes?.totalPages ?? 1);
+      setTotalProducts(prodRes?.total ?? prodList.length);
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de la récupération des produits", "error");
     } finally {
       setLoading(false);
     }
   };
-  useEffect(() => { loadData(); }, [user]);
+
+  const loadData = () => {
+    loadProducts();
+  };
+
+  useEffect(() => {
+    loadStaticData();
+  }, [user]);
+
+  useEffect(() => {
+    loadProducts();
+  }, [user, page, limit, debouncedSearch, selectedCategory]);
   /* ── Session ── */
   const handleOpenSession = async () => {
     if (!user?.id) return;
@@ -221,36 +275,64 @@ export default function SuperCaissePage() {
   const inCart = (id: string) => cart.find((i) => i.product.id === id);
   const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
 
-  /* ── Filtrage ── */
-  const filteredProducts = products.filter((p) => {
-    const q = searchTerm.toLowerCase();
-    const matchQ = !q || p.name.toLowerCase().includes(q) || p.barcode?.includes(q) || p.sku?.toLowerCase().includes(q);
-    const matchC = !selectedCategory || p.categoryId === selectedCategory;
-    return matchQ && matchC;
-  });
+  /* ── Pagination helper ── */
+  const renderPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisiblePages = 3;
 
-  /* ── Print & Checkout ── */
-  const handlePrint = () => {
-    const el = componentRef.current;
-    if (!el) { showToast("Ticket introuvable", "error"); return; }
-    const STYLE_ID = "sp-receipt-print-style";
-    const RECEIPT_ID = "sp-receipt-to-print";
-    document.getElementById(STYLE_ID)?.remove();
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
-    style.textContent = `@media print{@page{size:80mm auto;margin:0}body>*{visibility:hidden!important}#${RECEIPT_ID},#${RECEIPT_ID} *{visibility:visible!important}#${RECEIPT_ID}{position:fixed!important;top:0!important;left:0!important;width:80mm!important;background:#fff!important}}`;
-    document.head.appendChild(style);
-    el.id = RECEIPT_ID;
-    const cleanup = () => {
-      el.removeAttribute("id");
-      document.getElementById(STYLE_ID)?.remove();
-      window.onafterprint = null;
-    };
-    window.onafterprint = cleanup;
-    window.print();
-    setTimeout(cleanup, 3000);
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+
+      if (start > 2) {
+        pages.push("...");
+      }
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (end < totalPages - 1) {
+        pages.push("...");
+      }
+
+      pages.push(totalPages);
+    }
+
+    return pages.map((p, idx) => {
+      if (p === "...") {
+        return (
+          <span key={`dots-${idx}`} className="px-1 text-[10px] font-bold text-zinc-400">
+            ...
+          </span>
+        );
+      }
+
+      const isCurrent = p === page;
+      return (
+        <button
+          key={`page-${p}`}
+          type="button"
+          onClick={() => setPage(p as number)}
+          className={`h-6 min-w-[24px] px-1.5 rounded-lg text-[10px] font-black transition-all ${
+            isCurrent
+              ? "bg-primary text-white shadow-sm"
+              : "border border-zinc-250 dark:border-zinc-750 text-zinc-500 hover:bg-white dark:hover:bg-zinc-800"
+          }`}
+        >
+          {p}
+        </button>
+      );
+    });
   };
 
+  /* ── Checkout ── */
   const handleCheckout = async () => {
     if (cart.length === 0) return showToast("Panier vide", "error");
     if (!user?.shopId) return showToast("Boutique non identifiée", "error");
@@ -276,10 +358,15 @@ export default function SuperCaissePage() {
         notes: `Vente par ${user.name}`,
       } as any);
       setLastSaleId(res.id);
-      // Snapshots capturés avant que le panier soit vidé
       setSaleCartSnapshot([...cart]);
+      setSaleTotalSnapshot(total);
+      setSaleSubtotalSnapshot(subtotal);
+      setSaleDiscountSnapshot(discAmt);
       setSaleReceivedSnapshot(received || total);
       setSaleChangeSnapshot(change);
+      setSaleCustomerSnapshot(selectedCustomer?.name);
+      setSalePayMethodSnapshot(paymentMethod);
+      setSaleMobileProvSnapshot(paymentMethod === "MOBILE_MONEY" ? mobileProvider : undefined);
       showToast("Vente validée !", "success");
       setShowPrintConfirm(true);
     } catch (e) {
@@ -396,11 +483,10 @@ export default function SuperCaissePage() {
               >
                 <LayoutGrid size={14} />
                 Tous
-                <span className="pos-cat-count">{products.length}</span>
+                <span className="pos-cat-count">{totalProducts}</span>
               </button>
 
               {categories.map((cat) => {
-                const count = products.filter((p) => p.categoryId === cat.id).length;
                 return (
                   <button
                     key={cat.id}
@@ -409,7 +495,6 @@ export default function SuperCaissePage() {
                   >
                     <Package size={14} />
                     {cat.name}
-                    <span className="pos-cat-count">{count}</span>
                   </button>
                 );
               })}
@@ -493,63 +578,126 @@ export default function SuperCaissePage() {
                 <div style={{ textAlign: "center", padding: "40px", opacity: .5 }}>
                   <RefreshCw size={24} style={{ animation: "spin 1s linear infinite" }} />
                 </div>
-              ) : filteredProducts.length === 0 ? (
+              ) : products.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "40px", opacity: .4, fontSize: 13 }}>
                   Aucun produit trouvé
                 </div>
-              ) : viewMode === "grid" ? (
-                /* ── VUE GRILLE ── */
-                <div className="pos-product-grid">
-                  {filteredProducts.map((p) => {
-                    const ci = inCart(p.id);
-                    const noStock = p.stockQty <= 0;
-                    return (
-                      <div
-                        key={p.id}
-                        className={`pos-prod-card ${noStock ? "no-stock" : ""}`}
-                        onClick={() => !noStock && addToCart(p)}
-                      >
-                        {ci && <div className="pos-in-cart-badge">{ci.quantity}</div>}
-                        <div className="pos-prod-cat">{p.category?.name || "—"}</div>
-                        <div className="pos-prod-name">{p.name}</div>
-                        <div className="pos-prod-price">
-                          {fmt(p.sellingPrice)} <small>XOF</small>
-                        </div>
-                        <div className={`pos-prod-stock ${p.stockQty <= (p.minStockQty || 5) && p.stockQty > 0 ? "low" : ""}`}>
-                          {noStock ? "Rupture de stock" : p.stockQty <= (p.minStockQty || 5) ? `⚠ ${p.stockQty} restants` : `${p.stockQty} en stock`}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               ) : (
-                /* ── VUE LISTE ── */
-                <div className="pos-product-list">
-                  {filteredProducts.map((p) => {
-                    const ci = inCart(p.id);
-                    const noStock = p.stockQty <= 0;
-                    return (
-                      <div
-                        key={p.id}
-                        className={`pos-prod-row ${noStock ? "no-stock" : ""}`}
-                        onClick={() => !noStock && addToCart(p)}
-                      >
-                        <div className="pos-prod-row-info">
-                          <div className="pos-prod-row-name">{p.name}</div>
-                          <div className="pos-prod-row-sub">{p.category?.name || "—"} · {p.sku || p.barcode || ""}</div>
-                        </div>
-                        {ci && <span className="pos-prod-row-qty-badge">{ci.quantity}×</span>}
-                        <div className="pos-prod-row-price">{fmt(p.sellingPrice)} <small style={{ fontSize: 10, fontWeight: 400, color: "var(--pos-text3)" }}>XOF</small></div>
-                        <div className={`pos-prod-row-stock ${p.stockQty <= (p.minStockQty || 5) && p.stockQty > 0 ? "low" : ""}`}>
-                          {noStock ? "Rupture" : p.stockQty <= (p.minStockQty || 5) ? `⚠ ${p.stockQty}` : p.stockQty}
-                        </div>
-                        <button className="pos-row-add-btn" onClick={(e) => { e.stopPropagation(); if (!noStock) addToCart(p); }}>
-                          <Plus size={14} />
+                <>
+                  {viewMode === "grid" ? (
+                    /* ── VUE GRILLE ── */
+                    <div className="pos-product-grid">
+                      {products.map((p) => {
+                        const ci = inCart(p.id);
+                        const noStock = p.stockQty <= 0;
+                        return (
+                          <div
+                            key={p.id}
+                            className={`pos-prod-card ${noStock ? "no-stock" : ""}`}
+                            onClick={() => !noStock && addToCart(p)}
+                          >
+                            {ci && <div className="pos-in-cart-badge">{ci.quantity}</div>}
+                            <div className="pos-prod-cat">{p.category?.name || "—"}</div>
+                            <div className="pos-prod-name">{p.name}</div>
+                            <div className="pos-prod-price">
+                              {fmt(p.sellingPrice)} <small>XOF</small>
+                            </div>
+                            <div className={`pos-prod-stock ${p.stockQty <= (p.minStockQty || 5) && p.stockQty > 0 ? "low" : ""}`}>
+                              {noStock ? "Rupture de stock" : p.stockQty <= (p.minStockQty || 5) ? `⚠ ${p.stockQty} restants` : `${p.stockQty} en stock`}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* ── VUE LISTE ── */
+                    <div className="pos-product-list">
+                      {products.map((p) => {
+                        const ci = inCart(p.id);
+                        const noStock = p.stockQty <= 0;
+                        return (
+                          <div
+                            key={p.id}
+                            className={`pos-prod-row ${noStock ? "no-stock" : ""}`}
+                            onClick={() => !noStock && addToCart(p)}
+                          >
+                            <div className="pos-prod-row-info">
+                              <div className="pos-prod-row-name">{p.name}</div>
+                              <div className="pos-prod-row-sub">{p.category?.name || "—"} · {p.sku || p.barcode || ""}</div>
+                            </div>
+                            {ci && <span className="pos-prod-row-qty-badge">{ci.quantity}×</span>}
+                            <div className="pos-prod-row-price">{fmt(p.sellingPrice)} <small style={{ fontSize: 10, fontWeight: 400, color: "var(--pos-text3)" }}>XOF</small></div>
+                            <div className={`pos-prod-row-stock ${p.stockQty <= (p.minStockQty || 5) && p.stockQty > 0 ? "low" : ""}`}>
+                              {noStock ? "Rupture" : p.stockQty <= (p.minStockQty || 5) ? `⚠ ${p.stockQty}` : p.stockQty}
+                            </div>
+                            <button className="pos-row-add-btn" onClick={(e) => { e.stopPropagation(); if (!noStock) addToCart(p); }}>
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Pagination Compacte pour la caisse */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-800/20 border border-zinc-150 dark:border-zinc-800/60 rounded-2xl p-3 shadow-sm mt-4">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-500">
+                      <span>Affichage de</span>
+                      <span className="text-zinc-900 dark:text-zinc-100">
+                        {Math.min((page - 1) * limit + 1, totalProducts)}
+                      </span>
+                      <span>à</span>
+                      <span className="text-zinc-900 dark:text-zinc-100">
+                        {Math.min(page * limit, totalProducts)}
+                      </span>
+                      <span>sur</span>
+                      <span className="text-primary font-black">{totalProducts}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {/* Sélecteur de taille */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[9px] uppercase font-black tracking-widest text-zinc-400">Taille:</span>
+                        <select
+                          value={limit}
+                          onChange={(e) => {
+                            setLimit(Number(e.target.value));
+                            setPage(1);
+                          }}
+                          className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-1.5 py-1 text-[10px] font-bold outline-none cursor-pointer focus:border-primary"
+                        >
+                          <option value="12">12</option>
+                          <option value="24">24</option>
+                          <option value="48">48</option>
+                          <option value="96">96</option>
+                        </select>
+                      </div>
+
+                      {/* Chevrons */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                          disabled={page === 1}
+                          className="p-1 border border-zinc-250 dark:border-zinc-750 rounded-lg text-zinc-500 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                        </button>
+
+                        {renderPageNumbers()}
+
+                        <button
+                          type="button"
+                          onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                          disabled={page === totalPages}
+                          className="p-1 border border-zinc-250 dark:border-zinc-750 rounded-lg text-zinc-500 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -808,20 +956,6 @@ export default function SuperCaissePage() {
           />
         )}
 
-        {/* Ticket hors-écran pour impression (position:fixed off-screen, pas display:none) */}
-        <div style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "80mm", pointerEvents: "none", overflow: "hidden" }}>
-          <TicketReceipt
-            ref={componentRef}
-            shop={currentShop}
-            user={user}
-            items={saleCartSnapshot}
-            total={total}
-            paymentMethod={paymentMethod}
-            amountReceived={saleReceivedSnapshot}
-            change={saleChangeSnapshot}
-            saleId={lastSaleId}
-          />
-        </div>
       </div>
       {/* Modal des Paniers en attente */}
       {showPendingModal && (
@@ -896,7 +1030,9 @@ export default function SuperCaissePage() {
               </div>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 800, color: "#0F1E3D" }}>Imprimer le ticket ?</div>
-                <div style={{ fontSize: 12, color: "#8A9BBD", marginTop: 3 }}>Voulez-vous imprimer le reçu de cette vente ?</div>
+                <div style={{ fontSize: 12, color: "#8A9BBD", marginTop: 3 }}>
+                  {saleCartSnapshot.length} article{saleCartSnapshot.length > 1 ? "s" : ""} · Total : <strong>{fmt(saleTotalSnapshot)} FCFA</strong>
+                </div>
               </div>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
@@ -907,7 +1043,23 @@ export default function SuperCaissePage() {
                 Non merci
               </button>
               <button
-                onClick={() => { handlePrint(); resetAfterSuperSale(); }}
+                onClick={() => {
+                  printReceipt({
+                    shop: currentShop,
+                    user,
+                    items: saleCartSnapshot,
+                    subtotal: saleSubtotalSnapshot,
+                    discountAmount: saleDiscountSnapshot,
+                    total: saleTotalSnapshot,
+                    paymentMethod: salePayMethodSnapshot,
+                    mobileProvider: saleMobileProvSnapshot,
+                    amountReceived: saleReceivedSnapshot,
+                    change: saleChangeSnapshot,
+                    saleId: lastSaleId,
+                    customerName: saleCustomerSnapshot,
+                  });
+                  resetAfterSuperSale();
+                }}
                 style={{ flex: 1, padding: "12px 0", background: "#2563EB", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer", textTransform: "uppercase", letterSpacing: ".06em", fontFamily: "inherit" }}
               >
                 Oui, imprimer
