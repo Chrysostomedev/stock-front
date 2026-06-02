@@ -24,6 +24,7 @@ import Cookies from "js-cookie";
 import { User, UserRole } from "../types/auth";
 import AuthService from "../services/auth.service";
 import { useRouter } from "next/navigation";
+import { isReallyOnline } from "@/core/network-check";
 
 /** Lit le token depuis cookies OU localStorage (fallback Electron/mobile) */
 function getStoredToken(): string | null {
@@ -124,6 +125,15 @@ export function useAuth() {
   }, []);
 
   const login = async (credentials: any) => {
+    // ✅ Vérification réseau réelle AVANT l'appel AuthService.
+    // navigator.onLine n'est pas fiable sur Electron/mobile — il peut rester
+    // true sans internet, ce qui fait partir la requête et timeout après 8s.
+    // Ce ping répond en max 1.5s et confirme que le serveur est joignable.
+    const online = await isReallyOnline();
+    if (!online) {
+      throw new Error("Aucune connexion internet. Vérifiez votre réseau et réessayez.");
+    }
+
     const response = await AuthService.login(credentials);
     const accessToken = response.accessToken || response.token?.accessToken;
     const refreshToken = response.refreshToken || response.token?.refreshToken;

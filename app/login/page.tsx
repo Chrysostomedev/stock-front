@@ -67,7 +67,7 @@ export default function LoginPage() {
       } else if (status === 400) {
         setError(Array.isArray(backendMessage) ? backendMessage.join(", ") : backendMessage || "Données invalides.");
       } else {
-        setError(backendMessage || "Erreur de connexion. Réessayez.");
+        setError(backendMessage || err.message || "Erreur de connexion. Réessayez.");
       }
     } finally {
       setLoading(false);

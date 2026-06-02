@@ -41,8 +41,14 @@ const CategoryService = {
    * @param params Filtres et pagination
    */
   async getByShop(shopId: string, params?: any) {
-    const response = await axiosInstance.get(`/categories/shop/${shopId}`, { params });
-    return response.data;
+    return withOfflineCache(
+      `categories_shop_${shopId}_${JSON.stringify(params ?? {})}`,
+      () =>
+        axiosInstance
+          .get(`/categories/shop/${shopId}`, { params })
+          .then((r) => r.data),
+      []
+    );
   },
 
   /** Détail catégorie. OFFLINE : cache. */

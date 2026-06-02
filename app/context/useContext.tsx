@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 import { User } from "@/types/auth";
 import { ApiErrorResponse } from "@/types/global";
 import axiosInstance from "@/core/axios";
+import { useNetwork } from "@/hooks/useNetwork";
 
 // Structure de la réponse de login renvoyée par ton API
 interface LoginResponse {
@@ -55,6 +56,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  
+  // Utilise le hook useNetwork pour une meilleure détection offline (Capacitor sur mobile/Electron)
+  const { isOnline } = useNetwork();
 
   // Ref pour éviter les mises à jour d'état sur un composant démonté
   const isMounted = useRef<boolean>(true);
@@ -80,6 +84,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     phone: string,
     password: string,
   ): Promise<{ user: User; accessToken: string; refreshToken: string }> => {
+    // Détection offline : vérifier si la requête peut atteindre le serveur
+    if (!isOnline) {
+      console.warn("📴 Mode offline — authentification impossible");
+      toast.error("Impossible de se connecter — mode hors-ligne actif");
+      throw new Error("Mode hors-ligne : authentification requise");
+    }
+
     try {
       const res = await axiosInstance.post<LoginResponse>(`/auth/login`, {
         phone,
@@ -96,8 +107,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw new Error("Réponse de connexion invalide du serveur");
       }
 
-      // Sauvegarde locale des tokens
+      // Sauvegarde locale des tokens ET du user
       saveTokens(accessToken, refreshToken, userData.id);
+      localStorage.setItem("user", JSON.stringify(userData));
 
       // Mise à jour du contexte global
       setUser(userData);
@@ -105,13 +117,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       return { user: userData, accessToken, refreshToken };
     } catch (error: unknown) {
-      // Erreur Axios (réponse du serveur reçue avec un code d'erreur HTTP)
-      if (axios.isAxiosError<ApiErrorResponse>(error)) {
+      // Vérifier si c'est une erreur réseau (offline/timeout)
+      if (axios.isAxiosError(error)) {
+        // Pas de réponse = erreur réseau (offline, timeout, etc.)
+        if (!error.response) {
+          const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+          console.warn(`⚠️  Erreur réseau${isTimeout ? ' (timeout)' : ''} — impossible de contacter le serveur`);
+          
+          // Fallback offline : si un token valide existe, laisser l'utilisateur se reconnecter
+          const cachedToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+          const cachedUser = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+          
+          if (cachedToken && cachedUser) {
+            try {
+              const parsedUser = JSON.parse(cachedUser);
+              console.log("📴 Fallback offline : reconnnexion avec profil en cache");
+              setUser(parsedUser);
+              setIsAuthenticated(true);
+              toast.success("Reconnecté (mode hors-ligne avec profil en cache)");
+              return { user: parsedUser, accessToken: cachedToken, refreshToken: cachedToken };
+            } catch (e) {
+              console.warn("❌ Impossible de parser l'utilisateur en cache");
+            }
+          }
+          
+          toast.error("Connexion impossible — vérifiez votre connexion internet");
+          throw new Error("Erreur réseau : serveur injoignable");
+        }
+
+        // Réponse HTTP reçue avec erreur
         console.error("❌ Erreur Axios login:", error.response?.data);
-        const message= error.response?.data?.message || "Erreur de connexion"
-        toast.error(message)
-        throw new Error(error.response?.data?.message || "Erreur de connexion");
+        const message = error.response?.data?.message || "Erreur de connexion";
+        toast.error(message);
+        throw new Error(message);
       }
+
       // Erreur JS standard (réseau coupé, timeout, etc.)
       if (error instanceof Error) {
         console.error("❌ Erreur login:", error.message);
@@ -145,6 +185,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const token: string | null = localStorage.getItem("access_token");
+
+    // En Electron : chercher l'user en cache localStorage
+    let cachedUser: User | null = null;
+    try {
+      const raw = localStorage.getItem("user");
+      if (raw) cachedUser = JSON.parse(raw) as User;
+    } catch {
+      cachedUser = null;
+    }
+
+    // 🔴 CRITICAL: Si offline → JAMAIS appeler axiosInstance (évite le timeout)
+    if (!isOnline) {
+      console.warn("📴 Mode offline détecté");
+      if (cachedUser) {
+        console.warn("📴 Utilisation du user en cache");
+        setUser(cachedUser);
+        setIsAuthenticated(true);
+      } else {
+        console.warn("📴 Pas de session en cache — déconnexion");
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+      setLoading(false);
+      return;
+    }
+
+    // En ligne : si pas de token, on peut pas aller plus loin
     if (!token) {
       setLoading(false);
       return;
@@ -155,9 +222,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const res = await axiosInstance.get<User>(`/auth/me`);
       if (isMounted.current) {
         setUser(res.data);
+        localStorage.setItem("user", JSON.stringify(res.data));
         setIsAuthenticated(true);
       }
     } catch (error: unknown) {
+      // Fallback Electron : si /auth/me échoue mais on a un user en cache, on le garde
+      if (cachedUser && isMounted.current) {
+        console.warn("⚠️  /auth/me échoué, mais user trouvé en cache localStorage", cachedUser);
+        setUser(cachedUser);
+        setIsAuthenticated(true);
+        setLoading(false);
+        return;
+      }
       // Si le token est expiré (401), on tente un refresh
       const isAxios401 =
         axios.isAxiosError(error) && error.response?.status === 401;
@@ -194,6 +270,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               const retryRes = await axiosInstance.get<User>(`/auth/me`);
               if (isMounted.current) {
                 setUser(retryRes.data);
+                localStorage.setItem("user", JSON.stringify(retryRes.data));
                 setIsAuthenticated(true);
                 isRefreshing.current = false;
                 return;
@@ -213,8 +290,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         isRefreshing.current = false;
       }
-      // Dans tous les cas d'échec → déconnexion propre
-      if (isMounted.current) logout();
+      // Dans tous les cas d'échec → déconnexion propre (sauf fallback cache)
+      if (isMounted.current && !cachedUser) logout();
+      else if (isMounted.current && cachedUser) {
+        console.warn("⚠️  Erreur /auth/me mais user en cache, on le garde");
+        setUser(cachedUser);
+        setIsAuthenticated(true);
+      }
     } finally {
       if (isMounted.current) setLoading(false);
     }
@@ -229,7 +311,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       isMounted.current = false;
     };
-  }, []);
+  }, [isOnline]);
 
   // ─────────────────────────────────────────────
   // RENDU
