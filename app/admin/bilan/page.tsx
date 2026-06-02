@@ -1,6 +1,20 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import {
+  AreaChart,
+  Area,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -69,6 +83,8 @@ const shopColors = [
   { primary: "#8b5cf6" }, { primary: "#f97316" }, { primary: "#06b6d4" },
   { primary: "#d946ef" },
 ];
+
+const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#6366f1", "#14b8a6"];
 
 export default function AdminBilanPage() {
   const { showToast } = useToast();
@@ -240,6 +256,39 @@ export default function AdminBilanPage() {
   const globalExpenses = reports.reduce((a, r) => a + r.totalExpenses,   0);
   const globalStock    = reports.reduce((a, r) => a + r.stockSellingVal, 0);
 
+  const historyLabels = reports[0]?.historyLabels ?? ["J-6", "J-5", "J-4", "J-3", "J-2", "Hier", "Auj"];
+  const revenueHistoryData = historyLabels.map((label, index) => ({
+    label,
+    value: reports.reduce((sum, r) => sum + (r.revenueHistory?.[index] ?? 0), 0),
+  }));
+
+  const paymentChartData = [
+    { name: "Espèces", value: reports.reduce((sum, r) => sum + (r.paymentBreakdown.CASH ?? 0), 0), color: CHART_COLORS[0] },
+    { name: "Mobile Money", value: reports.reduce((sum, r) => sum + (r.paymentBreakdown.MOBILE ?? 0), 0), color: CHART_COLORS[1] },
+    { name: "Carte", value: reports.reduce((sum, r) => sum + (r.paymentBreakdown.CARD ?? 0), 0), color: CHART_COLORS[2] },
+  ];
+
+  const categoryTotals = reports.reduce((acc: Record<string, number>, r) => {
+    Object.entries(r.categoryBreakdown).forEach(([key, val]) => {
+      acc[key] = (acc[key] ?? 0) + val;
+    });
+    return acc;
+  }, {});
+
+  const categoryChartData = Object.entries(categoryTotals)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 6)
+    .map(([name, value], index) => ({
+      name,
+      value,
+      fill: CHART_COLORS[index % CHART_COLORS.length],
+    }));
+
+  const totalCategoryAmount = categoryChartData.reduce((sum, item) => sum + item.value, 0);
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value);
+
   // ── Carte mobile par boutique ──
   const MobileReportCard = ({ rep, idx }: { rep: BoutiqueReport; idx: number }) => {
     const color = shopColors[idx % shopColors.length].primary;
@@ -349,6 +398,94 @@ export default function AdminBilanPage() {
               <p className={`text-[9px] font-bold text-${kpi.color}-300`}>{kpi.unit}</p>
             </div>
           ))}
+        </div>
+
+        {/* ── Graphiques & tendances ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <Card className="p-4 md:p-6 shadow-xl border-none">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-zinc-400">Tendance CA</p>
+                <h3 className="text-lg font-black text-foreground">Historique du chiffre d&apos;affaires</h3>
+              </div>
+              <span className="text-[10px] font-bold text-zinc-400">{historyLabels.length} points</span>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={revenueHistoryData} margin={{ top: 10, right: 0, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "rgba(100,116,139,0.8)", fontWeight: 700 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: "rgba(100,116,139,0.8)", fontWeight: 700 }} axisLine={false} tickLine={false} tickFormatter={(value) => value >= 1000 ? `${Math.round(value / 1000)}k` : String(value)} width={50} />
+                  <Tooltip contentStyle={{ backgroundColor: "var(--vscode-editor-background)", borderRadius: 16, border: "1px solid rgba(148,163,184,0.15)" }} formatter={(value: any) => typeof value === "number" ? formatCurrency(value) : value ?? ""} />
+                  <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#3b82f6' }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 flex items-center justify-between text-[11px] font-bold text-zinc-500">
+              <span>Total période</span>
+              <span>{formatCurrency(revenueHistoryData.reduce((sum, item) => sum + item.value, 0))} XOF</span>
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-1 gap-4 xl:col-span-2">
+            <Card className="p-4 md:p-6 shadow-xl border-none">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-zinc-400">Encaissements</p>
+                  <h3 className="text-lg font-black text-foreground">Répartition par moyen de paiement</h3>
+                </div>
+                <span className="text-[10px] font-bold text-zinc-400">{formatCurrency(paymentChartData.reduce((sum, item) => sum + item.value, 0))} XOF</span>
+              </div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={paymentChartData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={4}>
+                      {paymentChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: any) => typeof value === "number" ? formatCurrency(value) : value ?? ""} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2 text-[11px] font-bold text-zinc-600">
+                {paymentChartData.map((entry) => (
+                  <div key={entry.name} className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                    <span>{entry.name}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="p-4 md:p-6 shadow-xl border-none">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-zinc-400">Catégories</p>
+                  <h3 className="text-lg font-black text-foreground">Top catégories de vente</h3>
+                </div>
+                <span className="text-[10px] font-bold text-zinc-400">{formatCurrency(totalCategoryAmount)} XOF</span>
+              </div>
+              <div className="space-y-3">
+                {categoryChartData.length === 0 ? (
+                  <p className="text-xs text-zinc-400 italic">Aucune vente catégorisée sur cette période.</p>
+                ) : categoryChartData.map((item) => {
+                  const pct = totalCategoryAmount ? (item.value / totalCategoryAmount) * 100 : 0;
+                  return (
+                    <div key={item.name} className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-zinc-600">
+                        <span>{item.name}</span>
+                        <span>{formatCurrency(item.value)} XOF</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-zinc-100 overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: item.fill }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
         </div>
 
         {/* ── Tableau / Cartes ── */}
