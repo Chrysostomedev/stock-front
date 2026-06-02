@@ -27,6 +27,8 @@ import {
   AlertTriangle,
   Building2,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 export default function AdminProduitsPage() {
@@ -43,6 +45,13 @@ export default function AdminProduitsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterShop, setFilterShop] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+
+  // États pour la pagination et recherche debouncée
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
 
   // États pour les modales
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -66,22 +75,31 @@ export default function AdminProduitsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Chargement des données initiales
-  const loadData = async () => {
-    setLoading(true);
+  // Effet de debounce pour le terme de recherche
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Réinitialiser la page courante à 1 si le terme de recherche ou les filtres changent
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, filterShop, filterCategory]);
+
+  // Chargement des données statiques (au montage)
+  const loadStaticData = async () => {
     try {
-      const [prodRes, catRes, shopRes, unitRes] = await Promise.all([
-        ProductService.getAll(),
+      const [catRes, shopRes, unitRes] = await Promise.all([
         CategoryService.getAll(),
         ShopService.getAll(),
         UnitService.getAll(),
       ]);
-      const prodList = prodRes.data && Array.isArray(prodRes.data) ? prodRes.data : [];
       const catList = catRes.data && Array.isArray(catRes.data) ? catRes.data : [];
       const shopList = Array.isArray(shopRes) ? shopRes : shopRes.data || [];
       const unitList = unitRes.data && Array.isArray(unitRes.data) ? unitRes.data : [];
       
-      setProducts(prodList);
       setCategories(catList);
       setShops(shopList);
       setUnits(unitList);
@@ -90,16 +108,50 @@ export default function AdminProduitsPage() {
         setFormData((prev) => ({ ...prev, shopId: shopList[0].id }));
       }
     } catch (error) {
-      console.error("Erreur de chargement:", error);
-      showToast("Erreur lors du chargement des données", "error");
+      console.error("Erreur de chargement des filtres:", error);
+      showToast("Erreur lors du chargement des filtres", "error");
+    }
+  };
+
+  // Chargement des produits paginés
+  const loadProducts = async () => {
+    setLoading(true);
+    try {
+      const params: any = {
+        page,
+        limit,
+      };
+      if (debouncedSearch) {
+        params.search = debouncedSearch;
+      }
+      if (filterShop) {
+        params.shopId = filterShop;
+      }
+      if (filterCategory) {
+        params.categoryId = filterCategory;
+      }
+      
+      const prodRes = await ProductService.getAll(params);
+      const prodList = prodRes.data && Array.isArray(prodRes.data) ? prodRes.data : [];
+      
+      setProducts(prodList);
+      setTotalPages(prodRes.totalPages ?? 1);
+      setTotalProducts(prodRes.total ?? prodList.length);
+    } catch (error) {
+      console.error("Erreur de chargement des produits:", error);
+      showToast("Erreur lors du chargement des produits", "error");
     } finally {
-     setLoading(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadStaticData();
   }, []);
+
+  useEffect(() => {
+    loadProducts();
+  }, [page, limit, debouncedSearch, filterShop, filterCategory]);
 
   // Gestion des modales
   const handleOpenModal = (product: Product | null = null) => {
@@ -159,7 +211,7 @@ export default function AdminProduitsPage() {
         showToast("Produit créé avec succès", "success");
       }
       setIsModalOpen(false);
-      loadData();
+      loadProducts();
     } catch (error) {
       console.error("Erreur save:", error);
       showToast("Erreur lors de l'enregistrement", "error");
@@ -185,22 +237,11 @@ export default function AdminProduitsPage() {
       await ProductService.delete(selectedProduct.id);
       showToast("Produit supprimé", "success");
       setIsConfirmOpen(false);
-      loadData();
+      loadProducts();
     } catch (error) {
       showToast("Erreur lors de la suppression", "error");
     }
   };
-
-  // Filtrage
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.barcode?.includes(searchTerm) ||
-      p.sku?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesShop = !filterShop || p.shopId === filterShop;
-    const matchesCategory = !filterCategory || p.categoryId === filterCategory;
-    return matchesSearch && matchesShop && matchesCategory;
-  });
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat("fr-FR", {
@@ -208,6 +249,62 @@ export default function AdminProduitsPage() {
       currency: "XOF",
       minimumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const renderPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+
+      if (start > 2) {
+        pages.push("...");
+      }
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (end < totalPages - 1) {
+        pages.push("...");
+      }
+
+      pages.push(totalPages);
+    }
+
+    return pages.map((p, idx) => {
+      if (p === "...") {
+        return (
+          <span key={`dots-${idx}`} className="px-2 text-xs font-bold text-zinc-400">
+            ...
+          </span>
+        );
+      }
+
+      const isCurrent = p === page;
+      return (
+        <button
+          key={`page-${p}`}
+          type="button"
+          onClick={() => setPage(p as number)}
+          className={`h-8 min-w-[32px] px-2 rounded-xl text-xs font-black transition-all ${
+            isCurrent
+              ? "bg-primary text-white shadow-sm shadow-primary/30"
+              : "border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          }`}
+        >
+          {p}
+        </button>
+      );
+    });
   };
 
   const columns: any[] = [
@@ -347,7 +444,7 @@ export default function AdminProduitsPage() {
         {/* 💻 VUE DESKTOP : Affichage classique du tableau */}
         <div className="hidden md:block">
           <Card className="overflow-hidden border-none shadow-xl">
-            <DataTable columns={columns} data={filteredProducts} isLoading={loading} />
+            <DataTable columns={columns} data={products} isLoading={loading} />
           </Card>
         </div>
 
@@ -355,10 +452,10 @@ export default function AdminProduitsPage() {
         <div className="block md:hidden space-y-2.5">
           {loading ? (
             <div className="text-center py-8 text-xs font-bold text-zinc-500">Chargement du catalogue...</div>
-          ) : filteredProducts.length === 0 ? (
+          ) : products.length === 0 ? (
             <div className="text-center py-8 text-xs font-bold text-zinc-500">Aucun produit trouvé</div>
           ) : (
-            filteredProducts.map((item) => (
+            products.map((item) => (
               <div 
                 key={item.id} 
                 className="p-3.5 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800/60 shadow-sm flex items-center justify-between gap-3 active:scale-[0.99] transition-transform"
@@ -407,6 +504,69 @@ export default function AdminProduitsPage() {
             ))
           )}
         </div>
+
+        {/* Section Pagination Moderne & Premium */}
+        {!loading && products.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800/60 rounded-2xl p-4 shadow-md mt-4 transition-all">
+            <div className="flex items-center gap-2 text-xs font-bold text-zinc-500">
+              <span>Affichage de</span>
+              <span className="text-zinc-900 dark:text-zinc-100">
+                {Math.min((page - 1) * limit + 1, totalProducts)}
+              </span>
+              <span>à</span>
+              <span className="text-zinc-900 dark:text-zinc-100">
+                {Math.min(page * limit, totalProducts)}
+              </span>
+              <span>sur</span>
+              <span className="text-primary font-black">{totalProducts}</span>
+              <span>produits</span>
+            </div>
+
+            <div className="flex items-center gap-4 flex-wrap">
+              {/* Sélecteur de taille de page */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-black tracking-widest text-zinc-400">Taille :</span>
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2 py-1.5 text-xs font-bold outline-none cursor-pointer focus:border-primary transition-colors"
+                >
+                  <option value="10">10</option>
+                  <option value="20">20</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                  <option value="200">200</option>
+                </select>
+              </div>
+
+              {/* Boutons de navigation de page */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={page === 1}
+                  className="p-2 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                {renderPageNumbers()}
+
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={page === totalPages}
+                  className="p-2 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modale d'ajout/édition - Formulaire Intelligemment Responsive */}

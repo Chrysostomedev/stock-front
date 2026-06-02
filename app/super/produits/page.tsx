@@ -16,7 +16,9 @@ import {
   AlertTriangle,
   Barcode,
   Layers,
-  RefreshCw
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 /**
@@ -33,35 +35,137 @@ export default function SuperProduitsPage() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [prodRes, catRes] = await Promise.all([
-        ProductService.getAll({ shopId: user?.shopId }), // Uniquement les produits de sa boutique
-        CategoryService.getAll({ shopId: user?.shopId })
-      ]);
-      
-      const prodList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
-      const catList = catRes?.data && Array.isArray(catRes.data) ? catRes.data : (Array.isArray(catRes) ? catRes : []);
+  // États pour la pagination et recherche debouncée
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
 
-      setProducts(prodList);
+  // Effet de debounce pour la recherche
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 450);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Réinitialiser la page courante si le terme de recherche ou la catégorie change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, selectedCategory]);
+
+  // Chargement des filtres / catégories statiques
+  const loadStaticData = async () => {
+    if (!user?.shopId) return;
+    try {
+      const catRes = await CategoryService.getAll({ shopId: user.shopId });
+      const catList = catRes?.data && Array.isArray(catRes.data) ? catRes.data : (Array.isArray(catRes) ? catRes : []);
       setCategories(catList);
     } catch (error) {
-      showToast("Erreur lors du chargement des stocks", "error");
+      console.error(error);
+      showToast("Erreur lors du chargement des catégories", "error");
+    }
+  };
+
+  // Chargement des produits paginés et filtrés
+  const loadProducts = async () => {
+    if (!user?.shopId) return;
+    setLoading(true);
+    try {
+      const params: any = {
+        shopId: user.shopId,
+        page,
+        limit,
+      };
+      if (debouncedSearch) {
+        params.search = debouncedSearch;
+      }
+      if (selectedCategory) {
+        params.categoryId = selectedCategory;
+      }
+
+      const prodRes = await ProductService.getAll(params);
+      const prodList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
+
+      setProducts(prodList);
+      setTotalPages(prodRes?.totalPages ?? 1);
+      setTotalProducts(prodRes?.total ?? prodList.length);
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors du chargement des produits", "error");
     } finally {
       setLoading(false);
     }
   };
 
+  const loadData = () => {
+    loadProducts();
+  };
+
   useEffect(() => {
-    if (user?.shopId) loadData();
+    loadStaticData();
   }, [user]);
 
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || (p.barcode && p.barcode.includes(search));
-    const matchesCategory = !selectedCategory || p.categoryId === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  useEffect(() => {
+    loadProducts();
+  }, [user, page, limit, debouncedSearch, selectedCategory]);
+
+  const renderPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+
+      if (start > 2) {
+        pages.push("...");
+      }
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (end < totalPages - 1) {
+        pages.push("...");
+      }
+
+      pages.push(totalPages);
+    }
+
+    return pages.map((p, idx) => {
+      if (p === "...") {
+        return (
+          <span key={`dots-${idx}`} className="px-2 text-xs font-bold text-zinc-400">
+            ...
+          </span>
+        );
+      }
+
+      const isCurrent = p === page;
+      return (
+        <button
+          key={`page-${p}`}
+          type="button"
+          onClick={() => setPage(p as number)}
+          className={`h-8 min-w-[32px] px-2 rounded-xl text-xs font-black transition-all ${
+            isCurrent
+              ? "bg-primary text-white shadow-sm shadow-primary/30"
+              : "border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          }`}
+        >
+          {p}
+        </button>
+      );
+    });
+  };
 
   const columns: { header: string; accessor: keyof Product | ((item: Product) => React.ReactNode); className?: string }[] = [
     {
@@ -139,7 +243,7 @@ export default function SuperProduitsPage() {
             </div>
             <div>
               <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Articles</p>
-              <h4 className="text-2xl font-black text-zinc-900 dark:text-zinc-50">{products.length}</h4>
+              <h4 className="text-2xl font-black text-zinc-900 dark:text-zinc-50">{totalProducts}</h4>
             </div>
           </div>
           
@@ -204,7 +308,69 @@ export default function SuperProduitsPage() {
             </div>
           </div>
 
-          <DataTable columns={columns} data={filteredProducts} isLoading={loading} />
+          <DataTable columns={columns} data={products} isLoading={loading} />
+
+          {/* Section Pagination Moderne & Premium */}
+          {!loading && products.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 p-4 transition-all">
+              <div className="flex items-center gap-2 text-xs font-bold text-zinc-500">
+                <span>Affichage de</span>
+                <span className="text-zinc-900 dark:text-zinc-100">
+                  {Math.min((page - 1) * limit + 1, totalProducts)}
+                </span>
+                <span>à</span>
+                <span className="text-zinc-900 dark:text-zinc-100">
+                  {Math.min(page * limit, totalProducts)}
+                </span>
+                <span>sur</span>
+                <span className="text-primary font-black">{totalProducts}</span>
+                <span>articles</span>
+              </div>
+
+              <div className="flex items-center gap-4 flex-wrap">
+                {/* Sélecteur de taille de page */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-black tracking-widest text-zinc-400">Taille :</span>
+                  <select
+                    value={limit}
+                    onChange={(e) => {
+                      setLimit(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2 py-1.5 text-xs font-bold outline-none cursor-pointer focus:border-primary transition-colors"
+                  >
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                  </select>
+                </div>
+
+                {/* Boutons de navigation */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={page === 1}
+                    className="p-2 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+
+                  {renderPageNumbers()}
+
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={page === totalPages}
+                    className="p-2 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </AppLayout>

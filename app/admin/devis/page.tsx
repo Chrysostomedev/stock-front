@@ -416,7 +416,6 @@ export default function AdminDevisPage() {
     (catalogPage - 1) * 5,
     catalogPage * 5
   );
-
   // DataTable configuration
   const columns = [
     {
@@ -511,8 +510,7 @@ export default function AdminDevisPage() {
         </div>
       }
     >
-      <div className="flex flex-col gap-6">
-        
+      <div className="flex flex-col gap-6 pb-28 md:pb-12">
         {/* KPI Summaries */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-indigo-500/10 to-indigo-100/5 p-5">
