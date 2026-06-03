@@ -8,6 +8,7 @@ import { ShopSettingsProvider } from "@/contexts/ShopSettingsContext";
 import { NetworkProvider } from "@/contexts/NetworkContext";
 import "./globals.css";
 import { AuthProvider } from "./context/useContext";
+import PwaRegister from "@/components/PwaRegister";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,6 +24,12 @@ export const metadata: Metadata = {
   title: "SP Management Services",
   description: "Application globale de gestion et de suivi des stocks pour les commerçants",
   manifest: "/manifest.json",
+  themeColor: "#2563EB",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SP Services",
+  },
 };
 
 export default function RootLayout({
@@ -37,6 +44,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
+        <PwaRegister />
         <AuthProvider>
           <ShopSettingsProvider>
             <ThemeProvider>

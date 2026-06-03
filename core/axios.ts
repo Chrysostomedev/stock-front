@@ -3,7 +3,7 @@ import axios from "axios";
 // URL de l'API — injectée au build depuis .env (NEXT_PUBLIC_API_URL)
 // Parfois `process.env` n'est pas disponible dans l'environnement Electron
 // (renderer) — détecter le runtime et appliquer un fallback runtime.
-let API_URL = process.env.NEXT_PUBLIC_API_URL || "https://back-spservice-production.up.railway.app/api/v1";
+let API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 if (typeof window !== "undefined") {
   try {
     const proto = window.location.protocol || "";
