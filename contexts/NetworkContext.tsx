@@ -30,6 +30,7 @@ import OfflineQueueService, {
   OfflineEntityType,
   OfflineOperation,
 } from "@/services/offline-queue.service";
+import SyncService from "@/services/sync.service";
 import axiosInstance from "@/core/axios";
 
 // ─────────────────────────────────────────────
@@ -54,26 +55,21 @@ export type ConflictResolutionStrategy =
 interface NetworkContextType {
   isOnline: boolean;
   connectionType: "wifi" | "cellular" | "none" | "unknown";
-  /** Nombre d'items locaux en attente de flush vers le backend */
   pendingCount: number;
   isSyncing: boolean;
   lastSyncAt: Date | null;
-  /** Statistiques de la SyncQueue côté backend (null si offline) */
+  /** ISO timestamp du dernier pull serveur réussi */
+  lastSyncTime: string | null;
   backendStats: SyncQueueStats | null;
-  /** Déclenche le flush local + traitement backend */
+  /** PUSH (queue locale → serveur) */
   triggerSync: () => Promise<void>;
-  /** Ajoute une opération à la queue locale */
+  /** fullSync [11] = PUSH + PULL — à appeler au retour en ligne */
+  fullSync: (shopId?: string) => Promise<void>;
   enqueueOperation: (
     entityType: OfflineEntityType,
     operation: OfflineOperation,
     payload: Record<string, unknown>
   ) => string;
-  /**
-   * Résout un conflit de synchronisation côté backend.
-   * @param itemId    UUID de l'item en conflit (backend)
-   * @param strategy  "KEEP_LOCAL" | "KEEP_SERVER" | "MERGE"
-   * @param mergedPayload  Requis si strategy = "MERGE"
-   */
   resolveConflict: (
     itemId: string,
     strategy: ConflictResolutionStrategy,
@@ -97,6 +93,9 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncAt, setLastSyncAt] = useState<Date | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(
+    () => SyncService.getLastSyncTime()
+  );
   const [backendStats, setBackendStats] = useState<SyncQueueStats | null>(null);
 
   const syncLock = useRef<boolean>(false);
@@ -130,10 +129,23 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
   }, [isOnline]);
 
   // ─────────────────────────────────────────────
-  // Synchronisation complète :
-  //  1. Flush la queue locale → POST /sync-queue (enqueue chaque item)
-  //  2. Déclenche le traitement → POST /sync-queue/process
-  //  3. Rafraîchit les stats backend
+  // Helper : lit le shopId depuis le user en cache
+  // ─────────────────────────────────────────────
+  const getShopId = useCallback((): string | null => {
+    try {
+      const raw = typeof window !== "undefined"
+        ? localStorage.getItem("user")
+        : null;
+      if (!raw) return null;
+      const user = JSON.parse(raw);
+      return user?.shopId || user?.shopAccesses?.[0]?.shopId || null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // ─────────────────────────────────────────────
+  // PUSH uniquement (Semaine 1 — inchangé)
   // ─────────────────────────────────────────────
   const triggerSync = useCallback(async (): Promise<void> => {
     if (syncLock.current || !isOnline) return;
@@ -141,54 +153,103 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
     setIsSyncing(true);
 
     try {
-      // Étape 1 : envoyer les items locaux au backend
       const flushResult = await OfflineQueueService.flush();
-
       if (flushResult.total > 0) {
-        console.log(
-          `[NetworkContext] Flush : ${flushResult.succeeded}/${flushResult.total} OK`
-        );
+        console.log(`[NetworkContext] PUSH : ${flushResult.succeeded}/${flushResult.total} OK`);
       }
 
-      // Étape 2 : déclencher le traitement du batch côté backend
-      // POST /api/v1/sync-queue/process (traite 50 items PENDING)
       try {
-        const processResponse = await axiosInstance.post<{
-          processed: number;
-          succeeded: number;
-          failed: number;
-          conflicts: number;
+        const processRes = await axiosInstance.post<{
+          processed: number; succeeded: number; failed: number; conflicts: number;
         }>("/sync-queue/process");
-
-        const result = processResponse.data;
-        if (result.processed > 0) {
-          console.log(
-            `[NetworkContext] Backend process : ${result.succeeded}/${result.processed} OK | ${result.conflicts} conflits`
-          );
+        const r = processRes.data;
+        if (r.processed > 0) {
+          console.log(`[NetworkContext] Process : ${r.succeeded}/${r.processed} OK | ${r.conflicts} conflits`);
         }
-
-        // Si des items sont en erreur, déclencher un retry automatique
-        if (result.failed > 0) {
+        if (r.failed > 0) {
           await axiosInstance.post("/sync-queue/retry");
-          console.log("[NetworkContext] Retry automatique déclenché");
         }
-      } catch (processError) {
-        // L'utilisateur n'est peut-être pas ADMIN → on ignore silencieusement
-        console.warn(
-          "[NetworkContext] /sync-queue/process inaccessible (rôle insuffisant ?)"
-        );
+      } catch {
+        console.warn("[NetworkContext] /sync-queue/process inaccessible");
       }
 
       setLastSyncAt(new Date());
       await fetchBackendStats();
     } catch (error) {
-      console.warn("[NetworkContext] Erreur sync :", error);
+      console.warn("[NetworkContext] Erreur PUSH :", error);
     } finally {
       refreshPendingCount();
       setIsSyncing(false);
       syncLock.current = false;
     }
   }, [isOnline, fetchBackendStats, refreshPendingCount]);
+
+  // ─────────────────────────────────────────────
+  // [11] fullSync = PUSH + PULL
+  // Appelé au retour en ligne et toutes les 5 minutes
+  // ─────────────────────────────────────────────
+  const fullSync = useCallback(async (shopIdArg?: string): Promise<void> => {
+    if (syncLock.current || !isOnline) return;
+    syncLock.current = true;
+    setIsSyncing(true);
+
+    const shopId = shopIdArg ?? getShopId();
+
+    try {
+      // ── Étape 1 : PUSH ──────────────────────
+      const flushResult = await OfflineQueueService.flush();
+      if (flushResult.total > 0) {
+        console.log(`[NetworkContext] fullSync PUSH : ${flushResult.succeeded}/${flushResult.total} OK`);
+      }
+
+      try {
+        const processRes = await axiosInstance.post<{
+          processed: number; succeeded: number; failed: number; conflicts: number;
+        }>("/sync-queue/process");
+        const r = processRes.data;
+        if (r.processed > 0) {
+          console.log(`[NetworkContext] Process : ${r.succeeded}/${r.processed} | ${r.conflicts} conflits`);
+        }
+        if (r.failed > 0) await axiosInstance.post("/sync-queue/retry");
+      } catch {
+        console.warn("[NetworkContext] /sync-queue/process inaccessible");
+      }
+
+      // ── Étape 2 : PULL ──────────────────────
+      if (shopId) {
+        const hasSyncTime = !!SyncService.getLastSyncTime();
+
+        if (!hasSyncTime) {
+          // Jamais synchronisé → snapshot d'abord si pas encore chargé
+          if (!SyncService.isSnapshotLoaded(shopId)) {
+            console.log("[NetworkContext] Snapshot initial requis avant PULL");
+          } else {
+            console.warn("[NetworkContext] PULL ignoré — pas de lastSyncTime (relancer le snapshot)");
+          }
+        } else {
+          const pullResult = await SyncService.pullChanges(shopId);
+
+          // [8] Mettre à jour le lastSyncTime affiché
+          const newSyncTime = SyncService.getLastSyncTime();
+          if (newSyncTime) setLastSyncTime(newSyncTime);
+
+          console.log(
+            `[NetworkContext] PULL : ${pullResult.applied} appliqués, ` +
+            `${pullResult.skipped} conflits ignorés, ${pullResult.errors} erreurs`
+          );
+        }
+      }
+
+      setLastSyncAt(new Date());
+      await fetchBackendStats();
+    } catch (error) {
+      console.warn("[NetworkContext] Erreur fullSync :", error);
+    } finally {
+      refreshPendingCount();
+      setIsSyncing(false);
+      syncLock.current = false;
+    }
+  }, [isOnline, getShopId, fetchBackendStats, refreshPendingCount]);
 
   // ─────────────────────────────────────────────
   // Ajoute une opération à la queue locale
@@ -229,18 +290,18 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ─────────────────────────────────────────────
-  // Sync automatique au retour en ligne
+  // fullSync automatique au retour en ligne
   // ─────────────────────────────────────────────
   const prevIsOnline = useRef<boolean>(isOnline);
 
   useEffect(() => {
     if (isOnline && !prevIsOnline.current) {
-      console.log("[NetworkContext] 🔄 Retour en ligne — sync dans 1.5s");
-      const timer = setTimeout(() => triggerSync(), 1500);
+      console.log("[NetworkContext] 🔄 Retour en ligne — fullSync dans 1.5s");
+      const timer = setTimeout(() => fullSync(), 1500);
       return () => clearTimeout(timer);
     }
     prevIsOnline.current = isOnline;
-  }, [isOnline, triggerSync]);
+  }, [isOnline, fullSync]);
 
   // ─────────────────────────────────────────────
   // Initialisation au montage
@@ -254,22 +315,20 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
   }, [refreshPendingCount]);
 
   // ─────────────────────────────────────────────
-  // Sync périodique toutes les 10 min si online
-  // (complément du CRON backend toutes les 5 min)
+  // [11] fullSync périodique toutes les 5 min si online
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isOnline) return;
     const interval = setInterval(() => {
       const pending = OfflineQueueService.getPendingCount();
-      if (pending > 0) {
-        console.log(
-          `[NetworkContext] ⏰ Sync périodique — ${pending} item(s) en attente`
-        );
-        triggerSync();
+      const hasSyncTime = !!SyncService.getLastSyncTime();
+      if (pending > 0 || hasSyncTime) {
+        console.log("[NetworkContext] ⏰ fullSync périodique (5 min)");
+        fullSync();
       }
-    }, 10 * 60 * 1000);
+    }, 5 * 60 * 1000); // [11] toutes les 5 minutes
     return () => clearInterval(interval);
-  }, [isOnline, triggerSync]);
+  }, [isOnline, fullSync]);
 
   return (
     <NetworkContext.Provider
@@ -279,8 +338,10 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
         pendingCount,
         isSyncing,
         lastSyncAt,
+        lastSyncTime,
         backendStats,
         triggerSync,
+        fullSync,
         enqueueOperation,
         resolveConflict,
       }}
