@@ -28,7 +28,6 @@ import {
   CreditCard,
   AlertTriangle,
 } from "lucide-react";
-
 const DEFAULT_QUERY: PeriodQuery = { preset: "30d" };
 
 export default function SuperAdminDashboardPage() {

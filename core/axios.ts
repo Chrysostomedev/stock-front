@@ -12,7 +12,7 @@ if (typeof window !== "undefined") {
       // Utiliser explicitement l'URL publique de l'API (prod) si aucune var d'env
       API_URL = process.env.NEXT_PUBLIC_API_URL || "https://back-spservice-production.up.railway.app/api/v1";
     }
-  } catch (e) {
+  } catch {
     // ignore
   }
 }
@@ -34,15 +34,38 @@ if (typeof window !== "undefined") {
 
 // ─────────────────────────────────────────────
 // INTERCEPTEUR REQUEST — injecte le JWT
+// Priorité :
+//  1. Online  → access_token (session courante)
+//  2. Offline → offline_token si valide (30 jours)
+//  3. Fallback → access_token même potentiellement expiré
 // ─────────────────────────────────────────────
 axiosInstance.interceptors.request.use(
   (config) => {
-    if (typeof window !== "undefined") {
+    if (typeof window === "undefined") return config;
+
+    const isOnline = navigator.onLine;
+
+    if (isOnline) {
+      // Mode normal — access token standard
       const token = localStorage.getItem("access_token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      if (token) config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Mode offline — utiliser le token offline s'il est encore valide
+      const offlineToken  = localStorage.getItem("offline_token");
+      const offlineExpiry = localStorage.getItem("offline_token_expiry");
+      const offlineValid  =
+        offlineToken && offlineExpiry && new Date(offlineExpiry) > new Date();
+
+      if (offlineValid) {
+        config.headers.Authorization = `Bearer ${offlineToken}`;
+      } else {
+        // Fallback : access_token (peut être expiré, mais le backend peut encore l'accepter
+        // si offline_token est également absent)
+        const token = localStorage.getItem("access_token");
+        if (token) config.headers.Authorization = `Bearer ${token}`;
       }
     }
+
     return config;
   },
   (error) => Promise.reject(error),

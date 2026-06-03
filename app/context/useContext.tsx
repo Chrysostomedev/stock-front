@@ -5,13 +5,19 @@ import React, {
   useEffect,
   useState,
   useRef,
+  lazy,
+  Suspense,
 } from "react";
+
+const PinScreen = lazy(() => import("@/components/offline/PinScreen"));
 import axios from "axios";
 import toast from "react-hot-toast";
 import { User } from "@/types/auth";
 import { ApiErrorResponse } from "@/types/global";
 import axiosInstance from "@/core/axios";
 import { useNetwork } from "@/hooks/useNetwork";
+import OfflineAuthService from "@/services/offline-auth.service";
+import SyncService from "@/services/sync.service";
 
 // Structure de la réponse de login renvoyée par ton API
 interface LoginResponse {
@@ -39,12 +45,16 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
+  /** true quand le token est expiré mais un snapshot offline existe → afficher PinScreen */
+  needsPinUnlock: boolean;
   login: (
     phone: string,
     password: string,
   ) => Promise<{ user: User; accessToken: string; refreshToken: string }>;
   logout: () => void;
   refreshUser: () => Promise<void>;
+  /** Valide le PIN et déverrouille la session (online ou offline) */
+  unlockWithPin: (pin: string) => Promise<void>;
 }
 
 // ─────────────────────────────────────────────
@@ -56,6 +66,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [needsPinUnlock, setNeedsPinUnlock] = useState<boolean>(false);
   
   // Utilise le hook useNetwork pour une meilleure détection offline (Capacitor sur mobile/Electron)
   const { isOnline } = useNetwork();
@@ -114,6 +125,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Mise à jour du contexte global
       setUser(userData);
       setIsAuthenticated(true);
+      setNeedsPinUnlock(false);
+
+      // Générer et stocker le token offline 30 jours (non bloquant)
+      OfflineAuthService.generateOfflineSession()
+        .then((session) => OfflineAuthService.saveSession(session))
+        .catch(() => console.warn("[Auth] Token offline non généré"));
+
+      // [7] Charger le snapshot initial si ce n'est pas encore fait (non bloquant)
+      const shopId =
+        userData.shopId ||
+        (userData as any).shopAccesses?.[0]?.shopId;
+      if (shopId && !SyncService.isSnapshotLoaded(shopId)) {
+        SyncService.loadSnapshot(shopId)
+          .then(() =>
+            console.log("[Auth] Snapshot initial chargé pour", shopId)
+          )
+          .catch((e) =>
+            console.warn("[Auth] Snapshot non chargé (réessai au prochain fullSync) :", e)
+          );
+      }
 
       return { user: userData, accessToken, refreshToken };
     } catch (error: unknown) {
@@ -170,8 +201,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("user_id");
     }
+    OfflineAuthService.clearSession();
     setUser(null);
     setIsAuthenticated(false);
+    setNeedsPinUnlock(false);
+  };
+
+  // ─────────────────────────────────────────────
+  // UNLOCK WITH PIN
+  // Appelé depuis PinScreen — valide le PIN en ligne ou hors ligne
+  // ─────────────────────────────────────────────
+  const unlockWithPin = async (pin: string): Promise<void> => {
+    const snapshot = OfflineAuthService.getUserSnapshot();
+    if (!snapshot) throw new Error("Aucun profil offline trouvé");
+
+    if (navigator.onLine) {
+      // En ligne → valider via backend → obtenir un nouveau token offline 30j
+      const session = await OfflineAuthService.pinLogin(snapshot.username, pin);
+      OfflineAuthService.saveSession(session);
+      // Le token offline devient le token d'accès courant
+      localStorage.setItem("access_token", session.offlineToken);
+      localStorage.setItem("user", JSON.stringify(session.user));
+      setUser(session.user as unknown as User);
+    } else {
+      // Hors ligne → validation locale contre le snapshot
+      const valid = OfflineAuthService.validatePinLocally(pin);
+      if (!valid) throw new Error("PIN incorrect");
+    }
+
+    setIsAuthenticated(true);
+    setNeedsPinUnlock(false);
   };
 
   // ─────────────────────────────────────────────
@@ -290,9 +349,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         isRefreshing.current = false;
       }
-      // Dans tous les cas d'échec → déconnexion propre (sauf fallback cache)
-      if (isMounted.current && !cachedUser) logout();
-      else if (isMounted.current && cachedUser) {
+      // Dans tous les cas d'échec → vérifier snapshot offline avant de déconnecter
+      if (isMounted.current && !cachedUser) {
+        const snapshot = OfflineAuthService.getUserSnapshot();
+        if (snapshot) {
+          // Token expiré mais snapshot offline présent → demander PIN
+          console.warn("[Auth] Token expiré — snapshot offline trouvé → PIN requis");
+          setUser(snapshot as unknown as User);
+          setNeedsPinUnlock(true);
+          setIsAuthenticated(false);
+        } else {
+          logout();
+        }
+      } else if (isMounted.current && cachedUser) {
         console.warn("⚠️  Erreur /auth/me mais user en cache, on le garde");
         setUser(cachedUser);
         setIsAuthenticated(true);
@@ -318,14 +387,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // ─────────────────────────────────────────────
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated, loading, login, logout, refreshUser }}
+      value={{ user, isAuthenticated, loading, needsPinUnlock, login, logout, refreshUser, unlockWithPin }}
     >
-      {/* 
-        On rend TOUJOURS les children — plus de blocage sur loading.
-        Les pages protégées gèrent elles-mêmes leur état de chargement.
-        Cela évite l'écran blanc sur Electron et le chargement lent sur web.
-      */}
       {children}
+      {/* Overlay PIN — affiché quand le token est expiré mais un snapshot offline existe */}
+      {needsPinUnlock && (
+        <Suspense fallback={null}>
+          <PinScreen />
+        </Suspense>
+      )}
     </AuthContext.Provider>
   );
 };
@@ -339,3 +409,6 @@ export const useAuth = (): AuthContextType => {
     throw new Error("useAuth doit être utilisé dans un AuthProvider");
   return context;
 };
+
+/** Alias pour la compatibilité avec les imports depuis @/hooks/useAuth */
+export { useAuth as default };
