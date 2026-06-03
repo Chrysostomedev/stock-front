@@ -11,13 +11,67 @@ import {
   PeriodQuery,
 } from "../../types/dashboard";
 
-// Convertit un objet PeriodQuery en query string propre
+// Traduit un PeriodQuery frontend vers les paramètres attendus par le backend
+// Backend attend : period ('day'|'week'|'month'|'year'|'custom'), startDate, endDate, shopIds
 function toParams(query: PeriodQuery): Record<string, string> {
   const params: Record<string, string> = {};
-  if (query.preset) params.preset = query.preset;
-  if (query.from) params.from = query.from;
-  if (query.to) params.to = query.to;
-  if (query.shopId) params.shopId = query.shopId;
+
+  const now = new Date();
+  const toISO = (d: Date) => d.toISOString();
+
+  const startOf = (d: Date) => {
+    const r = new Date(d);
+    r.setHours(0, 0, 0, 0);
+    return r;
+  };
+  const endOf = (d: Date) => {
+    const r = new Date(d);
+    r.setHours(23, 59, 59, 999);
+    return r;
+  };
+
+  switch (query.preset) {
+    case "today":
+      params.period = "day";
+      break;
+
+    case "7d": {
+      // "7 derniers jours" = custom avec dates calculées
+      const from = startOf(new Date(now));
+      from.setDate(from.getDate() - 6);
+      params.period    = "custom";
+      params.startDate = toISO(from);
+      params.endDate   = toISO(endOf(now));
+      break;
+    }
+
+    case "30d": {
+      // "30 derniers jours" = custom avec dates calculées
+      const from = startOf(new Date(now));
+      from.setDate(from.getDate() - 29);
+      params.period    = "custom";
+      params.startDate = toISO(from);
+      params.endDate   = toISO(endOf(now));
+      break;
+    }
+
+    case "month":
+      params.period = "month";
+      break;
+
+    case "custom":
+      params.period = "custom";
+      if (query.from) params.startDate = query.from;
+      if (query.to)   params.endDate   = query.to;
+      break;
+
+    default:
+      params.period = "month";
+  }
+
+  // Backend attend "shopIds" (pluriel) et non "shopId"
+  if (query.shopId) params.shopIds = query.shopId;
+
   return params;
 }
 

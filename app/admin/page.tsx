@@ -141,7 +141,6 @@ export default function AdminDashboardPage() {
               {mod.disabled && (
                 <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400 md:hidden" title="Accès Gérant uniquement" />
               )}
-
               <div className="flex items-center justify-between w-full md:mb-4">
                 <div className={`
                   flex items-center justify-center w-14 h-14 rounded-full ${mod.bgColor}
@@ -155,7 +154,6 @@ export default function AdminDashboardPage() {
                   : <ArrowRight className="hidden md:block h-5 w-5 text-zinc-300" />
                 }
               </div>
-
               <h3 className="text-[11px] md:text-lg font-black text-zinc-800 dark:text-zinc-200 md:text-foreground mt-2 md:mt-0 mb-1 tracking-tight leading-tight line-clamp-1 md:line-clamp-none w-full">
                 <span className="md:hidden">{mod.title}</span>
                 <span className="hidden md:inline">{mod.desktopTitle}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import DashboardService from "../../services/admin/dashboard.service";
 import {
   OverviewResponse,
@@ -85,22 +85,20 @@ export function useDashboard(query: PeriodQuery) {
     }
   }, []);
 
-  // Fetch on query change
-  const prevQueryRef = useRef<string>("");
-  useEffect(() => {
-    const key = JSON.stringify(query);
-    if (key !== prevQueryRef.current) {
-      prevQueryRef.current = key;
-      fetchMain(query);
-      fetchAlerts();
-    }
-  }, [query, fetchMain, fetchAlerts]);
+  // Stable string key — effect only re-runs when filter content actually changes
+  const queryKey = useMemo(() => JSON.stringify(query), [query]);
+  const queryRef = useRef<PeriodQuery>(query);
+  queryRef.current = query;
 
-  // Initial load
   useEffect(() => {
-    fetchMain(query);
+    fetchMain(queryRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey]);
+
+  // Alerts are period-independent — fetch once on mount only
+  useEffect(() => {
     fetchAlerts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refresh = useCallback(() => {
