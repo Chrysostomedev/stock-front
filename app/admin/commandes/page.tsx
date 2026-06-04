@@ -7,16 +7,12 @@ import Badge from "@/components/ui/Badge";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
 import { 
-  FileText, 
   Search, 
   Store, 
-  Calendar,
-  TrendingUp,
   Download
 } from "lucide-react";
 
 export default function AdminGlobalCommandesPage() {
-  const [search, setSearch] = useState("");
 
   const mockSales = [
     { id: "TK-9901", shop: "Marcory", total: 15000, method: "cash", date: "10/05/2026" },
