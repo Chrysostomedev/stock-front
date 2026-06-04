@@ -125,14 +125,14 @@ export function useAuth() {
   }, []);
 
   const login = async (credentials: any) => {
-    // ✅ Vérification réseau réelle AVANT l'appel AuthService.
-    // navigator.onLine n'est pas fiable sur Electron/mobile — il peut rester
-    // true sans internet, ce qui fait partir la requête et timeout après 8s.
-    // Ce ping répond en max 1.5s et confirme que le serveur est joignable.
     const online = await isReallyOnline();
     if (!online) {
       throw new Error("Aucune connexion internet. Vérifiez votre réseau et réessayez.");
     }
+
+    // Nettoyer les tokens expirés AVANT de tenter le login pour éviter que
+    // refreshUser (déclenché au montage) appelle /auth/logout avec un token périmé
+    _clearStorage();
 
     const response = await AuthService.login(credentials);
     const accessToken = response.accessToken || response.token?.accessToken;

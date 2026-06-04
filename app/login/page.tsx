@@ -39,6 +39,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  /** Normalise le numéro : retire espaces/tirets/points, supprime le préfixe +225/225 */
+  const normalizePhone = (raw: string): string => {
+    let p = raw.replace(/[\s\-\.]/g, "");
+    if (p.startsWith("+225")) p = p.slice(4);
+    else if (p.startsWith("225") && p.length > 9) p = p.slice(3);
+    return p;
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -50,9 +58,15 @@ export default function LoginPage() {
       return;
     }
 
+    const normalizedPhone = normalizePhone(phone.trim());
+    if (normalizedPhone.length < 8) {
+      setError("Numéro de téléphone invalide.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Envoie le téléphone tel quel — pas de préfixe ajouté
-      await login({ phone, password });
+      await login({ phone: normalizedPhone, password });
       // La redirection est gérée automatiquement dans useAuth selon le rôle
     } catch (err: any) {
       console.error("Login error:", err.message || err);
@@ -61,11 +75,17 @@ export default function LoginPage() {
       const backendMessage = err.response?.data?.message;
       
       if (status === 404) {
-        setError("Aucun compte trouvé avec ce numéro de téléphone.");
+        setError("Aucun compte trouvé avec ce numéro.");
       } else if (status === 401) {
         setError("Mot de passe incorrect.");
       } else if (status === 400) {
-        setError(Array.isArray(backendMessage) ? backendMessage.join(", ") : backendMessage || "Données invalides.");
+        const raw = Array.isArray(backendMessage) ? backendMessage.join(", ") : (backendMessage || "");
+        const translated = raw
+          .replace(/phone must be a valid phone number/gi, "Format de numéro invalide.")
+          .replace(/password must be/gi, "Mot de passe invalide.")
+          .replace(/must be a string/gi, "Champ invalide.")
+          .replace(/should not be empty/gi, "Champ obligatoire.");
+        setError(translated || "Données de connexion invalides.");
       } else {
         setError(backendMessage || err.message || "Erreur de connexion. Réessayez.");
       }
