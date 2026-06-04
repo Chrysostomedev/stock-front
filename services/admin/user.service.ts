@@ -5,7 +5,6 @@ import axiosInstance from "../../core/axios";
 import { withOfflineFallback, withOfflineCache } from "../../core/offline-wrapper";
 import { User } from "@/types/auth";
 import { UserAccount } from "../../types/admin";
-
 const AdminUserService = {
   /** Tous les utilisateurs. OFFLINE : cache. */
   async getAllUsers(): Promise<UserAccount[]> {
@@ -18,15 +17,29 @@ const AdminUserService = {
 
   /** Créer un utilisateur. OFFLINE : enqueued. */
   async createUser(userData: Partial<UserAccount>): Promise<UserAccount> {
-    const payload = { ...userData, passwordHash: userData.pin };
+    // Construire un payload propre — n'envoyer que les champs attendus par UserDto
+    const payload: Record<string, unknown> = {
+      name:         userData.name,
+      phone:        userData.phone,
+      role:         userData.role ?? "CASHIER",
+      passwordHash: userData.pin,   // PIN = mot de passe initial
+      isActive:     userData.isActive ?? true,
+    };
+
+    // shopId : n'envoyer que si c'est un vrai UUID (pas vide)
+    if (userData.shopId) payload.shopId = userData.shopId;
+
+    // username : laisser le backend le générer automatiquement (user_<timestamp>)
+    // pin : champ frontend uniquement, ne pas l'envoyer au backend
+
     return withOfflineFallback({
-      entityType: "Product", // proxy
+      entityType: "Product",
       operation: "CREATE",
-      payload: { _type: "User", ...payload } as Record<string, unknown>,
+      payload: { _type: "User", ...payload },
       apiCall: () =>
         axiosInstance
           .post("/auth/register", payload)
-          .then((r) => r.data.user),
+          .then((r) => r.data.user ?? r.data),
       optimisticResult: {
         ...userData,
         id: `local_${Date.now()}`,

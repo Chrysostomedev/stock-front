@@ -421,9 +421,12 @@ export default function AdminUtilisateursPage() {
             />
           </div>
 
-          {/* Téléphone */}
+          {/* Téléphone — OBLIGATOIRE (utilisé pour se connecter) */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-black text-zinc-500 uppercase">Téléphone</label>
+            <label className="text-xs font-black text-zinc-500 uppercase">
+              Téléphone <span className="text-red-500">*</span>
+              <span className="ml-1 text-zinc-400 normal-case font-medium">(identifiant de connexion)</span>
+            </label>
             <input
               type="text"
               value={formData.phone}
@@ -433,61 +436,81 @@ export default function AdminUtilisateursPage() {
             />
           </div>
 
-          {/* Rôle + PIN */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Rôle</label>
-              <select
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-              >
-                <option value="CASHIER">Caissière (Superette)</option>
-                <option value="MANAGER">Gérant (Quincaillerie)</option>
-                <option value="ADMIN">Administrateur</option>
-                <option value="SUPER_ADMIN">Super Administrateur</option>
-                <option value="AUDITOR">Auditeur</option>
-              </select>
-            </div>
-            {!selectedUser && (
+          {/* Rôle */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-black text-zinc-500 uppercase">Rôle</label>
+            <select
+              value={formData.role}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+            >
+              <option value="CASHIER">Caissière (Superette)</option>
+              <option value="MANAGER">Gérant (Quincaillerie)</option>
+              <option value="ADMIN">Administrateur</option>
+              <option value="SUPER_ADMIN">Super Administrateur</option>
+              <option value="AUDITOR">Auditeur</option>
+            </select>
+          </div>
+
+          {/* Mot de passe + PIN (création uniquement) */}
+          {!selectedUser && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-zinc-500 uppercase">Code PIN</label>
+                <label className="text-xs font-black text-zinc-500 uppercase">
+                  Mot de passe <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.pin}
+                  onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
+                  placeholder="Min. 4 caractères"
+                  className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-zinc-500 uppercase">Code PIN (caisse)</label>
                 <input
                   type="text"
                   maxLength={4}
-                  value={formData.pin}
-                  onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
-                  placeholder="Ex: 1234"
+                  value={formData.pin?.length === 4 && /^\d+$/.test(formData.pin) ? formData.pin : ""}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                    setFormData({ ...formData, pin: val || formData.pin });
+                  }}
+                  placeholder="4 chiffres"
                   className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all tracking-[0.5em]"
                 />
-              </div>
-            )}
-          </div>
-
-          {/* Encart info PIN */}
-          {!selectedUser && (
-            <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl flex items-center gap-3">
-              <div className="p-2 bg-primary/10 text-primary rounded-lg shrink-0">
-                <Key className="h-4 w-4" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">
-                  Information
-                </span>
-                <span className="text-xs font-bold text-foreground tracking-tight">
-                  Le mot de passe initial sera identique au PIN.
-                </span>
               </div>
             </div>
           )}
 
+          {/* Encart récap identifiants */}
+          {!selectedUser && formData.phone && formData.pin && (
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl flex items-start gap-3">
+              <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg shrink-0">
+                <Key className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">
+                  Identifiants de connexion à communiquer
+                </span>
+                <span className="text-xs font-bold text-foreground">
+                  Téléphone : <span className="text-primary font-black">{formData.phone}</span>
+                </span>
+                <span className="text-xs font-bold text-foreground">
+                  Mot de passe : <span className="text-primary font-black">{formData.pin}</span>
+                </span>
+              </div>
+            </div>
+          )}
           <Button
             variant="primary"
             className="mt-2"
             onClick={handleSubmit}
             disabled={
               !formData.name ||
-              (!selectedUser && (!formData.pin || formData.pin.length !== 4))
+              !formData.phone ||
+              (!selectedUser && (!formData.pin || formData.pin.length < 4))
             }
           >
             {selectedUser ? "Mettre à jour l'accès" : "Créer le compte"}
@@ -547,7 +570,6 @@ export default function AdminUtilisateursPage() {
           )}
         </div>
       </Modal>
-
       {/* ---- MODAL Activer / Désactiver ---- */}
       <ConfirmModal
         isOpen={isConfirmOpen}
