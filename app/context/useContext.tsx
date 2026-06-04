@@ -198,6 +198,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("user_id");
+      localStorage.removeItem("user");
+      localStorage.removeItem("userRole");
     }
     OfflineAuthService.clearSession();
     setUser(null);
