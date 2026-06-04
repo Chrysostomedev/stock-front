@@ -10,7 +10,6 @@ const STATIC_CACHE  = `sp-static-${CACHE_VERSION}`;
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE).then((cache) =>
-      // allSettled : pas de blocage si une URL échoue
       Promise.allSettled(["/", "/login"].map((url) => cache.add(url)))
     )
   );
@@ -52,18 +51,18 @@ self.addEventListener("fetch", (event) => {
       caches.match(request).then((cached) => {
         if (cached) return cached;
 
-        // Pas en cache → aller chercher sur le réseau
         return fetch(request)
           .then((res) => {
             if (res.status === 200) {
-              caches.open(STATIC_CACHE).then((c) => c.put(request, res.clone()));
+              // ⚠ Cloner SYNCHRONEMENT avant de retourner res.
+              // Si on clone dans un .then() imbriqué (asynchrone), le navigateur
+              // peut avoir déjà consommé le body → "Response body is already used".
+              const clone = res.clone();
+              caches.open(STATIC_CACHE).then((c) => c.put(request, clone));
             }
             return res;
           })
-          .catch(() => {
-            // Offline et pas en cache → réponse vide (le navigateur gère l'erreur)
-            return new Response("", { status: 408, statusText: "Offline" });
-          });
+          .catch(() => new Response("", { status: 408, statusText: "Offline" }));
       })
     );
     return;
@@ -76,7 +75,8 @@ self.addEventListener("fetch", (event) => {
       fetch(request)
         .then((res) => {
           if (res.status === 200) {
-            caches.open(SHELL_CACHE).then((c) => c.put(request, res.clone()));
+            const clone = res.clone(); // ← clone synchrone
+            caches.open(SHELL_CACHE).then((c) => c.put(request, clone));
           }
           return res;
         })
@@ -95,7 +95,8 @@ self.addEventListener("fetch", (event) => {
     fetch(request)
       .then((res) => {
         if (res.status === 200) {
-          caches.open(SHELL_CACHE).then((c) => c.put(request, res.clone()));
+          const clone = res.clone(); // ← clone synchrone
+          caches.open(SHELL_CACHE).then((c) => c.put(request, clone));
         }
         return res;
       })
