@@ -1,48 +1,39 @@
 /**
  * network-check.ts
  * ─────────────────────────────────────────────────────────────────────────────
- * Utilitaire de détection de connectivité vers le backend.
+ * Détecte la connectivité internet réelle.
+ *
+ * On utilise le DNS-over-HTTPS de Google (CORS ouvert, pas de CORP restrictif)
+ * plutôt que le backend Railway qui bloque les requêtes cross-origin avec
+ * Cross-Origin-Resource-Policy: same-origin → ERR_BLOCKED_BY_RESPONSE.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-export async function isReallyOnline(timeoutMs = 3000): Promise<boolean> {
-  const navOnLine =
-    typeof navigator !== "undefined" ? navigator.onLine : true;
+const PING_URL = "https://dns.google/resolve?name=google.com&type=A";
 
-  console.log("[network-check] navigator.onLine =", navOnLine);
-
-  if (!navOnLine) {
-    console.log("[network-check] → false (navigator dit offline)");
+export async function isReallyOnline(timeoutMs = 4000): Promise<boolean> {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    console.log("[network-check] navigator.onLine = false → offline");
     return false;
   }
-
-  const apiBase = (
-    process.env.NEXT_PUBLIC_API_URL ||
-    "https://back-spservice-production.up.railway.app/api/v1"
-  ).replace(/\/api\/v1\/?$/, "");
-
-  const pingUrl = `${apiBase}/api/v1`;
-  console.log("[network-check] ping →", pingUrl, `(timeout: ${timeoutMs}ms)`);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    await fetch(pingUrl, {
-      method: "HEAD",
-      mode: "no-cors", // évite le rejet CORS (localhost vs Railway) — opaque response = serveur joignable
-      signal: controller.signal,
+    await fetch(PING_URL, {
+      method: "GET",
       cache: "no-store",
+      signal: controller.signal,
     });
-
     clearTimeout(timer);
-    console.log("[network-check] → true (réponse reçue)");
+    console.log("[network-check] → true");
     return true;
   } catch (err: unknown) {
     clearTimeout(timer);
     const name = (err as any)?.name ?? "unknown";
-    const message = (err as any)?.message ?? String(err);
-    console.warn(`[network-check] → false (${name}: ${message})`);
+    // AbortError = timeout réseau réel, pas juste un rejet CORP/CORS
+    console.warn(`[network-check] → false (${name})`);
     return false;
   }
 }
