@@ -10,6 +10,15 @@ export default function PwaRegister() {
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
+    // En dev (localhost avec HMR), le SW perturbe Turbopack → on ne l'enregistre pas
+    const isDev =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+    if (isDev) {
+      console.log("[SW] Mode développement — enregistrement ignoré");
+      return;
+    }
+
     navigator.serviceWorker
       .register("/sw.js", { scope: "/" })
       .then((reg) => {

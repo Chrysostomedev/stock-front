@@ -54,7 +54,6 @@ const SaleService = {
       },
     });
   },
-
   /**
    * Récupérer les détails d'une vente.
    * OFFLINE : retourne le cache si disponible.
@@ -70,7 +69,7 @@ const SaleService = {
    * Lister toutes les ventes avec filtres.
    * OFFLINE : retourne le cache de la dernière requête identique.
    */
-  async getAll(params?: { shopId?: string; limit?: number; page?: number }) {
+  async getAll(params?: { shopId?: string; userId?: string; fromDate?: string; toDate?: string; limit?: number; page?: number }) {
     const cacheKey = `sales_${JSON.stringify(params ?? {})}`;
     return withOfflineCache(
       cacheKey,

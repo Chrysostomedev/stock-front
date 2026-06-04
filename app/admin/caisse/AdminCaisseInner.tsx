@@ -78,6 +78,9 @@ export default function AdminCaisseInner() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastSaleId, setLastSaleId] = useState<string>("");
 
+  const [dailyTotal, setDailyTotal] = useState(0);
+  const [dailyCount, setDailyCount] = useState(0);
+
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
@@ -131,8 +134,24 @@ export default function AdminCaisseInner() {
         try { setCashSession(await CashSessionService.getActive(user.id)); }
         catch { setCashSession(null); }
       }
+      await loadDailyStats();
     } catch {
       showToast("Erreur lors du chargement des données", "error");
+    }
+  };
+
+  const loadDailyStats = async () => {
+    if (!shopId || !user?.id) return;
+    try {
+      const now = new Date();
+      const fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
+      const toDate   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+      const res = await SaleService.getAll({ shopId, userId: user.id, fromDate, toDate, limit: 1000 });
+      const list = res.data && Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+      setDailyTotal(list.reduce((acc: number, s: any) => acc + Number(s.totalAmount || s.total || 0), 0));
+      setDailyCount(res.total ?? list.length);
+    } catch {
+      // non-critique
     }
   };
 
@@ -270,6 +289,8 @@ export default function AdminCaisseInner() {
       setSaleCustomerSnapshot(selectedCustomer?.name);
       setSalePayMethodSnapshot(paymentMethod);
       setSaleMobileProvSnapshot(paymentMethod === "MOBILE_MONEY" ? mobileProvider : undefined);
+      setDailyTotal((prev) => prev + total);
+      setDailyCount((prev) => prev + 1);
       showToast("Vente validée !", "success");
       setShowPrintConfirm(true);
     } catch (e) {
@@ -347,7 +368,14 @@ export default function AdminCaisseInner() {
               <span className="pos-session-dot" />
               <span style={{ fontWeight: 700 }}>Caisse ouverte — Fond : {fmt(cashSession.openingBalance)} XOF</span>
             </div>
-            <button className="pos-close-session-btn" onClick={handleCloseSession}>Fermer la caisse</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, background: "rgba(255,255,255,.18)", padding: "4px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ opacity: .8 }}>CA jour :</span>
+                <strong>{fmt(dailyTotal)} XOF</strong>
+                <span style={{ opacity: .6 }}>· {dailyCount} vente{dailyCount > 1 ? "s" : ""}</span>
+              </div>
+              <button className="pos-close-session-btn" onClick={handleCloseSession}>Fermer la caisse</button>
+            </div>
           </div>
         )}
 
@@ -359,7 +387,17 @@ export default function AdminCaisseInner() {
               {categories.map((cat) => (<button key={cat.id} className={`pos-cat-btn ${selectedCategory === cat.id ? "active" : ""}`} onClick={() => setSelectedCategory(cat.id)}><Package size={14} />{cat.name}</button>))}
             </div>
             <div className="pos-session-bar">
-              {cashSession ? (<div className="pos-session-open"><span><span className="pos-session-dot" />Session active</span><span style={{ fontSize: 10, opacity: .7 }}>{fmt(cashSession.openingBalance)} XOF</span></div>) : (<div className="pos-session-closed">⚠ Caisse fermée</div>)}
+              {cashSession ? (
+                <div className="pos-session-open" style={{ gap: 4 }}>
+                  <span><span className="pos-session-dot" />Session active</span>
+                  <span style={{ fontSize: 10, opacity: .7 }}>{fmt(cashSession.openingBalance)} XOF fond</span>
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,.15)", display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: 9, opacity: .6, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800 }}>CA du jour</span>
+                    <span style={{ fontSize: 15, fontWeight: 800 }}>{fmt(dailyTotal)} XOF</span>
+                    <span style={{ fontSize: 10, opacity: .7 }}>{dailyCount} vente{dailyCount > 1 ? "s" : ""} aujourd'hui</span>
+                  </div>
+                </div>
+              ) : (<div className="pos-session-closed">⚠ Caisse fermée</div>)}
             </div>
           </aside>
 
