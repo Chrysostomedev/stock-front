@@ -95,12 +95,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     phone: string,
     password: string,
   ): Promise<{ user: User; accessToken: string; refreshToken: string }> => {
-    // Détection offline : vérifier si la requête peut atteindre le serveur
-    if (!isOnline) {
-      console.warn("📴 Mode offline — authentification impossible");
-      toast.error("Impossible de se connecter — mode hors-ligne actif");
-      throw new Error("Mode hors-ligne : authentification requise");
-    }
+    // On ne bloque PAS sur isOnline (état React qui peut être un faux positif).
+    // On tente directement la requête — l'intercepteur Axios distinguera :
+    //   • error.response présent  → serveur joignable, erreur HTTP (400/401/etc.)
+    //   • error.response absent   → vraie erreur réseau (offline/timeout)
 
     try {
       const res = await axiosInstance.post<LoginResponse>(`/auth/login`, {
@@ -373,10 +371,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // ─────────────────────────────────────────────
   // INITIALISATION : vérifie la session au montage
   // ─────────────────────────────────────────────
+  const prevIsOnline = useRef<boolean | null>(null);
+
   useEffect(() => {
     isMounted.current = true;
-    refreshUser();
-    // Nettoyage : empêche les setState après démontage
+
+    const wasNull    = prevIsOnline.current === null;          // premier montage
+    const cameOnline = prevIsOnline.current === false && isOnline; // retour en ligne
+
+    // Exécuter refreshUser uniquement :
+    //  • au premier montage (toujours)
+    //  • quand on revient online après avoir été offline (re-valider la session)
+    // NE PAS exécuter quand on passe online → offline (évite la déconnexion
+    // sur un faux positif comme un WebSocket HMR qui échoue)
+    if (wasNull || cameOnline) {
+      refreshUser();
+    }
+
+    prevIsOnline.current = isOnline;
+
     return () => {
       isMounted.current = false;
     };

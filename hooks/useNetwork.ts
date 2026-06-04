@@ -159,17 +159,31 @@ export function useNetwork(): NetworkState {
 
     // ── Web / Electron : navigator.onLine ─────────────────
     const setupBrowserNetwork = () => {
-      // État initial
       setIsOnline(navigator.onLine);
       setConnectionType(navigator.onLine ? "unknown" : "none");
 
-      const handleOnline = () => handleNetworkChange(true, "unknown");
-      const handleOffline = () => handleNetworkChange(false, "none");
+      // Debounce sur l'événement offline (500 ms) pour ignorer les faux positifs :
+      // WebSocket HMR qui échoue, micro-coupures, etc.
+      let offlineTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const handleOnline = () => {
+        if (offlineTimer) { clearTimeout(offlineTimer); offlineTimer = null; }
+        handleNetworkChange(true, "unknown");
+      };
+
+      const handleOffline = () => {
+        offlineTimer = setTimeout(() => {
+          offlineTimer = null;
+          // Confirmer avec navigator.onLine avant de déclarer offline
+          if (!navigator.onLine) handleNetworkChange(false, "none");
+        }, 500);
+      };
 
       window.addEventListener("online", handleOnline);
       window.addEventListener("offline", handleOffline);
 
       return () => {
+        if (offlineTimer) clearTimeout(offlineTimer);
         window.removeEventListener("online", handleOnline);
         window.removeEventListener("offline", handleOffline);
       };
