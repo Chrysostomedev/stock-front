@@ -11,6 +11,7 @@ import ShopService, { Shop } from "@/services/shop.service";
 import CustomerService, { Customer } from "@/services/customer.service";
 import SaleService from "@/services/sale.service";
 import CashSessionService from "@/services/super/cashSession.service";
+import CashierDashboardService from "@/services/super/cashierDashboard.service";
 import { CashSession } from "@/types/super";
 import { useAuth } from "@/hooks/useAuth";
 /* ─────────────────────────────────────────────────────────
@@ -19,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   ShoppingCart, Search, Plus, Minus, CheckCircle2,
   Smartphone, Banknote, Wallet, User, X, LayoutGrid,
-  List, Apple, Droplets, ShoppingBag, Package,
+  List, ShoppingBag, Package,
   ChevronUp, Scissors, RefreshCw, Trash2,
   Clock, Pause, Printer, ChevronLeft, ChevronRight
 } from "lucide-react";
@@ -173,13 +174,12 @@ export default function SuperCaissePage() {
   const loadDailyStats = async () => {
     if (!user?.shopId || !user?.id) return;
     try {
-      const now = new Date();
-      const fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
-      const toDate   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
-      const res = await SaleService.getAll({ shopId: user.shopId, userId: user.id, fromDate, toDate, limit: 1000 });
-      const list = res.data && Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
-      setDailyTotal(list.reduce((acc: number, s: any) => acc + Number(s.totalAmount || s.total || 0), 0));
-      setDailyCount(res.total ?? list.length);
+      const overview = await CashierDashboardService.getOverview({
+        userId:  user.id,
+        shopId:  user.shopId,
+      });
+      setDailyTotal(overview.kpis.revenue);
+      setDailyCount(overview.kpis.totalTransactions);
     } catch {
       // non-critique : ne pas bloquer la caisse
     }
@@ -204,7 +204,6 @@ export default function SuperCaissePage() {
 
       const prodRes = await ProductService.getAll(params);
       const prodList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
-      
       setProducts(prodList);
       setTotalPages(prodRes?.totalPages ?? 1);
       setTotalProducts(prodRes?.total ?? prodList.length);
