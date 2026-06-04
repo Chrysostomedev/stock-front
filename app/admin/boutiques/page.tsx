@@ -33,6 +33,7 @@ import {
 import { useShops } from "@/hooks/admin/useShops";
 import { Shop } from "@/types/admin";
 import { ShopType } from "@/services/shop.service";
+import Pagination from "@/components/ui/Pagination";
 const SHOP_TYPE_LABELS: Record<string, string> = {
   SUPERMARKET:  "Superette / Épicerie",
   HARDWARE:     "Quincaillerie / Matériaux",
@@ -171,10 +172,15 @@ export default function AdminBoutiquesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const isMobile = useIsMobile();
 
+  const SALES_LIMIT = 20;
+
   // Detailed Sales View States
   const [salesViewShop, setSalesViewShop] = useState<Shop | null>(null);
   const [sales, setSales] = useState<any[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [salesPage, setSalesPage] = useState(1);
+  const [salesTotalPages, setSalesTotalPages] = useState(1);
+  const [salesTotal, setSalesTotal] = useState(0);
   const [expandedDays, setExpandedDays] = useState<{ [key: string]: boolean }>(
     {},
   );
@@ -195,7 +201,6 @@ export default function AdminBoutiquesPage() {
     if (selectedShop) {
       setFormData({
         name: selectedShop.name,
-
         address: selectedShop.address,
         phone: selectedShop.phone,
         email: selectedShop.email,
@@ -218,41 +223,49 @@ export default function AdminBoutiquesPage() {
     }
   }, [selectedShop, isModalOpen]);
 
+  const fetchSales = async (shop: Shop, page = 1) => {
+    setSalesLoading(true);
+    try {
+      const response = await SaleService.getAll({
+        shopId: shop.id,
+        page,
+        limit: SALES_LIMIT,
+      });
+      const list =
+        response.data && Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response)
+            ? response
+            : [];
+      setSales(list);
+      setSalesTotal(response.total ?? list.length);
+      setSalesTotalPages(response.totalPages ?? 1);
+      setSalesPage(page);
+      if (page === 1 && list.length > 0) {
+        const firstDateStr = new Date(list[0].createdAt).toLocaleDateString("fr-FR", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+        setExpandedDays({ [firstDateStr]: true });
+      }
+    } catch (err) {
+      console.error("Error loading sales for shop", err);
+    } finally {
+      setSalesLoading(false);
+    }
+  };
+
   // Load Sales when salesViewShop is selected
   useEffect(() => {
     if (salesViewShop) {
-      const fetchSales = async () => {
-        setSalesLoading(true);
-        try {
-          const response = await SaleService.getAll({
-            shopId: salesViewShop.id,
-          });
-          const list =
-            response.data && Array.isArray(response.data)
-              ? response.data
-              : Array.isArray(response)
-                ? response
-                : [];
-          setSales(list);
-          if (list.length > 0) {
-            const firstDate = new Date(list[0].createdAt);
-            const firstDateStr = firstDate.toLocaleDateString("fr-FR", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            });
-            setExpandedDays({ [firstDateStr]: true });
-          }
-        } catch (err) {
-          console.error("Error loading sales for shop", err);
-        } finally {
-          setSalesLoading(false);
-        }
-      };
-      fetchSales();
+      fetchSales(salesViewShop, 1);
     } else {
       setSales([]);
       setExpandedDays({});
+      setSalesPage(1);
+      setSalesTotalPages(1);
+      setSalesTotal(0);
     }
   }, [salesViewShop]);
 
@@ -483,7 +496,7 @@ export default function AdminBoutiquesPage() {
                   Total Ventes
                 </p>
                 <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">
-                  {sales.length} transactions
+                  {salesTotal} transactions
                 </h4>
               </div>
             </div>
@@ -508,10 +521,17 @@ export default function AdminBoutiquesPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <h3 className="text-base font-black text-foreground tracking-tight flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-zinc-400" />
-              Journal des Ventes par Journée
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-foreground tracking-tight flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-zinc-400" />
+                Journal des Ventes par Journée
+              </h3>
+              {salesTotalPages > 1 && (
+                <span className="text-[11px] font-bold text-zinc-400">
+                  Page {salesPage} / {salesTotalPages}
+                </span>
+              )}
+            </div>
 
             {salesLoading ? (
               <div className="py-20 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
@@ -647,6 +667,19 @@ export default function AdminBoutiquesPage() {
                 );
               })
             )}
+
+            <Pagination
+              currentPage={salesPage}
+              totalPages={salesTotalPages}
+              total={salesTotal}
+              limit={SALES_LIMIT}
+              onPageChange={(page) => {
+                if (salesViewShop) {
+                  fetchSales(salesViewShop, page);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }
+              }}
+            />
           </div>
         </div>
 

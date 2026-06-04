@@ -30,6 +30,7 @@ export async function isReallyOnline(timeoutMs = 3000): Promise<boolean> {
   try {
     await fetch(pingUrl, {
       method: "HEAD",
+      mode: "no-cors", // évite le rejet CORS (localhost vs Railway) — opaque response = serveur joignable
       signal: controller.signal,
       cache: "no-store",
     });

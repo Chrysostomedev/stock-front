@@ -1,19 +1,17 @@
 // Service Worker — SP Services PWA
-// Stratégie : cache-first pour assets statiques, network-first pour navigation
+// À tester UNIQUEMENT sur le build de production (npm run build)
+// En mode dev (localhost), ce fichier est ignoré par PwaRegister.tsx
 
 const CACHE_VERSION = "sp-v2";
 const SHELL_CACHE   = `sp-shell-${CACHE_VERSION}`;
 const STATIC_CACHE  = `sp-static-${CACHE_VERSION}`;
 
-// Pages à précacher dès l'installation
-const PRECACHE = ["/", "/login"];
-
-// ── Install : précacher l'app shell ──────────────────────────────
+// ── Install : précacher les pages principales ─────────────────────
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE).then((cache) =>
-      // addAll en mode no-cors pour éviter les erreurs sur certains assets
-      Promise.allSettled(PRECACHE.map((url) => cache.add(url)))
+      // allSettled : pas de blocage si une URL échoue
+      Promise.allSettled(["/", "/login"].map((url) => cache.add(url)))
     )
   );
   self.skipWaiting();
@@ -33,62 +31,76 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// ── Fetch : stratégie par type de ressource ────────────────────────
+// ── Fetch ──────────────────────────────────────────────────────────
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // 1. Ignorer les requêtes non-GET
+  // Ignorer les requêtes non-GET
   if (request.method !== "GET") return;
 
-  // 2. Ignorer les appels API externes (gérés par offline-wrapper.ts)
+  // Ignorer les appels API externes (gérés par offline-wrapper.ts côté app)
   if (url.hostname !== self.location.hostname) return;
 
-  // 3. Assets Next.js (/_next/static/) → immuables → cache-first
+  // Ignorer les WebSocket HMR (développement uniquement)
+  if (url.pathname.includes("webpack-hmr")) return;
+
+  // ── Assets statiques Next.js (/_next/static/) ─────────────────
+  // Immuables (hash dans le nom) → cache-first
   if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached;
-        return fetch(request).then((res) => {
-          if (res.status === 200) {
-            const clone = res.clone();
-            caches.open(STATIC_CACHE).then((c) => c.put(request, clone));
-          }
-          return res;
-        });
+
+        // Pas en cache → aller chercher sur le réseau
+        return fetch(request)
+          .then((res) => {
+            if (res.status === 200) {
+              caches.open(STATIC_CACHE).then((c) => c.put(request, res.clone()));
+            }
+            return res;
+          })
+          .catch(() => {
+            // Offline et pas en cache → réponse vide (le navigateur gère l'erreur)
+            return new Response("", { status: 408, statusText: "Offline" });
+          });
       })
     );
     return;
   }
 
-  // 4. Navigation (HTML pages) → network-first, fallback cache → fallback "/"
+  // ── Navigation (pages HTML) ────────────────────────────────────
+  // Network-first → cache fallback → racine "/"
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
         .then((res) => {
           if (res.status === 200) {
-            const clone = res.clone();
-            caches.open(SHELL_CACHE).then((c) => c.put(request, clone));
+            caches.open(SHELL_CACHE).then((c) => c.put(request, res.clone()));
           }
           return res;
         })
         .catch(() =>
-          caches.match(request).then((c) => c || caches.match("/"))
+          caches.match(request)
+            .then((c) => c || caches.match("/"))
+            .then((c) => c || new Response("Hors ligne", { status: 503 }))
         )
     );
     return;
   }
 
-  // 5. Autres ressources (images, fonts, etc.) → network-first avec fallback cache
+  // ── Autres ressources (images, fonts, manifest…) ───────────────
+  // Network-first avec fallback cache
   event.respondWith(
     fetch(request)
       .then((res) => {
         if (res.status === 200) {
-          const clone = res.clone();
-          caches.open(SHELL_CACHE).then((c) => c.put(request, clone));
+          caches.open(SHELL_CACHE).then((c) => c.put(request, res.clone()));
         }
         return res;
       })
-      .catch(() => caches.match(request))
+      .catch(() =>
+        caches.match(request).then((c) => c || new Response("", { status: 408 }))
+      )
   );
 });
