@@ -172,7 +172,7 @@ export default function AdminBoutiquesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const isMobile = useIsMobile();
 
-  const SALES_LIMIT = 20;
+  const SALES_LIMIT = 600;
 
   // Detailed Sales View States
   const [salesViewShop, setSalesViewShop] = useState<Shop | null>(null);

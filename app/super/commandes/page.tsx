@@ -32,7 +32,7 @@ export default function SuperCommandesPage() {
   const { showToast } = useToast();
   const { user } = useAuth();
 
-  const LIMIT = 50;
+  const LIMIT = 600;
 
   const [sales, setSales] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
