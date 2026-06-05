@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
@@ -116,11 +115,6 @@ export default function SuperDashboardPage() {
 
   const userId = user?.id;
   const shopId = user?.shopId;
-
-  // React Compiler : zéro setState synchrone dans l'effet.
-  // • loading=true par défaut (useState)
-  // • setLoading(false) uniquement dans .then/.catch (callbacks async = OK)
-  // • Refresh : setLoading(true) dans le handler d'événement du bouton (OK dans les events)
   useEffect(() => {
     if (!userId || !shopId) return;
     let cancelled = false;
@@ -148,7 +142,7 @@ export default function SuperDashboardPage() {
 
   return (
     <AppLayout
-      title="Mon Dashboard"
+      title="Mon Dashboard journalier"
       subtitle={
         overview
           ? `${overview.cashier.name} · ${new Date(overview.period.date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`
