@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Calendar, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { PeriodPreset, PeriodQuery } from "@/types/dashboard";
 import { Shop } from "@/types/admin";
 
@@ -10,7 +10,6 @@ interface PeriodSelectorProps {
   onChange: (q: PeriodQuery) => void;
   shops: Shop[];
 }
-
 const PRESETS: { label: string; value: PeriodPreset }[] = [
   { label: "Aujourd'hui", value: "today" },
   { label: "7 jours", value: "7d" },
@@ -38,7 +37,6 @@ export default function PeriodSelector({ query, onChange, shops }: PeriodSelecto
           </button>
         ))}
       </div>
-
       {/* Shop filter */}
       {shops.length > 0 && (
         <div className="relative">

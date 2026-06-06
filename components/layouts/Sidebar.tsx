@@ -10,6 +10,7 @@ import {
   Settings,
   UserCircle,
   Users,
+  UserCheck,
   LogOut,
   Layers,
   FileText,
@@ -50,7 +51,7 @@ export default function Sidebar() {
     { href: "/admin/bilan", label: "Bilan Financier", icon: <TrendingUp className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/boutiques", label: "Boutiques", icon: <Building2 className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/utilisateurs", label: "Utilisateurs", icon: <Users className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
-    { href: "/admin/clients", label: "Clients & Crédits", shortLabel: "Clients", icon: <Users className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
+    { href: "/admin/clients", label: "Clients & Crédits", shortLabel: "Clients", icon: <UserCheck className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/produits", label: "Catalogue Produits", icon: <Package className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/categories", label: "Catégories", icon: <Tag className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/transferts", label: "Transferts de Stock", shortLabel: "Transferts", icon: <Layers className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
@@ -85,7 +86,7 @@ export default function Sidebar() {
   ];
 
   // Les menus cibles à placer en bas sur mobile
-  const bottomMobileLabels = ["Administration", "Clients & Crédits", "Transferts de Stock", "Journal d'activité"];
+  const bottomMobileLabels = ["Administration", "Transferts de Stock", "Journal d'activité"];
 
   // userRole est undefined pendant le SSR et le premier rendu client (avant useEffect)
   // pour que le HTML serveur === HTML client → pas de mismatch d'hydratation

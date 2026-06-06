@@ -1,13 +1,12 @@
 import axios from "axios";
 
-let API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+const PROD_API_URL = "https://back-spservice-production.up.railway.app/api/v1";
+let API_URL = process.env.NEXT_PUBLIC_API_URL || PROD_API_URL;
 if (typeof window !== "undefined") {
   try {
     const proto = window.location.protocol || "";
-    // Si on est dans Electron via Capacitor, la protocol sera 'capacitor-electron:'
     if (proto.startsWith("capacitor-electron")) {
-      // Utiliser explicitement l'URL publique de l'API (prod) si aucune var d'env
-      API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+      API_URL = process.env.NEXT_PUBLIC_API_URL || PROD_API_URL;
     }
   } catch {
     // ignore
@@ -59,16 +58,6 @@ axiosInstance.interceptors.request.use(
   },
   (error) => Promise.reject(error),
 );
-
-// ─────────────────────────────────────────────
-// INTERCEPTEUR RESPONSE — gestion des erreurs globales
-//
-// ⚠️  NE PAS rediriger automatiquement sur 401 ici.
-//     Le AuthProvider gère lui-même le refresh token et la déconnexion.
-//     Une redirection automatique ici crée une boucle infinie sur
-//     Electron et mobile (le 401 de /auth/me au démarrage déclenchait
-//     une redirect → rechargement → 401 → redirect → ∞).
-// ─────────────────────────────────────────────
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
