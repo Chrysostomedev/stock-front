@@ -65,7 +65,7 @@ export function useAuth() {
   useEffect(() => {
     const checkAuth = async () => {
       const token = Cookies.get("access_token");
-      console.log("token:", token);
+      // console.log("token:", token);
       if (!token) {
         setLoading(false);
         setIsAuthenticated(false);
@@ -73,8 +73,6 @@ export function useAuth() {
         return;
       }
 
-      // Si on a déjà le user en cache localStorage → on l'utilise directement
-      // et on tente quand même /auth/me en arrière-plan pour rafraîchir
       const cachedUser = getStoredUser();
       if (cachedUser) {
         setUser(cachedUser);
@@ -99,7 +97,6 @@ export function useAuth() {
       // Pas de cache → appel réseau obligatoire
       try {
         const profile = await AuthService.getProfile();
-
         let finalUser = profile;
         if (!profile.shopId && (profile as any).shopAccesses?.length > 0) {
           finalUser = {
@@ -129,7 +126,6 @@ export function useAuth() {
     if (!online) {
       throw new Error("Aucune connexion internet. Vérifiez votre réseau et réessayez.");
     }
-
     // Nettoyer les tokens expirés AVANT de tenter le login pour éviter que
     // refreshUser (déclenché au montage) appelle /auth/logout avec un token périmé
     _clearStorage();

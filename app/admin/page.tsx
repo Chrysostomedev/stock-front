@@ -19,7 +19,6 @@ import {
   LogIn,
   AlertTriangle,
 } from "lucide-react";
-
 export default function AdminDashboardPage() {
   const [showQuincNotice, setShowQuincNotice] = useState(false);
 

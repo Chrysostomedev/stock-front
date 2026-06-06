@@ -2,8 +2,8 @@
 
 import React, { useMemo } from "react";
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -125,15 +125,12 @@ export default function SalesTimeline({ data, loading }: SalesTimelineProps) {
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={260}>
-          <AreaChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-            <defs>
-              {shopNames.map((name, i) => (
-                <linearGradient key={name} id={`grad-${i}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={SHOP_COLORS[i % SHOP_COLORS.length]} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={SHOP_COLORS[i % SHOP_COLORS.length]} stopOpacity={0.02} />
-                </linearGradient>
-              ))}
-            </defs>
+          <BarChart
+            data={chartData}
+            margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+            barCategoryGap="25%"
+            barGap={3}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(161,161,170,0.15)" vertical={false} />
             <XAxis
               dataKey="date"
@@ -154,25 +151,22 @@ export default function SalesTimeline({ data, loading }: SalesTimelineProps) {
               }
               width={45}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(161,161,170,0.07)", radius: 6 }} />
             <Legend
               wrapperStyle={{ fontSize: 11, fontWeight: 700, paddingTop: 12 }}
               iconType="circle"
               iconSize={8}
             />
             {shopNames.map((name, i) => (
-              <Area
+              <Bar
                 key={name}
-                type="monotone"
                 dataKey={name}
-                stroke={SHOP_COLORS[i % SHOP_COLORS.length]}
-                strokeWidth={2.5}
-                fill={`url(#grad-${i})`}
-                dot={false}
-                activeDot={{ r: 5, strokeWidth: 0 }}
+                fill={SHOP_COLORS[i % SHOP_COLORS.length]}
+                radius={[4, 4, 0, 0]}
+                maxBarSize={40}
               />
             ))}
-          </AreaChart>
+          </BarChart>
         </ResponsiveContainer>
       )}
     </div>

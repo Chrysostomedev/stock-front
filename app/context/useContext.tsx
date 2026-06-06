@@ -95,10 +95,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     phone: string,
     password: string,
   ): Promise<{ user: User; accessToken: string; refreshToken: string }> => {
-    // On ne bloque PAS sur isOnline (état React qui peut être un faux positif).
-    // On tente directement la requête — l'intercepteur Axios distinguera :
-    //   • error.response présent  → serveur joignable, erreur HTTP (400/401/etc.)
-    //   • error.response absent   → vraie erreur réseau (offline/timeout)
 
     try {
       const res = await axiosInstance.post<LoginResponse>(`/auth/login`, {
@@ -129,7 +125,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       OfflineAuthService.generateOfflineSession()
         .then((session) => OfflineAuthService.saveSession(session))
         .catch(() => console.warn("[Auth] Token offline non généré"));
-
       // [7] Charger le snapshot initial si ce n'est pas encore fait (non bloquant)
       const shopId =
         userData.shopId ||
@@ -169,7 +164,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               console.warn("❌ Impossible de parser l'utilisateur en cache");
             }
           }
-          
           toast.error("Connexion impossible — vérifiez votre connexion internet");
           throw new Error("Erreur réseau : serveur injoignable");
         }
@@ -254,7 +248,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       cachedUser = null;
     }
 
-    // 🔴 CRITICAL: Si offline → JAMAIS appeler axiosInstance (évite le timeout)
+    //  CRITICAL: Si offline → JAMAIS appeler axiosInstance (évite le timeout)
     if (!isOnline) {
       console.warn("📴 Mode offline détecté");
       if (cachedUser) {
@@ -381,11 +375,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const wasNull    = prevIsOnline.current === null;          // premier montage
     const cameOnline = prevIsOnline.current === false && isOnline; // retour en ligne
 
-    // Exécuter refreshUser uniquement :
-    //  • au premier montage (toujours)
-    //  • quand on revient online après avoir été offline (re-valider la session)
-    // NE PAS exécuter quand on passe online → offline (évite la déconnexion
-    // sur un faux positif comme un WebSocket HMR qui échoue)
     if (wasNull || cameOnline) {
       refreshUser();
     }

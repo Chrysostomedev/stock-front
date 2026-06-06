@@ -258,17 +258,23 @@ export default function AdminDevisPage() {
         }))
       };
 
-      await PurchaseOrderService.create(payload);
-      showToast("Bon de commande créé avec succès !", "success");
-      
+      const created = await PurchaseOrderService.create(payload);
+      const isOfflineResult = (created as any)?.syncStatus === "PENDING" || String((created as any)?.id ?? "").startsWith("local_");
+
       // Reset wizard
       setIsCreateOpen(false);
       setNewOrderItems([]);
       setExpectedAt("");
       setNotes("");
-      
-      // Reload list
-      await loadData();
+
+      if (isOfflineResult) {
+        // Offline : inject optimistic PO into local state immediately
+        setOrders(prev => [created as any, ...prev]);
+        showToast("Bon de commande enregistré — sera synchronisé à la reconnexion", "success");
+      } else {
+        showToast("Bon de commande créé avec succès !", "success");
+        await loadData();
+      }
     } catch (error) {
       console.error("Error creating PO:", error);
       showToast("Erreur lors de la création du bon de commande", "error");
@@ -512,49 +518,51 @@ export default function AdminDevisPage() {
     >
       <div className="flex flex-col gap-6 pb-28 md:pb-12">
         {/* KPI Summaries */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-indigo-500/10 to-indigo-100/5 p-5">
-            <div>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Total Bons</p>
-              <h3 className="text-2xl font-black text-zinc-800 dark:text-zinc-150 mt-1 font-mono">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-indigo-500/10 to-indigo-100/5 p-3 md:p-5">
+            <div className="min-w-0">
+              <p className="text-[9px] md:text-[10px] font-black text-zinc-400 uppercase tracking-widest truncate">Total Bons</p>
+              <h3 className="text-xl md:text-2xl font-black text-zinc-800 dark:text-zinc-150 mt-1 font-mono">
                 {orders.length}
               </h3>
             </div>
-            <div className="p-3 bg-indigo-500/15 rounded-xl text-indigo-500">
-              <FileText className="h-5 w-5" />
+            <div className="p-2 md:p-3 bg-indigo-500/15 rounded-xl text-indigo-500 flex-shrink-0">
+              <FileText className="h-4 w-4 md:h-5 md:w-5" />
             </div>
           </Card>
-          <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-emerald-500/10 to-emerald-100/5 p-5">
-            <div>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Valeur Commande</p>
-              <h3 className="text-2xl font-black text-zinc-850 dark:text-zinc-50 mt-1 font-mono text-emerald-600 dark:text-emerald-400">
-                {new Intl.NumberFormat("fr-FR").format(orders.reduce((acc, o) => acc + (o.totalAmount || 0), 0))} XOF
+          <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-emerald-500/10 to-emerald-100/5 p-3 md:p-5">
+            <div className="min-w-0">
+              <p className="text-[9px] md:text-[10px] font-black text-zinc-400 uppercase tracking-widest truncate">Valeur</p>
+              <h3 className="text-sm md:text-2xl font-black mt-1 font-mono text-emerald-600 dark:text-emerald-400 truncate">
+                {new Intl.NumberFormat("fr-FR").format(orders.reduce((acc, o) => acc + (o.totalAmount || 0), 0))}
+                <span className="text-[10px] md:hidden ml-0.5">XOF</span>
+                <span className="hidden md:inline text-2xl"> XOF</span>
               </h3>
             </div>
-            <div className="p-3 bg-emerald-500/15 rounded-xl text-emerald-500">
-              <TrendingUp className="h-5 w-5" />
+            <div className="p-2 md:p-3 bg-emerald-500/15 rounded-xl text-emerald-500 flex-shrink-0">
+              <TrendingUp className="h-4 w-4 md:h-5 md:w-5" />
             </div>
           </Card>
-          <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-amber-500/10 to-amber-100/5 p-5">
-            <div>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">En Cours de Réception</p>
-              <h3 className="text-2xl font-black text-zinc-800 dark:text-zinc-150 mt-1 font-mono">
+          <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-amber-500/10 to-amber-100/5 p-3 md:p-5">
+            <div className="min-w-0">
+              <p className="text-[9px] md:text-[10px] font-black text-zinc-400 uppercase tracking-widest truncate">En Cours</p>
+              <h3 className="text-xl md:text-2xl font-black text-zinc-800 dark:text-zinc-150 mt-1 font-mono">
                 {orders.filter(o => o.status === PurchaseOrderStatus.SENT || o.status === PurchaseOrderStatus.PARTIAL).length}
               </h3>
             </div>
-            <div className="p-3 bg-amber-500/15 rounded-xl text-amber-500">
-              <Truck className="h-5 w-5" />
+            <div className="p-2 md:p-3 bg-amber-500/15 rounded-xl text-amber-500 flex-shrink-0">
+              <Truck className="h-4 w-4 md:h-5 md:w-5" />
             </div>
           </Card>
-          <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-teal-500/10 to-teal-100/5 p-5">
-            <div>
-              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Entièrement Reçus</p>
-              <h3 className="text-2xl font-black text-zinc-800 dark:text-zinc-150 mt-1 font-mono">
+          <Card className="flex items-center justify-between border-none shadow-lg bg-gradient-to-br from-teal-500/10 to-teal-100/5 p-3 md:p-5">
+            <div className="min-w-0">
+              <p className="text-[9px] md:text-[10px] font-black text-zinc-400 uppercase tracking-widest truncate">Reçus</p>
+              <h3 className="text-xl md:text-2xl font-black text-zinc-800 dark:text-zinc-150 mt-1 font-mono">
                 {orders.filter(o => o.status === PurchaseOrderStatus.RECEIVED).length}
               </h3>
             </div>
-            <div className="p-3 bg-teal-500/15 rounded-xl text-teal-500">
-              <CheckCircle2 className="h-5 w-5" />
+            <div className="p-2 md:p-3 bg-teal-500/15 rounded-xl text-teal-500 flex-shrink-0">
+              <CheckCircle2 className="h-4 w-4 md:h-5 md:w-5" />
             </div>
           </Card>
         </div>
@@ -618,14 +626,69 @@ export default function AdminDevisPage() {
           </div>
         </Card>
 
-        {/* DataTable List */}
-        <Card className="overflow-hidden border-none shadow-xl bg-white dark:bg-zinc-900 rounded-3xl">
-          <DataTable
-            columns={columns}
-            data={filteredOrders}
-            isLoading={loading}
-          />
-        </Card>
+        {/* Mobile Card List — visible on mobile only */}
+        <div className="md:hidden flex flex-col gap-3">
+          {loading ? (
+            <div className="flex flex-col gap-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-36 bg-zinc-100 dark:bg-zinc-800 rounded-2xl animate-pulse" />
+              ))}
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="text-center py-12 text-zinc-400 font-bold text-xs bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+              Aucun bon de commande trouvé
+            </div>
+          ) : (
+            filteredOrders.map((po) => (
+              <div key={po.id} className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="font-black text-zinc-800 dark:text-zinc-100 font-mono text-xs">{po.id.slice(0, 8).toUpperCase()}...</p>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">{new Date(po.createdAt).toLocaleDateString("fr-FR")}</p>
+                  </div>
+                  {getStatusBadge(po.status)}
+                </div>
+                <div className="flex flex-col gap-1.5 mb-3 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-400 font-bold">Fournisseur</span>
+                    <span className="font-black text-zinc-700 dark:text-zinc-300 text-right max-w-[60%] truncate">{getSupplierName(po.supplierId)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-400 font-bold">Boutique</span>
+                    <span className="font-bold text-zinc-500 text-right max-w-[60%] truncate">{getShopName(po.shopId)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-400 font-bold">Montant</span>
+                    <span className="font-black text-zinc-800 dark:text-zinc-100 font-mono">{new Intl.NumberFormat("fr-FR").format(po.totalAmount || 0)} XOF</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-400 font-bold">Articles</span>
+                    <span className="font-black">{po.items?.length || 0} produit(s)</span>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="w-full text-xs font-black"
+                  onClick={() => { setSelectedPO(po); setIsViewOpen(true); }}
+                >
+                  Consulter le bon
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* DataTable List — visible on desktop only */}
+        <div className="hidden md:block">
+          <Card className="overflow-hidden border-none shadow-xl bg-white dark:bg-zinc-900 rounded-3xl">
+            <DataTable
+              columns={columns}
+              data={filteredOrders}
+              isLoading={loading}
+            />
+          </Card>
+        </div>
       </div>
 
       {/* -------------------- WIZARD : CRÉATION DE BON DE COMMANDE -------------------- */}
@@ -639,7 +702,7 @@ export default function AdminDevisPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Form configuration parameters (4 cols) */}
-            <div className="lg:col-span-4 flex flex-col gap-5 bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 max-h-[70vh] overflow-y-auto">
+            <div className="lg:col-span-4 flex flex-col gap-5 bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 lg:max-h-[70vh] lg:overflow-y-auto">
               <h3 className="text-xs font-black uppercase tracking-wider text-zinc-500 mb-1 flex items-center gap-2">
                 <Info className="h-4.5 w-4.5 text-primary" />
                 Configuration
@@ -705,14 +768,15 @@ export default function AdminDevisPage() {
                 <div>
                   <span className="text-[9px] uppercase tracking-widest font-black text-zinc-400">Montant Total Net Estimé</span>
                   <h4 className="text-xl font-black text-primary font-mono mt-0.5">
-                    {new Intl.NumberFormat("fr-FR").format(getOrderTotal())} <span className="text-xs font-bold text-zinc-450 dark:text-zinc-300">XOF</span>
+                    {new Intl.NumberFormat("fr-FR").format(getOrderTotal())} <span className="text-xs font-bold text-zinc-400 dark:text-zinc-300">XOF</span>
                   </h4>
-                  <span className="text-[9px] text-zinc-450 dark:text-zinc-450 font-bold block mt-1">{newOrderItems.length} article(s) sélectionné(s)</span>
+                  <span className="text-[9px] text-zinc-400 font-bold block mt-1">{newOrderItems.length} article(s) sélectionné(s)</span>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <Button type="submit" variant="primary" loading={isSubmittingOrder} disabled={newOrderItems.length === 0} className="w-full">
-                    Créer le Bon
+                  <Button type="submit" variant="primary" loading={isSubmittingOrder} disabled={newOrderItems.length === 0} className="w-full font-black">
+                    <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                    Créer le Bon de Commande
                   </Button>
                   <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} className="w-full">
                     Annuler
@@ -722,18 +786,18 @@ export default function AdminDevisPage() {
             </div>
 
             {/* Catalog Browser & Selected Items (8 cols) */}
-            <div className="lg:col-span-8 flex flex-col gap-6 max-h-[70vh] overflow-y-auto pr-1">
-              
+            <div className="lg:col-span-8 flex flex-col gap-6 lg:max-h-[70vh] lg:overflow-y-auto pr-1">
+
               {/* Product catalog with pagination */}
               <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <h3 className="text-xs font-black uppercase tracking-wider text-zinc-500 flex items-center gap-2">
                     <Package className="h-4.5 w-4.5 text-primary" />
-                    Catalogue des Produits en Stock
+                    Catalogue Produits en Stock
                   </h3>
-                  
-                  {/* Small Search Bar */}
-                  <div className="relative w-64">
+
+                  {/* Search Bar */}
+                  <div className="relative w-full sm:w-64">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
                     <input
                       type="text"
@@ -741,15 +805,90 @@ export default function AdminDevisPage() {
                       value={catalogSearch}
                       onChange={(e) => {
                         setCatalogSearch(e.target.value);
-                        setCatalogPage(1); // Reset page to 1 when searching
+                        setCatalogPage(1);
                       }}
-                      className="w-full pl-8 pr-4 py-1.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all text-zinc-750 dark:text-zinc-200"
+                      className="w-full pl-8 pr-4 py-2 sm:py-1.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all text-zinc-750 dark:text-zinc-200"
                     />
                   </div>
                 </div>
 
-                {/* Paginated Products List */}
-                <div className="border border-zinc-150 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
+                {/* Paginated Products List — Mobile Cards */}
+                <div className="md:hidden flex flex-col gap-2">
+                  {paginatedCatalogProducts.length === 0 ? (
+                    <p className="text-center py-6 text-zinc-400 font-bold text-xs">Aucun produit disponible.</p>
+                  ) : (
+                    paginatedCatalogProducts.map(product => {
+                      const alreadyInList = newOrderItems.some(i => i.productId === product.id);
+                      return (
+                        <div
+                          key={product.id}
+                          className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 rounded-2xl p-3 flex flex-col gap-2 shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-black text-zinc-800 dark:text-zinc-100 text-xs leading-tight truncate">{product.name}</p>
+                              <p className="text-[9px] font-mono text-zinc-400 mt-0.5">SKU: {product.sku || "N/A"}</p>
+                            </div>
+                            <span className={`shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                              product.stockQty <= product.minStockQty
+                                ? "bg-red-500/10 text-red-600 border-red-500/20"
+                                : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                            }`}>
+                              {product.stockQty} stock
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono text-[11px] font-black text-zinc-700 dark:text-zinc-300">
+                              {new Intl.NumberFormat("fr-FR").format(product.buyingPrice || 0)} XOF
+                            </span>
+                            {alreadyInList ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Ajouté
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => addProductToOrder(product)}
+                                className="inline-flex items-center gap-1.5 text-[10px] font-black text-white bg-primary px-3 py-1.5 rounded-xl transition-all active:scale-95"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                Ajouter
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  {/* Mobile Pagination */}
+                  {totalCatalogPages > 1 && (
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        disabled={catalogPage <= 1}
+                        onClick={() => setCatalogPage(prev => Math.max(1, prev - 1))}
+                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border border-zinc-200 dark:border-zinc-700 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Précédent
+                      </button>
+                      <span className="text-[10px] font-bold text-zinc-500">
+                        {catalogPage} / {totalCatalogPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={catalogPage >= totalCatalogPages}
+                        onClick={() => setCatalogPage(prev => Math.min(totalCatalogPages, prev + 1))}
+                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border border-zinc-200 dark:border-zinc-700 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        Suivant
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Paginated Products List — Desktop Table */}
+                <div className="hidden md:block border border-zinc-150 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
                   <table className="w-full text-left text-xs font-bold">
                     <thead>
                       <tr className="bg-zinc-50 dark:bg-zinc-800/40 border-b border-zinc-150 dark:border-zinc-800/80 text-[10px] text-zinc-400 uppercase tracking-wider">
@@ -837,14 +976,70 @@ export default function AdminDevisPage() {
                 </div>
               </div>
 
-              {/* Selected items table (Le Panier) */}
+              {/* Selected items — Mobile cards + Desktop table */}
               <div className="flex flex-col gap-3">
                 <h3 className="text-xs font-black uppercase tracking-wider text-zinc-500 flex items-center gap-2">
                   <Layers className="h-4.5 w-4.5 text-primary" />
-                  Articles Sélectionnés pour le Bon ({newOrderItems.length})
+                  Articles Sélectionnés ({newOrderItems.length})
                 </h3>
 
-                <div className="border border-zinc-150 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
+                {/* Mobile: card per item */}
+                <div className="sm:hidden flex flex-col gap-2">
+                  {newOrderItems.length === 0 ? (
+                    <div className="p-8 text-center text-zinc-400 border border-zinc-100 dark:border-zinc-800 rounded-2xl opacity-50">
+                      <Archive className="h-8 w-8 mx-auto mb-2 text-zinc-400" />
+                      <p className="text-xs uppercase tracking-widest font-black">Aucun produit</p>
+                    </div>
+                  ) : (
+                    newOrderItems.map(item => (
+                      <div key={item.productId} className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl p-3 flex flex-col gap-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-black text-zinc-800 dark:text-zinc-100 text-xs truncate">{item.name}</p>
+                            <p className="text-[10px] font-mono text-zinc-400">SKU: {item.sku || "N/A"}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeProductFromOrder(item.productId)}
+                            className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors flex-shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Quantité</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantityOrdered}
+                              onChange={(e) => updateOrderItemQuantity(item.productId, parseInt(e.target.value) || 1)}
+                              className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-center font-bold text-xs"
+                              required
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Coût Unit (XOF)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.unitCost}
+                              onChange={(e) => updateOrderItemCost(item.productId, parseInt(e.target.value) || 0)}
+                              className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-right font-bold text-xs font-mono"
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end text-xs font-black text-primary font-mono">
+                          Total: {new Intl.NumberFormat("fr-FR").format(item.quantityOrdered * item.unitCost)} XOF
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Desktop: table */}
+                <div className="hidden sm:block border border-zinc-150 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
                   <table className="w-full text-left text-xs font-bold">
                     <thead>
                       <tr className="bg-zinc-50 dark:bg-zinc-800/40 border-b border-zinc-150 dark:border-zinc-800/80 text-[10px] text-zinc-400 uppercase tracking-wider">
@@ -898,7 +1093,7 @@ export default function AdminDevisPage() {
                       ))}
                       {newOrderItems.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="p-8 text-center text-zinc-450 opacity-40">
+                          <td colSpan={5} className="p-8 text-center text-zinc-400 opacity-40">
                             <Archive className="h-10 w-10 mx-auto mb-2 text-zinc-400" />
                             <p className="text-xs uppercase tracking-widest font-black">Aucun produit sélectionné</p>
                           </td>
@@ -923,25 +1118,25 @@ export default function AdminDevisPage() {
         size="lg"
       >
         {selectedPO && (
-          <div className="flex flex-col gap-6 text-zinc-800 dark:text-zinc-150 print:p-0">
+          <div className="flex flex-col gap-5 text-zinc-800 dark:text-zinc-150 print:p-0">
             {/* Header section */}
-            <div className="flex justify-between items-start border-b border-zinc-100 dark:border-zinc-800 pb-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-4">
               <div>
-                <div className="flex items-center gap-2.5">
-                  <h3 className="text-base font-black text-zinc-850 dark:text-zinc-100 uppercase tracking-wider font-mono">
-                    BON DE COMMANDE FOURNISSEUR
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-black text-zinc-800 dark:text-zinc-100 uppercase tracking-wider font-mono">
+                    BON DE COMMANDE
                   </h3>
                   {getStatusBadge(selectedPO.status)}
                 </div>
-                <p className="text-[10px] text-zinc-400 mt-1 font-mono">
-                  Réf. UUID: {selectedPO.id}
+                <p className="text-[10px] text-zinc-400 mt-1 font-mono break-all">
+                  Réf: {selectedPO.id}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="sm:text-right">
                 <p className="text-xs font-black text-zinc-800 dark:text-zinc-200">
                   {getShopName(selectedPO.shopId)}
                 </p>
-                <p className="text-[10px] text-zinc-400">Date d'émission: {new Date(selectedPO.createdAt).toLocaleDateString("fr-FR")}</p>
+                <p className="text-[10px] text-zinc-400">Émis le: {new Date(selectedPO.createdAt).toLocaleDateString("fr-FR")}</p>
               </div>
             </div>
 
@@ -966,8 +1161,8 @@ export default function AdminDevisPage() {
             </div>
 
             {/* Ordered Items with Progress Bars */}
-            <div className="border border-zinc-150 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
-              <table className="w-full text-left text-xs font-bold">
+            <div className="border border-zinc-150 dark:border-zinc-800 rounded-2xl overflow-x-auto shadow-sm">
+              <table className="min-w-[480px] w-full text-left text-xs font-bold">
                 <thead>
                   <tr className="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-150 dark:border-zinc-850 text-zinc-400 text-[10px] uppercase tracking-wider">
                     <th className="p-3">Désignation</th>
@@ -1032,15 +1227,15 @@ export default function AdminDevisPage() {
               </div>
             )}
             {/* Actions for workflow status updates */}
-            <div className="flex flex-wrap justify-between items-center gap-3 pt-2 print:hidden">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pt-2 print:hidden">
               <div className="flex gap-2">
                 <Button variant="outline" onClick={handlePrint} className="gap-2 text-xs font-black">
                   <Printer className="h-4 w-4" />
                   Imprimer
                 </Button>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setIsViewOpen(false)} className="text-xs">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full sm:w-auto">
+                <Button variant="outline" onClick={() => setIsViewOpen(false)} className="text-xs w-full sm:w-auto">
                   Fermer
                 </Button>
                 {/* Workflow Actions */}
@@ -1053,7 +1248,7 @@ export default function AdminDevisPage() {
                         setIsCancelConfirmOpen(true);
                       }}
                       loading={isTransitioning}
-                      className="border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs font-black"
+                      className="border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs font-black w-full sm:w-auto"
                     >
                       Annuler la commande
                     </Button>
@@ -1061,7 +1256,7 @@ export default function AdminDevisPage() {
                       variant="primary"
                       onClick={() => handleTransitionStatus(selectedPO.id, PurchaseOrderStatus.SENT)}
                       loading={isTransitioning}
-                      className="gap-1.5 text-xs font-black"
+                      className="gap-1.5 text-xs font-black w-full sm:w-auto"
                     >
                       <ArrowRight className="h-3.5 w-3.5" />
                       Envoyer au fournisseur
@@ -1078,14 +1273,14 @@ export default function AdminDevisPage() {
                         setIsCancelConfirmOpen(true);
                       }}
                       loading={isTransitioning}
-                      className="border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs font-black"
+                      className="border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 text-xs font-black w-full sm:w-auto"
                     >
                       Annuler la commande
                     </Button>
                     <Button
                       variant="primary"
                       onClick={() => openReceptionWizard(selectedPO)}
-                      className="gap-2 text-xs font-black"
+                      className="gap-2 text-xs font-black w-full sm:w-auto"
                     >
                       <Truck className="h-4 w-4" />
                       Réceptionner du stock

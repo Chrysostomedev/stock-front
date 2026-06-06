@@ -6,30 +6,6 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { Lock, Eye, EyeOff, Phone, AlertCircle } from "lucide-react";
 
-/**
- * ============================================================================
- * PAGE DE CONNEXION
- * ============================================================================
- * 
- * Flux d'authentification :
- *   1. L'utilisateur saisit son téléphone et son mot de passe
- *   2. Le front envoie POST /api/v1/auth/login { phone, password }
- *   3. Le backend :
- *      a. Cherche l'utilisateur par numéro de téléphone (recherche EXACTE)
- *      b. Compare le mot de passe avec le hash bcrypt en DB
- *      c. Génère un accessToken (15min) et un refreshToken (7j)
- *      d. Retourne { user, token: { accessToken, refreshToken } }
- *   4. Le front stocke le token dans Cookies + localStorage
- *   5. Redirection automatique selon le rôle
- * 
- * ⚠️ IMPORTANT :
- *   - Le téléphone est envoyé TEL QUEL au backend (pas de préfixe +225)
- *   - Le champ "password" du login = le "passwordHash" envoyé au register
- *   - Le PIN (4 chiffres) N'EST PAS utilisé pour le login
- * 
- * @see back-spservice/src/modules/auth/controllers/auth.controller.ts
- * ============================================================================
- */
 export default function LoginPage() {
   const { login } = useAuth();
 
