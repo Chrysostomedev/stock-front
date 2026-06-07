@@ -368,13 +368,13 @@ export default function SalesCalendar() {
                                   {shop.shopName}
                                 </td>
                                 <td className="px-2 py-1.5 text-right font-black text-foreground">
-                                  {fmt(shop.revenue)}
+                                  {fmt(shop.revenue ?? 0)}
                                 </td>
                                 <td className="px-2 py-1.5 text-right font-bold text-emerald-600 hidden sm:table-cell">
-                                  {fmt(shop.grossMargin)}
+                                  {fmt(shop.grossMargin ?? 0)}
                                 </td>
                                 <td className="px-2 py-1.5 text-right font-bold text-zinc-500">
-                                  {shop.transactions}
+                                  {shop.transactions ?? 0}
                                 </td>
                               </tr>
                             ))}
@@ -396,23 +396,23 @@ export default function SalesCalendar() {
                       {[
                         {
                           label: "CA net",
-                          value: dayDetail.financial.pnl.revenue.net,
+                          value: dayDetail.financial.pnl?.revenue?.net ?? 0,
                           color: "text-foreground",
                         },
                         {
                           label: "Marge brute",
-                          value: dayDetail.financial.pnl.grossMargin.value,
+                          value: dayDetail.financial.pnl?.grossMargin?.value ?? 0,
                           color: "text-emerald-600 dark:text-emerald-400",
                         },
                         {
                           label: "Dépenses",
-                          value: dayDetail.financial.pnl.expenses.total,
+                          value: dayDetail.financial.pnl?.expenses?.total ?? 0,
                           color: "text-rose-500",
                         },
                         {
                           label: "Résultat net",
-                          value: dayDetail.financial.pnl.netResult.value,
-                          color: dayDetail.financial.pnl.netResult.isProfit
+                          value: dayDetail.financial.pnl?.netResult?.value ?? 0,
+                          color: (dayDetail.financial.pnl?.netResult?.isProfit ?? true)
                             ? "text-emerald-600 dark:text-emerald-400"
                             : "text-rose-500",
                         },
@@ -435,8 +435,8 @@ export default function SalesCalendar() {
 
                   {/* Panier moyen */}
                   {dayDetail.shops.shops?.length > 0 && (() => {
-                    const totalTx = dayDetail.shops.shops.reduce((s, sh) => s + sh.transactions, 0);
-                    const totalRev = dayDetail.shops.shops.reduce((s, sh) => s + sh.revenue, 0);
+                    const totalTx = dayDetail.shops.shops.reduce((s, sh) => s + (sh.transactions ?? 0), 0);
+                    const totalRev = dayDetail.shops.shops.reduce((s, sh) => s + (sh.revenue ?? 0), 0);
                     return totalTx > 0 ? (
                       <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-xl">
                         <ShoppingCart className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />

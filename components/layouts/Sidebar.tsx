@@ -48,7 +48,6 @@ export default function Sidebar() {
   // Liste globale de toutes les navigations
   const allLinks = [
     { href: "/admin", label: "Administration", shortLabel: "Admin", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
-    { href: "/admin/bilan", label: "Bilan Financier", icon: <TrendingUp className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/boutiques", label: "Boutiques", icon: <Building2 className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/utilisateurs", label: "Utilisateurs", icon: <Users className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/clients", label: "Clients & Crédits", shortLabel: "Clients", icon: <UserCheck className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
@@ -58,7 +57,6 @@ export default function Sidebar() {
     { href: "/admin/devis", label: "Bons de Commande", icon: <FileText className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/fournisseurs", label: "Fournisseurs", icon: <Truck className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/logs", label: "Journal d'activité", shortLabel: "Logs", icon: <Shield className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
-
     // Caissière Superette
     { href: "/super", label: "Dashboard Super.", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["CASHIER"] },
     { href: "/super/caisse", label: "Caisse Super.", icon: <ShoppingCart className="h-5 w-5" />, roles: ["CASHIER"] },

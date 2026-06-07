@@ -11,7 +11,6 @@ import {
   Building2,
   ArrowRight,
   UserCircle,
-  Flame,
   BarChart2,
   Package,
   ClipboardList,
@@ -88,15 +87,6 @@ export default function AdminDashboardPage() {
         color: "border-l-indigo-500",
         bgColor: "bg-indigo-500/10 dark:bg-indigo-500/20",
       },
-    {
-      title: "Bilan",
-      desktopTitle: "Bilan financier",
-      description: "Gestion des bouteilles de gaz, recharges et livraisons.",
-      icon: <Flame className="h-6 w-6 md:h-7 md:w-7 text-amber-500" />,
-      href: "/admin/bilan",
-      color: "border-l-amber-500",
-      bgColor: "bg-amber-500/10 dark:bg-amber-500/20",
-    },
     {
       title: "Mon Profil",
       desktopTitle: "Mon Profil",

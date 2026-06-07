@@ -24,7 +24,6 @@ import {
   ChevronDown,
   ChevronRight,
   TrendingUp,
-  ShoppingBag,
   ShoppingCart,
   Clock,
   User,
@@ -58,7 +57,6 @@ function useIsMobile(breakpoint = 768) {
   }, [breakpoint]);
   return isMobile;
 }
-
 // ---- Composant carte mobile ----
 function MobileShopCard({
   s,
@@ -152,7 +150,6 @@ function MobileShopCard({
     </div>
   );
 }
-
 export default function AdminBoutiquesPage() {
   const router = useRouter();
   const {
@@ -258,7 +255,6 @@ export default function AdminBoutiquesPage() {
       setSalesLoading(false);
     }
   };
-
   // Load Sales when salesViewShop is selected
   useEffect(() => {
     if (salesViewShop) {
@@ -289,13 +285,11 @@ export default function AdminBoutiquesPage() {
       alert(err.message);
     }
   };
-
   const filteredShops = shops.filter(
     (s) =>
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.address.toLowerCase().includes(searchTerm.toLowerCase()),
   );
-
   // Group Sales by Calendar Day
   const salesByDay = React.useMemo(() => {
     const groups: {
@@ -476,59 +470,11 @@ export default function AdminBoutiquesPage() {
         }
       >
         <div className="flex flex-col gap-6 max-w-6xl mx-auto pb-32 md:pb-12">
-          {/* Stats rapides */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-150 dark:border-zinc-800 flex items-center gap-4 shadow-sm">
-              <div className="p-4 bg-emerald-500/10 text-emerald-600 rounded-2xl">
-                <TrendingUp className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                  Chiffre d&apos;Affaires Cumulé
-                </p>
-                <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">
-                  {new Intl.NumberFormat("fr-FR").format(totalShopsCA)} FCFA
-                </h4>
-              </div>
-            </div>
-            <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-150 dark:border-zinc-800 flex items-center gap-4 shadow-sm">
-              <div className="p-4 bg-primary/10 text-primary rounded-2xl">
-                <ShoppingBag className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                  Total Ventes
-                </p>
-                <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">
-                  {salesTotal} transactions
-                </h4>
-              </div>
-            </div>
-            <div className="p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-150 dark:border-zinc-800 flex items-center gap-4 shadow-sm">
-              <div className="p-4 bg-amber-500/10 text-amber-600 rounded-2xl">
-                <Clock className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                  Panier Moyen
-                </p>
-                <h4 className="text-xl font-black text-zinc-900 dark:text-zinc-50">
-                  {sales.length > 0
-                    ? new Intl.NumberFormat("fr-FR").format(
-                        Math.round(totalShopsCA / sales.length),
-                      )
-                    : 0}{" "}
-                  FCFA
-                </h4>
-              </div>
-            </div>
-          </div>
-
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-black text-foreground tracking-tight flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-zinc-400" />
-                Journal des Ventes par Journée
+                Journal des Ventes par Journée régroupés par 100 dernières transactions
               </h3>
               {salesTotalPages > 1 && (
                 <span className="text-[11px] font-bold text-zinc-400">
@@ -536,7 +482,6 @@ export default function AdminBoutiquesPage() {
                 </span>
               )}
             </div>
-
             {salesLoading ? (
               <div className="py-20 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                 Chargement de l&apos;activité...
