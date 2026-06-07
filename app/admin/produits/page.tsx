@@ -30,6 +30,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import ExportButton from "@/components/ui/ExportButton";
 
 export default function AdminProduitsPage() {
   const { showToast } = useToast();
@@ -437,6 +438,29 @@ export default function AdminProduitsPage() {
                 <Plus className="h-4 w-4 mr-1.5" />
                 Nouveau
               </Button>
+            </div>
+
+            {/* ── Exports Stock ── */}
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Exporter :</span>
+              <ExportButton
+                endpoint="/reports/stock/export"
+                params={{ shopId: filterShop, categoryId: filterCategory || undefined, stockFilter: "all" }}
+                label="Tout le stock"
+                alignRight={false}
+              />
+              <ExportButton
+                endpoint="/reports/stock/export"
+                params={{ shopId: filterShop, categoryId: filterCategory || undefined, stockFilter: "low" }}
+                label="Stock bas"
+                alignRight={false}
+              />
+              <ExportButton
+                endpoint="/reports/stock/export"
+                params={{ shopId: filterShop, categoryId: filterCategory || undefined, stockFilter: "out" }}
+                label="Ruptures"
+                alignRight={false}
+              />
             </div>
           </div>
         </Card>

@@ -30,6 +30,7 @@ import {
   TrendingUp,
   FileText
 } from "lucide-react";
+import ExportButton from "@/components/ui/ExportButton";
 
 type TabType = "directory" | "credits";
 
@@ -412,6 +413,14 @@ export default function AdminClientsPage() {
               <UserPlus className="h-5 w-5 mr-2" />
               Nouveau Client
             </Button>
+          )}
+          {activeTab === "credits" && isManager && (
+            <ExportButton
+              endpoint="/reports/debts/export"
+              params={{ shopId: user?.shopId ?? "" }}
+              label="Exporter les créances"
+              alignRight
+            />
           )}
         </div>
 
