@@ -178,6 +178,7 @@ export default function AdminBoutiquesPage() {
   const [salesViewShop, setSalesViewShop] = useState<Shop | null>(null);
   const [sales, setSales] = useState<any[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
+  const [salesError, setSalesError] = useState(false);
   const [salesPage, setSalesPage] = useState(1);
   const [salesTotalPages, setSalesTotalPages] = useState(1);
   const [salesTotal, setSalesTotal] = useState(0);
@@ -225,6 +226,7 @@ export default function AdminBoutiquesPage() {
 
   const fetchSales = async (shop: Shop, page = 1) => {
     setSalesLoading(true);
+    setSalesError(false);
     try {
       const response = await SaleService.getAll({
         shopId: shop.id,
@@ -251,6 +253,7 @@ export default function AdminBoutiquesPage() {
       }
     } catch (err) {
       console.error("Error loading sales for shop", err);
+      setSalesError(true);
     } finally {
       setSalesLoading(false);
     }
@@ -266,6 +269,7 @@ export default function AdminBoutiquesPage() {
       setSalesPage(1);
       setSalesTotalPages(1);
       setSalesTotal(0);
+      setSalesError(false);
     }
   }, [salesViewShop]);
 
@@ -537,6 +541,17 @@ export default function AdminBoutiquesPage() {
               <div className="py-20 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                 Chargement de l&apos;activité...
               </div>
+            ) : salesError ? (
+              <Card className="p-12 text-center flex flex-col items-center gap-3">
+                <p className="text-sm font-black text-rose-500">Impossible de charger les ventes</p>
+                <p className="text-xs font-bold text-zinc-400">Le serveur a retourné une erreur. Réessayez dans quelques instants.</p>
+                <button
+                  onClick={() => salesViewShop && fetchSales(salesViewShop, 1)}
+                  className="mt-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-xs font-black hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+                >
+                  Réessayer
+                </button>
+              </Card>
             ) : salesByDay.length === 0 ? (
               <Card className="p-12 text-center text-zinc-400 font-bold text-sm">
                 Aucune vente n&apos;a encore été enregistrée pour cette
@@ -564,18 +579,10 @@ export default function AdminBoutiquesPage() {
                           {dayStr}
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-xs font-bold">
-                        <span className="px-3 py-1 bg-zinc-200 dark:bg-zinc-800 rounded-full text-[10px] uppercase font-black tracking-wider text-zinc-500">
-                          {group.sales.length}{" "}
-                          {group.sales.length > 1 ? "Ventes" : "Vente"}
-                        </span>
-                        <span className="text-primary font-black text-sm">
-                          {new Intl.NumberFormat("fr-FR").format(
-                            group.totalAmount,
-                          )}{" "}
-                          FCFA
-                        </span>
-                      </div>
+                      <span className="px-3 py-1 bg-zinc-200 dark:bg-zinc-800 rounded-full text-[10px] uppercase font-black tracking-wider text-zinc-500">
+                        {group.sales.length}{" "}
+                        {group.sales.length > 1 ? "Ventes" : "Vente"}
+                      </span>
                     </button>
 
                     {isOpen && (

@@ -11,7 +11,7 @@ import { useToast } from "@/contexts/ToastContext";
 import SaleService from "@/services/sale.service";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  FileText, Search, Calendar, User, TrendingUp, Clock,
+  FileText, Search, Calendar, User, Clock,
   XCircle, RotateCcw, Printer, RefreshCw, ShoppingBag,
   ChevronDown, ChevronRight, AlertTriangle, CheckCircle2,
   Package, ArrowLeftRight,
@@ -148,10 +148,6 @@ export default function SuperCommandesPage() {
     return Object.entries(groups).sort((a, b) => b[1].date.getTime() - a[1].date.getTime());
   }, [filteredSales]);
 
-  /* ── KPIs ── */
-  const validSales = sales.filter(s => s.status !== "VOIDED" && s.status !== "REFUNDED");
-  const pageCA = validSales.reduce((acc, s) => acc + Number(s.totalAmount || s.total || 0), 0);
-  const pageMoyenne = validSales.length > 0 ? Math.round(pageCA / validSales.length) : 0;
 
   /* ── Handlers VOID ── */
   const openVoidModal = (sale: any) => {
@@ -269,7 +265,7 @@ export default function SuperCommandesPage() {
       subtitle="Journal détaillé des transactions de votre boutique"
       rightElement={
         <button
-          onClick={() => loadSales(currentPage)}
+          onClick={() => loadSales()}
           className="p-3 bg-zinc-100 dark:bg-zinc-800 rounded-2xl hover:bg-primary/10 hover:text-primary transition-all cursor-pointer"
         >
           <RefreshCw className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
@@ -279,18 +275,7 @@ export default function SuperCommandesPage() {
       <div className="flex flex-col gap-4 sm:gap-6 max-w-6xl mx-auto pb-12 px-2 sm:px-0">
 
         {/* ── KPIs ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-          <div className="p-4 sm:p-6 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-zinc-100 dark:border-zinc-800/50 flex items-center gap-4 shadow-sm">
-            <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-xl sm:rounded-2xl shrink-0">
-              <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[9px] sm:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Chiffre d'Affaires</p>
-              <h4 className="text-base sm:text-xl font-black text-zinc-900 dark:text-zinc-50 truncate">
-                {fmt(pageCA)} <span className="text-[10px] font-medium text-zinc-400">XOF</span>
-              </h4>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           <div className="p-4 sm:p-6 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-zinc-100 dark:border-zinc-800/50 flex items-center gap-4 shadow-sm">
             <div className="p-3 bg-primary/10 text-primary rounded-xl sm:rounded-2xl shrink-0">
               <FileText className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -301,14 +286,12 @@ export default function SuperCommandesPage() {
             </div>
           </div>
           <div className="p-4 sm:p-6 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-zinc-100 dark:border-zinc-800/50 flex items-center gap-4 shadow-sm">
-            <div className="p-3 bg-amber-500/10 text-amber-600 rounded-xl sm:rounded-2xl shrink-0">
-              <Clock className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className="p-3 bg-zinc-100 dark:bg-zinc-800 rounded-xl sm:rounded-2xl shrink-0">
+              <ShoppingBag className="h-5 w-5 sm:h-6 sm:w-6 text-zinc-500" />
             </div>
-            <div className="min-w-0">
-              <p className="text-[9px] sm:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Vente Moyenne</p>
-              <h4 className="text-base sm:text-xl font-black text-zinc-900 dark:text-zinc-50 truncate">
-                {fmt(pageMoyenne)} <span className="text-[10px] font-medium text-zinc-400">XOF</span>
-              </h4>
+            <div>
+              <p className="text-[9px] sm:text-[10px] font-black text-zinc-400 uppercase tracking-widest">Ventes affichées</p>
+              <h4 className="text-base sm:text-xl font-black text-zinc-900 dark:text-zinc-50">{sales.length}</h4>
             </div>
           </div>
         </div>
@@ -389,12 +372,9 @@ export default function SuperCommandesPage() {
                       {isOpen ? <ChevronDown className="h-5 w-5 text-zinc-400" /> : <ChevronRight className="h-5 w-5 text-zinc-400" />}
                       <span className="text-sm font-black text-zinc-900 dark:text-zinc-50">{dayStr}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-xs font-bold">
-                      <span className="px-3 py-1 bg-zinc-200 dark:bg-zinc-800 rounded-full text-[10px] uppercase font-black tracking-wider text-zinc-500">
-                        {group.sales.length} {group.sales.length > 1 ? "Ventes" : "Vente"}
-                      </span>
-                      <span className="text-primary font-black text-sm">{fmt(group.totalAmount)} XOF</span>
-                    </div>
+                    <span className="px-3 py-1 bg-zinc-200 dark:bg-zinc-800 rounded-full text-[10px] uppercase font-black tracking-wider text-zinc-500">
+                      {group.sales.length} {group.sales.length > 1 ? "Ventes" : "Vente"}
+                    </span>
                   </button>
 
                   {/* Tableau transactions */}

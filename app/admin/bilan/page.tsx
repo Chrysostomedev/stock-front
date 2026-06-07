@@ -67,6 +67,7 @@ const toNum = (v: any): number => {
 
 const fmt = (n: number) => n.toLocaleString("fr-FR");
 
+
 // ─── Hook réactif mobile ───
 function useIsMobile(bp = 768) {
   const [isMobile, setIsMobile] = useState(false);
@@ -396,9 +397,8 @@ export default function AdminBilanPage() {
       <div className="flex flex-col gap-6 pb-28 md:pb-12">
 
         {/* ── KPIs globaux ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
-            { label: "CA Global", value: fmt(globalCA), unit: "XOF", color: "indigo" },
             { label: "Bénéfice Net", value: (globalProfit >= 0 ? "+" : "") + fmt(globalProfit), unit: "XOF", color: globalProfit >= 0 ? "emerald" : "red" },
             { label: "Dépenses", value: fmt(globalExpenses), unit: "XOF", color: "rose" },
             { label: "Val. Stock", value: fmt(globalStock), unit: "XOF", color: "amber" },
