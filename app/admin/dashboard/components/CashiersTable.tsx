@@ -130,7 +130,7 @@ export default function CashiersTable({ data, loading }: CashiersTableProps) {
             ) : (
               cashiers.map((cashier, idx) => (
                 <tr
-                  key={cashier.userId}
+                  key={`${cashier.userId}-${idx}`}
                   className={`border-b border-zinc-50 dark:border-zinc-800/50 transition-colors ${
                     idx === 0
                       ? "bg-amber-50/50 dark:bg-amber-950/10"

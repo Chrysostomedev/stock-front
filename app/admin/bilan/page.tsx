@@ -35,6 +35,8 @@ import {
   Store,
   BarChart2,
 } from "lucide-react";
+import ExportButton from "@/components/ui/ExportButton";
+import { periodToDateRange } from "@/services/export.service";
 
 type PeriodType = "7days" | "month" | "year" | "all";
 
@@ -379,6 +381,15 @@ export default function AdminBilanPage() {
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             {!isMobile && "Actualiser"}
           </Button>
+          <ExportButton
+            endpoint="/reports/financial/export"
+            params={{
+              shopId: reports[0]?.shop?.id,
+              ...periodToDateRange(period as "7days" | "month" | "year" | "all"),
+            }}
+            label="Rapport"
+            alignRight
+          />
         </div>
       }
     >

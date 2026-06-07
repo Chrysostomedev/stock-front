@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
 import { useDashboard } from "@/hooks/admin/useDashboard";
 import { useShops } from "@/hooks/admin/useShops";
@@ -15,6 +15,7 @@ import CategoryDonut from "./components/CategoryDonut";
 import CashiersTable from "./components/CashiersTable";
 import AlertsPanel from "./components/AlertsPanel";
 import FinancialReport from "./components/FinancialReport";
+import SalesCalendar from "./components/SalesCalendar";
 
 // Lucide icons
 import {
@@ -220,6 +221,9 @@ export default function SuperAdminDashboardPage() {
 
         {/* ── Sales Timeline ── */}
         <SalesTimeline data={timeline} loading={loading} />
+
+        {/* ── Sales Calendar / Agenda ── */}
+        <SalesCalendar />
 
         {/* ── Shops + Categories row ── */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

@@ -33,6 +33,25 @@ export interface CreateSaleDto {
   notes?: string;
 }
 
+export interface VoidSaleDto {
+  userId: string;
+  reason: string;
+}
+
+export interface RefundItemDto {
+  saleItemId: string;
+  quantity: number;
+}
+
+export interface RefundSaleDto {
+  userId: string;
+  items?: RefundItemDto[];
+  paymentMethod: "CASH" | "MOBILE_MONEY" | "BANK_CARD" | "CREDIT" | "MIXED";
+  reference?: string;
+  returnToStock: boolean;
+  reason: string;
+}
+
 const SaleService = {
   /**
    * Enregistrer une nouvelle vente.
@@ -76,6 +95,24 @@ const SaleService = {
       () => axiosInstance.get("/sales", { params }).then((r) => r.data),
       { data: [], total: 0, page: 1, limit: 10, totalPages: 0 }
     );
+  },
+
+  /**
+   * Annuler une vente (VOID).
+   * Le stock est automatiquement restitué côté backend.
+   * Requiert une connexion — pas de fallback offline.
+   */
+  async void(saleId: string, dto: VoidSaleDto) {
+    return axiosInstance.post(`/sales/${saleId}/void`, dto).then((r) => r.data);
+  },
+
+  /**
+   * Rembourser une vente (REFUND total ou partiel).
+   * Crée une nouvelle vente REFUNDED liée à l'originale via originalSaleId.
+   * Requiert une connexion — pas de fallback offline.
+   */
+  async refund(saleId: string, dto: RefundSaleDto) {
+    return axiosInstance.post(`/sales/${saleId}/refund`, dto).then((r) => r.data);
   },
 };
 
