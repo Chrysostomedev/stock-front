@@ -114,9 +114,9 @@ export default function AdminDevisPage() {
       // Fetch core datasets
       const [shopRes, supplierRes, prodRes, poRes] = await Promise.all([
         ShopService.getAll(),
-        SupplierService.getAll({ limit: 200 }),
-        ProductService.getAll({ limit: 200 }),
-        PurchaseOrderService.getAll({ limit: 200 })
+        SupplierService.getAll({ limit: 700 }),
+        ProductService.getAll({ limit: 700 }),
+        PurchaseOrderService.getAll({ limit: 700 })
       ]);
 
       const activeShops = Array.isArray(shopRes) ? shopRes : shopRes?.data || [];
@@ -400,15 +400,6 @@ export default function AdminDevisPage() {
 
     return matchesSearch && matchesShop && matchesSupplier && matchesStatus;
   });
-
-  // Calculate filtered products for autocomplete creation
-  const filteredSearchProducts = productSearch.trim() === ""
-    ? []
-    : products.filter(p =>
-        p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-        p.sku?.toLowerCase().includes(productSearch.toLowerCase()) ||
-        p.barcode?.includes(productSearch)
-      ).slice(0, 5);
 
   // Paginated catalog stock products for the new grid interface
   const catalogFilteredProducts = products.filter(p =>
