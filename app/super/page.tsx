@@ -2,7 +2,11 @@
 import React, { useState, useEffect } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
+import Modal from "@/components/ui/Modal";
+import Button from "@/components/ui/Button";
 import Link from "next/link";
+import { useToast } from "@/contexts/ToastContext";
+import SaleService from "@/services/sale.service";
 import { useAuth } from "@/hooks/useAuth";
 import CashierDashboardService, {
   CashierOverview,
@@ -26,6 +30,8 @@ import {
   CreditCard,
   Receipt,
   Activity,
+  RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 
 const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(Math.round(n));
@@ -106,12 +112,78 @@ const modules = [
   },
 ];
 
+const PAYMENT_METHODS = [
+  { value: "CASH",         label: "Espèces" },
+  { value: "MOBILE_MONEY", label: "Mobile Money" },
+  { value: "BANK_CARD",    label: "Carte bancaire" },
+  { value: "CREDIT",       label: "Crédit client" },
+];
+
 export default function SuperDashboardPage() {
   const { user } = useAuth();
+  const { showToast } = useToast();
   const [overview, setOverview] = useState<CashierOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  /* ── State void ── */
+  const [isVoidOpen, setIsVoidOpen]             = useState(false);
+  const [voidSale, setVoidSale]                 = useState<any>(null);
+  const [voidReason, setVoidReason]             = useState("");
+  const [isVoidSubmitting, setIsVoidSubmitting] = useState(false);
+
+  /* ── State refund ── */
+  const [isRefundOpen, setIsRefundOpen]                 = useState(false);
+  const [refundSale, setRefundSale]                     = useState<any>(null);
+  const [refundPaymentMethod, setRefundPaymentMethod]   = useState<"CASH" | "MOBILE_MONEY" | "BANK_CARD" | "CREDIT">("CASH");
+  const [returnToStock, setReturnToStock]               = useState(true);
+  const [refundReason, setRefundReason]                 = useState("");
+  const [isRefundSubmitting, setIsRefundSubmitting]     = useState(false);
+
+  const openVoid = (sale: any) => { setVoidSale(sale); setVoidReason(""); setIsVoidOpen(true); };
+  const openRefund = (sale: any) => {
+    setRefundSale(sale);
+    setRefundReason("");
+    setRefundPaymentMethod("CASH");
+    setReturnToStock(true);
+    setIsRefundOpen(true);
+  };
+
+  const handleVoid = async () => {
+    if (!voidSale || voidReason.trim().length < 5) return;
+    setIsVoidSubmitting(true);
+    try {
+      await SaleService.void(voidSale.id, { userId: user!.id, reason: voidReason.trim() });
+      showToast(`Vente ${voidSale.receiptNumber} annulée — stock restitué`, "success");
+      setIsVoidOpen(false);
+      setRefreshKey((k) => k + 1);
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Erreur lors de l'annulation", "error");
+    } finally {
+      setIsVoidSubmitting(false);
+    }
+  };
+
+  const handleRefund = async () => {
+    if (!refundSale || refundReason.trim().length < 5) return;
+    setIsRefundSubmitting(true);
+    try {
+      await SaleService.refund(refundSale.id, {
+        userId: user!.id,
+        paymentMethod: refundPaymentMethod,
+        returnToStock,
+        reason: refundReason.trim(),
+      });
+      showToast(`Remboursement de ${fmt(refundSale.totalAmount)} XOF effectué`, "success");
+      setIsRefundOpen(false);
+      setRefreshKey((k) => k + 1);
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || "Erreur lors du remboursement", "error");
+    } finally {
+      setIsRefundSubmitting(false);
+    }
+  };
 
   const userId = user?.id;
   const shopId = user?.shopId;
@@ -394,9 +466,29 @@ export default function SuperDashboardPage() {
                         </div>
                       </div>
                     </div>
-                    <span className={`text-sm font-black shrink-0 ${isPaid ? "text-primary" : "text-red-500 line-through"}`}>
-                      {fmt(sale.totalAmount)} XOF
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`text-sm font-black ${isPaid ? "text-primary" : "text-red-500 line-through"}`}>
+                        {fmt(sale.totalAmount)} XOF
+                      </span>
+                      {isPaid && (
+                        <>
+                          <button
+                            onClick={() => openVoid(sale)}
+                            title="Annuler la vente"
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => openRefund(sale)}
+                            title="Rembourser"
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-all"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -438,6 +530,135 @@ export default function SuperDashboardPage() {
         </div>
 
       </div>
+
+      {/* ══ MODAL ANNULATION ══ */}
+      <Modal
+        isOpen={isVoidOpen}
+        onClose={() => { setIsVoidOpen(false); setVoidReason(""); }}
+        title="Annuler la vente"
+        size="sm"
+      >
+        {voidSale && (
+          <div className="flex flex-col gap-5">
+            <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30 rounded-xl">
+              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="flex flex-col gap-1">
+                <p className="text-xs font-black text-red-800 dark:text-red-400">
+                  {voidSale.receiptNumber} — {fmt(voidSale.totalAmount)} XOF
+                </p>
+                <p className="text-[11px] text-red-700/80 dark:text-red-500">
+                  Le stock des articles sera restitué automatiquement. Action irréversible.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Raison <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="Ex : Erreur de saisie, client a changé d'avis…"
+                rows={3}
+                className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-red-400 transition-all resize-none"
+              />
+              <p className="text-[10px] text-zinc-400">{voidReason.trim().length} / minimum 5 caractères</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setIsVoidOpen(false)} disabled={isVoidSubmitting}>
+                Annuler
+              </Button>
+              <Button
+                variant="primary"
+                className="flex-1 bg-red-600 hover:bg-red-700 border-red-600"
+                onClick={handleVoid}
+                loading={isVoidSubmitting}
+                disabled={voidReason.trim().length < 5}
+              >
+                Confirmer
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ══ MODAL REMBOURSEMENT ══ */}
+      <Modal
+        isOpen={isRefundOpen}
+        onClose={() => { setIsRefundOpen(false); setRefundSale(null); }}
+        title="Rembourser la vente"
+        size="sm"
+      >
+        {refundSale && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 rounded-xl text-xs">
+              <div>
+                <p className="font-black text-foreground">{refundSale.receiptNumber}</p>
+                <p className="text-zinc-400 mt-0.5">{refundSale.itemCount} article{refundSale.itemCount > 1 ? "s" : ""}</p>
+              </div>
+              <span className="text-sm font-black text-violet-600">{fmt(refundSale.totalAmount)} XOF</span>
+            </div>
+
+            <div className="p-3 bg-violet-50 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-900/30 rounded-xl text-[11px] text-violet-700 dark:text-violet-400 font-bold">
+              Remboursement total. Pour un remboursement partiel, utilisez la page <span className="font-black underline">Historique des Ventes</span>.
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Méthode de remboursement <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={refundPaymentMethod}
+                onChange={(e) => setRefundPaymentMethod(e.target.value as typeof refundPaymentMethod)}
+                className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-violet-400 transition-all"
+              >
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <label className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all">
+              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${returnToStock ? "bg-emerald-500 border-emerald-500" : "border-zinc-300 dark:border-zinc-600"}`}>
+                {returnToStock && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
+              </div>
+              <input type="checkbox" checked={returnToStock} onChange={(e) => setReturnToStock(e.target.checked)} className="sr-only" />
+              <div>
+                <p className="text-xs font-black text-foreground">Remettre les articles en stock</p>
+                <p className="text-[10px] text-zinc-400">Décocher si produit défectueux</p>
+              </div>
+            </label>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                Raison <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                placeholder="Ex : Client insatisfait, produit défectueux…"
+                rows={2}
+                className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-violet-400 transition-all resize-none"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setIsRefundOpen(false)} disabled={isRefundSubmitting}>
+                Annuler
+              </Button>
+              <Button
+                variant="primary"
+                className="flex-1 bg-violet-600 hover:bg-violet-700 border-violet-600"
+                onClick={handleRefund}
+                loading={isRefundSubmitting}
+                disabled={refundReason.trim().length < 5}
+              >
+                Confirmer
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </AppLayout>
   );
 }

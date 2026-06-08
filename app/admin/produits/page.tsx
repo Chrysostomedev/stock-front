@@ -34,7 +34,6 @@ import ExportButton from "@/components/ui/ExportButton";
 
 export default function AdminProduitsPage() {
   const { showToast } = useToast();
-
   // États pour les données
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);

@@ -12,6 +12,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/hooks/useAuth";
 import QuincProductService from "@/services/quinc/product.service";
 import QuincCategoryService from "@/services/quinc/category.service";
+import UnitService, { Unit } from "@/services/unit.service";
 import { Product, Category } from "@/types/quinc";
 import {
   Plus,
@@ -32,21 +33,22 @@ export default function QuincProduitsPage() {
   const [search, setSearch] = useState("");
   const [materials, setMaterials] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [materialToEdit, setMaterialToEdit] = useState<Product | null>(null);
 
-  // Form State
-  const [formData, setFormData] = useState<Partial<Product>>({
+  // Form State (unitId côté backend, stockQty/minStockQty sont les vrais noms)
+  const [formData, setFormData] = useState<Partial<Product> & { unitId?: string; stockQty?: number; minStockQty?: number }>({
     name: "",
     categoryId: "",
-    unit: "Sac",
+    unitId: "",
     sellingPrice: 0,
     buyingPrice: 0,
-    stockQuantity: 0,
-    minStockAlert: 5,
+    stockQty: 0,
+    minStockQty: 5,
     isActive: true,
   });
 
@@ -54,12 +56,26 @@ export default function QuincProduitsPage() {
     if (!user?.shopId) return;
     try {
       setLoading(true);
-      const [prods, cats] = await Promise.all([
+      const [prods, cats, unitsRaw] = await Promise.all([
         QuincProductService.getAll(user.shopId),
-        QuincCategoryService.getAll(user.shopId)
+        QuincCategoryService.getAll(user.shopId),
+        UnitService.getAll(),
       ]);
-      setMaterials(prods);
+      const unitList: Unit[] = Array.isArray(unitsRaw)
+        ? unitsRaw
+        : (unitsRaw as any)?.data ?? [];
+      setUnits(unitList);
       setCategories(cats);
+      // Normalise les champs du backend vers les noms attendus par le type Product
+      const normalized = (Array.isArray(prods) ? prods : []).map((p: any) => ({
+        ...p,
+        stockQuantity: p.stockQuantity ?? p.stockQty ?? p.stock ?? 0,
+        minStockAlert: p.minStockAlert ?? p.minStockQty ?? 5,
+        unit: p.unit && typeof p.unit === "string"
+          ? p.unit
+          : unitList.find((u) => u.id === p.unitId)?.name ?? p.unitId ?? "—",
+      })) as Product[];
+      setMaterials(normalized);
     } catch (error) {
       showToast("Erreur lors du chargement", "error");
     } finally {
@@ -73,19 +89,24 @@ export default function QuincProduitsPage() {
   const handleOpenModal = (material?: Product) => {
     if (material) {
       setMaterialToEdit(material);
-      setFormData(material);
+      setFormData({
+        ...material,
+        unitId: (material as any).unitId ?? "",
+        stockQty: (material as any).stockQty ?? material.stockQuantity ?? 0,
+        minStockQty: (material as any).minStockQty ?? material.minStockAlert ?? 5,
+      });
     } else {
       setMaterialToEdit(null);
       setFormData({
         name: "",
         categoryId: categories.length > 0 ? categories[0].id : "",
-        unit: "Sac",
+        unitId: units.length > 0 ? units[0].id : "",
         sellingPrice: 0,
         buyingPrice: 0,
-        stockQuantity: 0,
-        minStockAlert: 5,
+        stockQty: 0,
+        minStockQty: 5,
         isActive: true,
-        shopId: user?.shopId
+        shopId: user?.shopId,
       });
     }
     setIsModalOpen(true);
@@ -271,16 +292,14 @@ export default function QuincProduitsPage() {
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-black text-zinc-500 uppercase">Unité</label>
               <select
-                value={formData.unit || "Sac"}
-                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                value={(formData as any).unitId || ""}
+                onChange={(e) => setFormData({ ...formData, unitId: e.target.value } as any)}
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
               >
-                <option value="Sac">Sac</option>
-                <option value="Barre">Barre</option>
-                <option value="Seau">Seau</option>
-                <option value="Paquet">Paquet</option>
-                <option value="Tonne">Tonne</option>
-                <option value="Unité">Unité</option>
+                <option value="">Sélectionner</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -298,8 +317,8 @@ export default function QuincProduitsPage() {
               <label className="text-xs font-black text-zinc-500 uppercase">Stock Initial</label>
               <input
                 type="number"
-                value={formData.stockQuantity || 0}
-                onChange={(e) => setFormData({ ...formData, stockQuantity: Number(e.target.value) })}
+                value={(formData as any).stockQty ?? 0}
+                onChange={(e) => setFormData({ ...formData, stockQty: Number(e.target.value) } as any)}
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
                 disabled={!!materialToEdit}
               />

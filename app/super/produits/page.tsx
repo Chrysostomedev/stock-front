@@ -307,9 +307,7 @@ export default function SuperProduitsPage() {
               ))}
             </div>
           </div>
-
           <DataTable columns={columns} data={products} isLoading={loading} />
-
           {/* Section Pagination Moderne & Premium */}
           {!loading && products.length > 0 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 p-4 transition-all">
@@ -326,7 +324,6 @@ export default function SuperProduitsPage() {
                 <span className="text-primary font-black">{totalProducts}</span>
                 <span>articles</span>
               </div>
-
               <div className="flex items-center gap-4 flex-wrap">
                 {/* Sélecteur de taille de page */}
                 <div className="flex items-center gap-2">
@@ -356,9 +353,7 @@ export default function SuperProduitsPage() {
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
-
                   {renderPageNumbers()}
-
                   <button
                     type="button"
                     onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
