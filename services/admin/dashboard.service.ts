@@ -86,7 +86,6 @@ const DashboardService = {
       {} as OverviewResponse
     );
   },
-
   async getShopsPerformance(query: PeriodQuery & { limit?: number }): Promise<ShopsPerformanceResponse> {
     return withOfflineCache(
       `dashboard_shops_${JSON.stringify(query ?? {})}`,
@@ -134,7 +133,6 @@ const DashboardService = {
       }
     );
   },
-
   async getSalesTimeline(query: PeriodQuery): Promise<SalesTimelineResponse> {
     return withOfflineCache(
       `dashboard_timeline_${JSON.stringify(query ?? {})}`,

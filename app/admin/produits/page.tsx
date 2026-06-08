@@ -202,6 +202,20 @@ export default function AdminProduitsPage() {
       showToast("Le code-barres ou la référence SKU est obligatoire", "error");
       return;
     }
+
+    const buying  = Number(formData.buyingPrice  ?? 0);
+    const selling = Number(formData.sellingPrice ?? 0);
+    if (buying > 0 && selling > 0 && buying > selling) {
+      showToast(
+        `Prix d'achat (${buying} XOF) supérieur au prix de vente (${selling} XOF) — impossible d'enregistrer`,
+        "error"
+      );
+      return;
+    }
+    if (selling > 0 && buying === 0) {
+      // autorisé mais on laisse passer (achat non renseigné)
+    }
+
     setIsSubmitting(true);
     try {
       if (selectedProduct) {
@@ -680,26 +694,53 @@ export default function AdminProduitsPage() {
             <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-2">
               <DollarSign className="h-3 w-3" /> Prix et Inventaire
             </h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Achat (XOF)</label>
-                <input
-                  type="number"
-                  value={formData.buyingPrice}
-                  onChange={(e) => setFormData({ ...formData, buyingPrice: parseFloat(e.target.value) })}
-                  className="w-full px-4 py-2.5 md:py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Vente (XOF)</label>
-                <input
-                  type="number"
-                  value={formData.sellingPrice}
-                  onChange={(e) => setFormData({ ...formData, sellingPrice: parseFloat(e.target.value) })}
-                  className="w-full px-4 py-2.5 md:py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all font-black text-primary"
-                />
-              </div>
-            </div>
+            {(() => {
+              const buying  = Number(formData.buyingPrice  ?? 0);
+              const selling = Number(formData.sellingPrice ?? 0);
+              const hasError = buying > 0 && selling > 0 && buying > selling;
+              const margin   = hasError ? null : (selling > 0 && buying > 0 ? Math.round(((selling - buying) / selling) * 100) : null);
+              return (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <label className={`text-[10px] font-black uppercase tracking-widest ${hasError ? "text-rose-500" : "text-zinc-500"}`}>
+                        Achat (XOF)
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.buyingPrice}
+                        onChange={(e) => setFormData({ ...formData, buyingPrice: parseFloat(e.target.value) })}
+                        className={`w-full px-4 py-2.5 md:py-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl text-xs font-bold outline-none transition-all border ${hasError ? "border-rose-400 dark:border-rose-500 focus:border-rose-500" : "border-zinc-200 dark:border-zinc-700 focus:border-primary"}`}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className={`text-[10px] font-black uppercase tracking-widest ${hasError ? "text-rose-500" : "text-zinc-500"}`}>
+                        Vente (XOF)
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.sellingPrice}
+                        onChange={(e) => setFormData({ ...formData, sellingPrice: parseFloat(e.target.value) })}
+                        className={`w-full px-4 py-2.5 md:py-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl text-xs font-bold outline-none transition-all border ${hasError ? "border-rose-400 dark:border-rose-500 focus:border-rose-500 text-rose-600" : "border-zinc-200 dark:border-zinc-700 focus:border-primary text-primary"}`}
+                      />
+                    </div>
+                  </div>
+                  {hasError && (
+                    <div className="flex items-start gap-2 px-3 py-2.5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-xl">
+                      <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />
+                      <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 leading-snug">
+                        Le prix d'achat ({Number(formData.buyingPrice).toLocaleString("fr-FR")} XOF) est supérieur au prix de vente ({Number(formData.sellingPrice).toLocaleString("fr-FR")} XOF). Vous vendrez à perte — corrigez les prix avant de continuer.
+                      </p>
+                    </div>
+                  )}
+                  {!hasError && margin !== null && (
+                    <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">
+                      Marge : {margin}% — {(Number(formData.sellingPrice) - Number(formData.buyingPrice)).toLocaleString("fr-FR")} XOF par unité
+                    </p>
+                  )}
+                </>
+              );
+            })()}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
