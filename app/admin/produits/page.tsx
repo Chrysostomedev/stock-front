@@ -729,7 +729,7 @@ export default function AdminProduitsPage() {
                     <div className="flex items-start gap-2 px-3 py-2.5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-xl">
                       <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />
                       <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 leading-snug">
-                        Le prix d'achat ({Number(formData.buyingPrice).toLocaleString("fr-FR")} XOF) est supérieur au prix de vente ({Number(formData.sellingPrice).toLocaleString("fr-FR")} XOF). Vous vendrez à perte — corrigez les prix avant de continuer.
+                        Le prix d&apos;achat ({Number(formData.buyingPrice).toLocaleString("fr-FR")} XOF) est supérieur au prix de vente ({Number(formData.sellingPrice).toLocaleString("fr-FR")} XOF). Vous vendrez à perte — corrigez les prix avant de continuer.
                       </p>
                     </div>
                   )}
