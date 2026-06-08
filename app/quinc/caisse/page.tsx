@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { TicketReceipt } from "@/components/ui/TicketReceipt";
+import { useState, useEffect } from "react";
+import { printReceipt } from "@/lib/printReceipt";
 import AppLayout from "@/components/layouts/AppLayout";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +10,8 @@ import QuincCategoryService from "@/services/quinc/category.service";
 import QuincCustomerService from "@/services/quinc/customer.service";
 import QuincCashSessionService from "@/services/quinc/cashSession.service";
 import QuincSaleService from "@/services/quinc/sale.service";
+import CashierDashboardService from "@/services/super/cashierDashboard.service";
+import ShopService, { Shop } from "@/services/shop.service";
 import { Product, Category, Customer, CashSession } from "@/types/quinc";
 import {
   ShoppingCart, Search, Plus, Minus, Trash2,
@@ -31,10 +33,18 @@ interface CartItem {
 export default function QuincaillerieCaissePage() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const componentRef = useRef<HTMLDivElement>(null);
   const [lastSaleId, setLastSaleId] = useState("");
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
-  const [saleCartSnapshot, setSaleCartSnapshot] = useState<typeof cart>([]);
+  const [saleCartSnapshot, setSaleCartSnapshot] = useState<CartItem[]>([]);
+  const [currentShop, setCurrentShop] = useState<Shop | null>(null);
+  const [saleTotalSnapshot, setSaleTotalSnapshot] = useState(0);
+  const [saleSubtotalSnapshot, setSaleSubtotalSnapshot] = useState(0);
+  const [saleDiscountSnapshot, setSaleDiscountSnapshot] = useState(0);
+  const [saleReceivedSnapshot, setSaleReceivedSnapshot] = useState(0);
+  const [saleChangeSnapshot, setSaleChangeSnapshot] = useState(0);
+  const [saleCustomerSnapshot, setSaleCustomerSnapshot] = useState<string | undefined>(undefined);
+  const [salePayMethodSnapshot, setSalePayMethodSnapshot] = useState<string>("CASH");
+  const [saleMobileProvSnapshot, setSaleMobileProvSnapshot] = useState<string | undefined>(undefined);
 
   /* Données */
   const [products, setProducts] = useState<Product[]>([]);
@@ -46,6 +56,8 @@ export default function QuincaillerieCaissePage() {
   const [activeSession, setActiveSession] = useState<CashSession | null>(null);
   const [openingBalance, setOpeningBalance] = useState("");
   const [isOpeningSession, setIsOpeningSession] = useState(false);
+  const [dailyTotal, setDailyTotal] = useState(0);
+  const [dailyCount, setDailyCount] = useState(0);
 
   /* UI catalogue */
   const [search, setSearch] = useState("");
@@ -95,12 +107,14 @@ export default function QuincaillerieCaissePage() {
     }
     setLoading(true);
     try {
-      const [sessionRes, productsRes, catsRes, custsRes] = await Promise.all([
+      const [sessionRes, productsRes, catsRes, custsRes, shopRes] = await Promise.all([
         QuincCashSessionService.getActive(user.shopId, user.id),
         QuincProductService.getAll(user.shopId),
         QuincCategoryService.getByShop(user.shopId, { limit: 100 }),
         QuincCustomerService.getAll(user.shopId),
+        ShopService.getById(user.shopId).catch(() => null),
       ]);
+      setCurrentShop(shopRes);
       setActiveSession(sessionRes);
       const filtered = Array.isArray(productsRes)
         ? productsRes
@@ -122,9 +136,21 @@ export default function QuincaillerieCaissePage() {
     }
   };
 
+  const loadDailyStats = async () => {
+    if (!user?.shopId || !user?.id) return;
+    try {
+      const ov = await CashierDashboardService.getOverview({ userId: user.id, shopId: user.shopId });
+      setDailyTotal(ov.kpis.revenue);
+      setDailyCount(ov.kpis.totalTransactions);
+    } catch {
+      // non-critique
+    }
+  };
+
   useEffect(() => {
     if (user?.shopId && user?.id) {
       loadData().catch(() => {});
+      loadDailyStats().catch(() => {});
     }
   }, [user?.shopId, user?.id]);
 
@@ -226,28 +252,6 @@ export default function QuincaillerieCaissePage() {
     return matchQ && matchC;
   });
 
-  /* Print */
-  const handlePrint = () => {
-    const el = componentRef.current;
-    if (!el) { showToast("Ticket introuvable", "error"); return; }
-    const STYLE_ID = "sp-quinc-receipt-print-style";
-    const RECEIPT_ID = "sp-quinc-receipt-to-print";
-    document.getElementById(STYLE_ID)?.remove();
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
-    style.textContent = `@media print{@page{size:80mm auto;margin:0}body>*{visibility:hidden!important}#${RECEIPT_ID},#${RECEIPT_ID} *{visibility:visible!important}#${RECEIPT_ID}{position:fixed!important;top:0!important;left:0!important;width:80mm!important;background:#fff!important}}`;
-    document.head.appendChild(style);
-    el.id = RECEIPT_ID;
-    const cleanup = () => {
-      el.removeAttribute("id");
-      document.getElementById(STYLE_ID)?.remove();
-      window.onafterprint = null;
-    };
-    window.onafterprint = cleanup;
-    window.print();
-    setTimeout(cleanup, 3000);
-  };
-
   const resetAfterQuincSale = () => {
     setShowPrintConfirm(false);
     setCart([]);
@@ -263,7 +267,7 @@ export default function QuincaillerieCaissePage() {
     if (!user?.shopId) return showToast("Boutique non identifiée", "error");
     setIsProcessing(true);
     try {
-      await QuincSaleService.create({
+      const saleResult = await QuincSaleService.create({
         shopId: user.shopId,
         userId: user.id,
         cashSessionId: activeSession?.id,
@@ -288,6 +292,7 @@ export default function QuincaillerieCaissePage() {
       } as any);
 
       showToast(`Vente enregistrée : ${fmt(total)} FCFA !`, "success");
+      loadDailyStats().catch(() => {});
 
       // Mise à jour stock locale
       setProducts((prev) =>
@@ -297,7 +302,21 @@ export default function QuincaillerieCaissePage() {
         })
       );
 
+      // Snapshots pour l'impression
+      setLastSaleId((saleResult as any)?.receiptNumber || (saleResult as any)?.id || "");
       setSaleCartSnapshot([...cart]);
+      setSaleTotalSnapshot(total);
+      setSaleSubtotalSnapshot(subtotal);
+      setSaleDiscountSnapshot(discAmt);
+      setSaleReceivedSnapshot(received || total);
+      setSaleChangeSnapshot(change);
+      setSaleCustomerSnapshot(
+        (selectedCustomer as any)?.name ||
+        [selectedCustomer?.firstName, selectedCustomer?.lastName].filter(Boolean).join(" ") ||
+        undefined
+      );
+      setSalePayMethodSnapshot(paymentMethod);
+      setSaleMobileProvSnapshot(paymentMethod === "MOBILE_MONEY" ? mobileProvider : undefined);
       setShowPrintConfirm(true);
     } catch {
       showToast("Erreur lors de la validation de la vente", "error");
@@ -387,9 +406,16 @@ export default function QuincaillerieCaissePage() {
                 Caisse ouverte — Fond : {fmt(activeSession.openingBalance)} FCFA
               </span>
             </div>
-            <button className="qpos-close-session-btn" onClick={handleCloseSession}>
-              Fermer la caisse
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, background: "rgba(255,255,255,.18)", padding: "4px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ opacity: .8 }}>CA jour :</span>
+                <strong>{fmt(dailyTotal)} XOF</strong>
+                <span style={{ opacity: .6 }}>· {dailyCount} vente{dailyCount > 1 ? "s" : ""}</span>
+              </div>
+              <button className="qpos-close-session-btn" onClick={handleCloseSession}>
+                Fermer la caisse
+              </button>
+            </div>
           </div>
         )}
         {/* ── Layout principal ── */}
@@ -430,9 +456,14 @@ export default function QuincaillerieCaissePage() {
             </div>
             <div className="qpos-session-bar">
               {activeSession ? (
-                <div className="qpos-session-open">
+                <div className="qpos-session-open" style={{ gap: 4 }}>
                   <span><span className="qpos-session-dot" />Session active</span>
-                  <span style={{ fontSize: 10, opacity: .7 }}>{fmt(activeSession.openingBalance)} FCFA</span>
+                  <span style={{ fontSize: 10, opacity: .7 }}>{fmt(activeSession.openingBalance)} FCFA fond</span>
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(255,255,255,.15)", display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: 9, opacity: .6, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800 }}>CA du jour</span>
+                    <span style={{ fontSize: 15, fontWeight: 800 }}>{fmt(dailyTotal)} XOF</span>
+                    <span style={{ fontSize: 10, opacity: .7 }}>{dailyCount} vente{dailyCount > 1 ? "s" : ""} aujourd'hui</span>
+                  </div>
                 </div>
               ) : (
                 <div className="qpos-session-closed">⚠ Caisse fermée</div>
@@ -876,21 +907,6 @@ export default function QuincaillerieCaissePage() {
         )}
       </div>
 
-      {/* Ticket hors-écran pour impression (position:fixed off-screen, pas display:none) */}
-      <div style={{ position: "fixed", top: "-9999px", left: "-9999px", width: "80mm", pointerEvents: "none", overflow: "hidden" }}>
-        <TicketReceipt
-          ref={componentRef}
-          shop={null}
-          user={user}
-          items={saleCartSnapshot.map((i) => ({ product: i.product, quantity: i.qty }))}
-          total={total}
-          paymentMethod={paymentMethod}
-          amountReceived={paymentMethod === "CASH" ? (received || total) : total}
-          change={change}
-          saleId={lastSaleId}
-        />
-      </div>
-
       {/* Modal confirmation impression */}
       {showPrintConfirm && (
         <div style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
@@ -912,7 +928,26 @@ export default function QuincaillerieCaissePage() {
                 Non merci
               </button>
               <button
-                onClick={() => { handlePrint(); resetAfterQuincSale(); }}
+                onClick={() => {
+                  printReceipt({
+                    shop: currentShop,
+                    user,
+                    items: saleCartSnapshot.map((i) => ({
+                      product: { name: i.product.name, sellingPrice: i.customPrice ?? i.product.sellingPrice },
+                      quantity: i.qty,
+                    })),
+                    subtotal: saleSubtotalSnapshot,
+                    discountAmount: saleDiscountSnapshot,
+                    total: saleTotalSnapshot,
+                    paymentMethod: salePayMethodSnapshot,
+                    mobileProvider: saleMobileProvSnapshot,
+                    amountReceived: saleReceivedSnapshot,
+                    change: saleChangeSnapshot,
+                    saleId: lastSaleId,
+                    customerName: saleCustomerSnapshot,
+                  });
+                  resetAfterQuincSale();
+                }}
                 style={{ flex: 1, padding: "12px 0", background: "#2563EB", border: "none", borderRadius: 12, fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer", textTransform: "uppercase", letterSpacing: ".06em", fontFamily: "inherit" }}
               >
                 Oui, imprimer
