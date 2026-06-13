@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from "react";
 import Sidebar from "@/components/layouts/Sidebar";
 import Card from "@/components/ui/Card";
@@ -8,8 +7,6 @@ import { useToast } from "@/contexts/ToastContext";
 import { Bell, Moon, Sun, Lock, ShieldCheck, ArrowRight, Activity } from "lucide-react";
 import UserShopAccessManager from "./components/UserShopAccessManager";
 import AuditLogsViewer from "./components/AuditLogsViewer";
-
-
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { showToast } = useToast();
@@ -17,13 +14,10 @@ export default function SettingsPage() {
   const [sound, setSound] = useState(true);
   const [isShopAccessOpen, setIsShopAccessOpen] = useState(false);
   const [isAuditLogsOpen, setIsAuditLogsOpen] = useState(false);
-
-
   const handleSetTheme = (newTheme: "light" | "dark") => {
     setTheme(newTheme);
     showToast(`Mode ${newTheme === "light" ? "Clair" : "Sombre"} activé avec succès !`, "success");
   };
-
   return (
     <div className="flex flex-col sm:flex-row min-h-screen bg-background text-foreground select-none transition-colors duration-300 pb-28 md:pb-12">
       <Sidebar />
@@ -36,7 +30,6 @@ export default function SettingsPage() {
             Personnalisez votre application StockIvoire Pro
           </p>
         </div>
-
         {/* Display / Theme toggle */}
         <Card className="p-6 bg-card border border-border rounded-2xl flex flex-col gap-5 transition-colors duration-300">
           <div className="flex items-center gap-3">
@@ -44,13 +37,12 @@ export default function SettingsPage() {
               {theme === "light" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </span>
             <div className="flex flex-col">
-              <h3 className="text-base font-bold text-foreground">Apparence de l'application</h3>
+              <h3 className="text-base font-bold text-foreground">Apparence de l&apos;application</h3>
               <span className="text-xs opacity-75">
-                Ajustez le mode d'affichage pour votre confort visuel
+                Ajustez le mode d&apos;affichage pour votre confort visuel
               </span>
             </div>
           </div>
-
           <div className="flex bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl gap-1 max-w-xs select-none">
             <button
               onClick={() => handleSetTheme("light")}
@@ -76,7 +68,6 @@ export default function SettingsPage() {
             </button>
           </div>
         </Card>
-
         {/* Notifications and Alerts */}
         <Card className="p-6 bg-card border border-border rounded-2xl flex flex-col gap-5 transition-colors duration-300">
           <div className="flex items-center gap-3">
@@ -122,7 +113,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </Card>
-
         {/* Politics and Conditions */}
         <Card className="p-6 bg-card border border-border rounded-2xl flex flex-col gap-4 transition-colors duration-300">
           <div className="flex items-center gap-3">
@@ -136,12 +126,10 @@ export default function SettingsPage() {
               </span>
             </div>
           </div>
-
           <p className="text-xs opacity-75 leading-relaxed bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800/60 p-4 rounded-xl">
-            Toutes les transactions effectuées au comptoir (Espèces, MTN MoMo, Moov Money, Crédits) sont stockées dans nos bases sécurisées. Les managers n'ont pas accès aux configurations globales et rapports financiers généraux de l'administrateur.
+            Toutes les transactions effectuées au comptoir (Espèces, MTN MoMo, Moov Money, Crédits) sont stockées dans nos bases sécurisées. Les managers n&apos;ont pas accès aux configurations globales et rapports financiers généraux de l&apos;administrateur.
           </p>
         </Card>
-
         {/* Permissions & Multi-boutiques */}
         <Card className="p-6 bg-card border border-border rounded-2xl flex flex-col gap-4 transition-colors duration-300">
           <div className="flex items-center gap-3">
@@ -155,10 +143,9 @@ export default function SettingsPage() {
               </span>
             </div>
           </div>
-
           <div className="mt-2 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800/60 p-4 rounded-xl flex items-center justify-between">
             <p className="text-xs opacity-75 leading-relaxed max-w-[70%]">
-              Assignez vos employés à des succursales spécifiques avec des rôles distincts (Caissier, Manager, Admin) pour cloisonner l'accès aux données.
+              Assignez vos employés à des succursales spécifiques avec des rôles distincts (Caissier, Manager, Admin) pour cloisonner l&apos;accès aux données.
             </p>
             <button 
               onClick={() => setIsShopAccessOpen(true)}
@@ -169,7 +156,6 @@ export default function SettingsPage() {
             </button>
           </div>
         </Card>
-        
         {/* Journal d'Audit */}
         <Card className="p-6 bg-card border border-border rounded-2xl flex flex-col gap-4 transition-colors duration-300">
           <div className="flex items-center gap-3">
@@ -177,9 +163,9 @@ export default function SettingsPage() {
               <Activity className="h-5 w-5" />
             </span>
             <div className="flex flex-col">
-              <h3 className="text-base font-bold text-foreground">Journal d'Audit Système</h3>
+              <h3 className="text-base font-bold text-foreground">Journal d&apos;Audit Système</h3>
               <span className="text-xs opacity-75">
-                Consultez l'historique complet des actions effectuées sur la plateforme
+                Consultez l&apos;historique complet des actions effectuées sur la plateforme
               </span>
             </div>
           </div>

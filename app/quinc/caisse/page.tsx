@@ -19,6 +19,7 @@ import {
   Package, Banknote, Smartphone, CheckCircle2,
   Wallet, Scissors, User, ChevronUp, Wrench, Printer,
 } from "lucide-react";
+import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { POS_STYLES } from "@/types/post_caise_style";
 
 
@@ -86,6 +87,11 @@ export default function QuincaillerieCaissePage() {
 
   /* Mobile */
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
+
+  /* Desktop POS — sélection ligne + pavé numérique */
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [numpadMode, setNumpadMode] = useState<"qty" | "remise">("qty");
+  const [numpadBuffer, setNumpadBuffer] = useState("");
 
   /* Inject styles */
   useEffect(() => {
@@ -207,6 +213,58 @@ export default function QuincaillerieCaissePage() {
       }
       return [...prev, { product, qty: 1 }];
     });
+  };
+
+  const handleBarcodeScan = async (barcode: string) => {
+    // Lookup local d'abord (products déjà en mémoire)
+    const local = products.find(
+      (p) => p.barcode && p.barcode.toLowerCase() === barcode.toLowerCase()
+    );
+    if (local) {
+      addToCart(local);
+      showToast(`${local.name} ajouté au panier`, "success");
+      return;
+    }
+    // Fallback API si introuvable localement
+    try {
+      const product = await QuincProductService.getByBarcode(barcode, user?.shopId);
+      if (product) {
+        addToCart(product);
+        showToast(`${product.name} ajouté au panier`, "success");
+      } else {
+        showToast(`Code-barres "${barcode}" introuvable`, "error");
+      }
+    } catch {
+      showToast("Erreur lors de la recherche du code-barres", "error");
+    }
+  };
+
+  useBarcodeScanner({ onScan: handleBarcodeScan, enabled: !!activeSession });
+
+  const handleNumpadKey = (key: string) => {
+    if (key === "C") {
+      setNumpadBuffer("");
+      if (numpadMode === "qty" && selectedItemId)
+        setCart((prev) => prev.map((i) => i.product.id === selectedItemId ? { ...i, qty: 1 } : i));
+      if (numpadMode === "remise") setDiscountAmount(0);
+      return;
+    }
+    if (key === "⌫") {
+      const nb = numpadBuffer.slice(0, -1);
+      setNumpadBuffer(nb);
+      if (numpadMode === "qty" && selectedItemId)
+        setCart((prev) => prev.map((i) => i.product.id === selectedItemId ? { ...i, qty: Math.max(1, parseInt(nb) || 1) } : i));
+      if (numpadMode === "remise") setDiscountAmount(parseFloat(nb) || 0);
+      return;
+    }
+    const nb = numpadBuffer + key;
+    setNumpadBuffer(nb);
+    if (numpadMode === "qty" && selectedItemId) {
+      const qty = parseInt(nb) || 1;
+      const maxStock = cart.find((i) => i.product.id === selectedItemId)?.product.stockQuantity ?? 0;
+      setCart((prev) => prev.map((i) => i.product.id === selectedItemId ? { ...i, qty: Math.min(qty, maxStock) } : i));
+    }
+    if (numpadMode === "remise") setDiscountAmount(parseFloat(nb) || 0);
   };
 
   const updateQuantity = (id: string, delta: number) => {
@@ -370,7 +428,6 @@ export default function QuincaillerieCaissePage() {
       </AppLayout>
     );
   }
-
   return (
     <AppLayout title="Caisse Quincaillerie" subtitle="Vente de matériaux et gros œuvre" backUrl="/quinc">
       <div className="qpos-root">
@@ -418,6 +475,8 @@ export default function QuincaillerieCaissePage() {
             </div>
           </div>
         )}
+        {/* ══ LAYOUT MOBILE (masqué sur desktop) ══ */}
+        <div className="pos-mobile-view">
         {/* ── Layout principal ── */}
         <div className="qpos-layout">
 
@@ -501,7 +560,7 @@ export default function QuincaillerieCaissePage() {
 
             {/* Header desktop */}
             <div className="qpos-catalog-header">
-              <div className="qpos-search-wrap">
+              <div className="qpos-search-wrap" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <Search />
                 <input
                   className="qpos-search"
@@ -806,6 +865,7 @@ export default function QuincaillerieCaissePage() {
 
         {/* ── FAB Panier Mobile ── */}
         <div
+          className="qpos-cart-fab"
           style={{
             position: "fixed", bottom: 0, left: 0, right: 0,
             padding: "10px 16px",
@@ -845,6 +905,203 @@ export default function QuincaillerieCaissePage() {
             onClick={() => setMobileCartOpen(false)}
           />
         )}
+        </div>{/* fin pos-mobile-view */}
+
+        {/* ══ LAYOUT DESKTOP PRO (masqué sur mobile) ══ */}
+        <div className="pos-desktop-view">
+
+          {/* Top bar */}
+          <div className="pdt-topbar">
+            <div className="pdt-topbar-left">
+              <div className="pdt-topbar-field">
+                <span className="pdt-topbar-label">Client</span>
+                {selectedCustomer ? (
+                  <div className="pdt-cust-pill">
+                    <User size={12} />{selectedCustomer.firstName} {selectedCustomer.lastName || ""}
+                    <button onClick={() => setSelectedCustomer(null)}><X size={11} /></button>
+                  </div>
+                ) : (
+                  <select className="pdt-cust-select" onChange={(e) => setSelectedCustomer(customers.find((c) => c.id === e.target.value) || null)} value="">
+                    <option value="">— Passage —</option>
+                    {customers.map((c) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName || ""}</option>)}
+                  </select>
+                )}
+              </div>
+              <div className="pdt-topbar-stat"><span>Nb lignes</span><strong>{cart.length}</strong></div>
+              <div className="pdt-topbar-stat"><span>Nb articles</span><strong>{totalItems}</strong></div>
+              {activeSession && (
+                <div className="pdt-topbar-stat pdt-session-ok">
+                  <span className="pdt-session-dot" />
+                  CA : <strong>{fmt(dailyTotal)}</strong>
+                  <span style={{ opacity: .6 }}>· {dailyCount}v</span>
+                </div>
+              )}
+            </div>
+            <div className="pdt-topbar-right">
+              <span className="pdt-topbar-total-label">Total à régler</span>
+              <span className="pdt-topbar-total">{fmt(total)} FCFA</span>
+            </div>
+          </div>
+
+          {/* Zone principale : ticket | numpad */}
+          <div className="pdt-main">
+
+            {/* Ticket de vente */}
+            <div className="pdt-ticket">
+              {cart.length === 0 ? (
+                <div className="pdt-ticket-empty"><ShoppingCart size={28} /><p>Sélectionnez des matériaux</p></div>
+              ) : (
+                <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+                  <table className="pdt-table">
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: "left" }}>ARTICLE</th>
+                        <th>Prix U.</th>
+                        <th>Remise</th>
+                        <th>Qté</th>
+                        <th>Net Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cart.map((item) => {
+                        const unitPrice = item.customPrice ?? item.product.sellingPrice;
+                        return (
+                          <tr
+                            key={item.product.id}
+                            className={`pdt-row${selectedItemId === item.product.id ? " selected" : ""}`}
+                            onClick={() => { setSelectedItemId(item.product.id); setNumpadBuffer(String(item.qty)); setNumpadMode("qty"); }}
+                          >
+                            <td className="pdt-td-name">{item.product.name}</td>
+                            <td className="pdt-td-num">{fmt(unitPrice)}</td>
+                            <td className="pdt-td-num">—</td>
+                            <td className="pdt-td-num pdt-qty">{item.qty}</td>
+                            <td className="pdt-td-num pdt-net">{fmt(unitPrice * item.qty)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="pdt-ticket-footer">
+                <div className="pdt-tot-row"><span>Sous-total</span><span>{fmt(subtotal)} FCFA</span></div>
+                {discAmt > 0 && <div className="pdt-tot-row pdt-disc"><span>Remise</span><span>-{fmt(discAmt)} FCFA</span></div>}
+                <div className="pdt-tot-row pdt-grand"><span>TOTAL</span><span>{fmt(total)} FCFA</span></div>
+              </div>
+            </div>
+
+            {/* Panneau numpad + paiement */}
+            <div className="pdt-numpad-panel">
+              <div className="pdt-total-box">
+                <span className="pdt-total-label">Total à régler</span>
+                <span className="pdt-total-val">{fmt(total)} FCFA</span>
+              </div>
+              <div className="pdt-mode-grid">
+                <button
+                  className={`pdt-mode-btn${numpadMode === "qty" ? " active" : ""}`}
+                  onClick={() => { setNumpadMode("qty"); setNumpadBuffer(selectedItemId ? String(cart.find((i) => i.product.id === selectedItemId)?.qty ?? "") : ""); }}
+                >Quantité</button>
+                <button
+                  className="pdt-mode-btn pdt-btn-danger"
+                  onClick={() => { if (selectedItemId) { setCart((p) => p.filter((i) => i.product.id !== selectedItemId)); setSelectedItemId(null); setNumpadBuffer(""); } }}
+                >Enlever</button>
+                <button
+                  className={`pdt-mode-btn${numpadMode === "remise" ? " active" : ""}`}
+                  onClick={() => { setNumpadMode("remise"); setNumpadBuffer(discountAmount ? String(discountAmount) : ""); }}
+                >Remise</button>
+                <button className="pdt-mode-btn" onClick={() => { setCart([]); setSelectedItemId(null); setNumpadBuffer(""); }}>Vider</button>
+              </div>
+              <div className="pdt-buffer-display">
+                {numpadMode === "qty" && selectedItemId && <span>Qté : <strong>{numpadBuffer || "—"}</strong></span>}
+                {numpadMode === "remise" && <span>Remise : <strong>{numpadBuffer || "0"} FCFA</strong></span>}
+                {numpadMode === "qty" && !selectedItemId && <span style={{ opacity: .4 }}>← Sélectionnez un article</span>}
+              </div>
+              <div className="pdt-numpad">
+                {["7","8","9","4","5","6","1","2","3","C","0","⌫"].map((k) => (
+                  <button key={k} className={`pdt-num-btn${k === "C" ? " clear" : k === "⌫" ? " backspace" : ""}`} onClick={() => handleNumpadKey(k)}>{k}</button>
+                ))}
+              </div>
+              <div className="pdt-payment">
+                <div className="pdt-pay-methods">
+                  <button className={`pdt-pay-btn${paymentMethod === "CASH" ? " active" : ""}`} onClick={() => setPaymentMethod("CASH")}><Banknote size={13} />Espèces</button>
+                  <button className={`pdt-pay-btn${paymentMethod === "MOBILE_MONEY" ? " active" : ""}`} onClick={() => setPaymentMethod("MOBILE_MONEY")}><Smartphone size={13} />Mobile</button>
+                </div>
+                {paymentMethod === "CASH" && (
+                  <input className="pdt-cash-input" type="number" placeholder="Montant reçu…" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} />
+                )}
+                {paymentMethod === "CASH" && received > 0 && cart.length > 0 && (
+                  <div className="pdt-change-row"><span>Monnaie à rendre</span><strong>{fmt(change)} FCFA</strong></div>
+                )}
+                {paymentMethod === "MOBILE_MONEY" && (
+                  <div className="pdt-mobile-ops">
+                    {(["WAVE","ORANGE","MTN"] as const).map((op) => (
+                      <button key={op} className={`pdt-mob-op${mobileProvider === op ? " active" : ""}`} onClick={() => setMobileProvider(op)}>{op}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="pdt-annexe">
+                {cart.length > 0 && <button className="pdt-hold-btn" onClick={handlePutOnHold}><Pause size={12} />Attente</button>}
+                {pendingCarts.length > 0 && <button className="pdt-hold-btn" onClick={() => setShowPendingModal(true)}><Clock size={12} />{pendingCarts.length} en attente</button>}
+              </div>
+            </div>
+          </div>
+
+          {/* Barre recherche + catégories */}
+          <div className="pdt-catbar">
+            <div className="pdt-search-box">
+              <Search size={14} />
+              <input className="pdt-search" type="text" placeholder="Nom, SKU du matériau…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <div className="pdt-cats">
+              <button className={`pdt-cat-btn${!selectedCategory ? " active" : ""}`} onClick={() => setSelectedCategory(null)}>
+                Tous <span className="pdt-cat-count">{products.length}</span>
+              </button>
+              {categories.map((cat) => (
+                <button key={cat.id} className={`pdt-cat-btn${selectedCategory === cat.id ? " active" : ""}`} onClick={() => setSelectedCategory(cat.id)}>
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Grille produits */}
+          <div className="pdt-products">
+            {filteredProducts.length === 0 ? (
+              <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "20px", opacity: .4, fontSize: 12 }}>Aucun produit</div>
+            ) : (
+              filteredProducts.map((p) => {
+                const ci = inCart(p.id);
+                const noStock = p.stockQuantity < 1;
+                return (
+                  <button
+                    key={p.id}
+                    className={`pdt-prod-btn${noStock ? " no-stock" : ""}${ci ? " in-cart" : ""}`}
+                    onClick={() => !noStock && addToCart(p)}
+                    title={`${p.name} — ${fmt(p.sellingPrice)} FCFA`}
+                  >
+                    {ci && <span className="pdt-prod-badge">{ci.qty}</span>}
+                    <span className="pdt-prod-name">{p.name}</span>
+                    <span className="pdt-prod-price">{fmt(p.sellingPrice)}</span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* Footer Encaisser */}
+          <div className="pdt-footer">
+            <button
+              className="pdt-encaisser-btn"
+              onClick={handleCheckout}
+              disabled={cart.length === 0 || isProcessing || !activeSession}
+            >
+              <CheckCircle2 size={20} />
+              {isProcessing ? "Traitement en cours…" : `ENCAISSER  —  ${fmt(total)} FCFA`}
+            </button>
+          </div>
+
+        </div>{/* fin pos-desktop-view */}
 
         {/* ── Modal Paniers en attente ── */}
         {showPendingModal && (

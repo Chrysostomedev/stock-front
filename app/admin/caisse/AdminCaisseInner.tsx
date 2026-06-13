@@ -22,6 +22,7 @@ import {
   Clock, Pause, Printer, ChevronLeft, ChevronRight,
   ArrowLeft,
 } from "lucide-react";
+import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { POS_STYLES } from "@/types/post-caise-super";
 
 const fmt = (n: number) =>
@@ -82,6 +83,9 @@ export default function AdminCaisseInner() {
   const [dailyCount, setDailyCount] = useState(0);
 
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [numpadMode, setNumpadMode] = useState<"qty" | "remise">("qty");
+  const [numpadBuffer, setNumpadBuffer] = useState("");
 
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
   const [saleCartSnapshot, setSaleCartSnapshot] = useState<CartItem[]>([]);
@@ -209,6 +213,34 @@ export default function AdminCaisseInner() {
     } catch { showToast("Erreur lors de la fermeture", "error"); }
   };
 
+  const handleNumpadKey = (key: string) => {
+    if (!selectedItemId && numpadMode === "qty") return;
+    if (key === "C") {
+      setNumpadBuffer("");
+      if (numpadMode === "remise") setDiscountAmount(0);
+    } else if (key === "⌫") {
+      const nb = numpadBuffer.slice(0, -1);
+      setNumpadBuffer(nb);
+      if (numpadMode === "qty" && selectedItemId) {
+        const val = parseInt(nb, 10);
+        if (!isNaN(val) && val > 0) {
+          setCart((p) => p.map((i) => i.product.id === selectedItemId ? { ...i, quantity: Math.min(val, i.product.stockQty) } : i).filter((i) => i.quantity > 0));
+        } else if (nb === "") {
+          setCart((p) => p.filter((i) => i.product.id !== selectedItemId));
+          setSelectedItemId(null);
+        }
+      } else if (numpadMode === "remise") { setDiscountAmount(parseFloat(nb) || 0); }
+    } else {
+      const nb = numpadBuffer + key;
+      setNumpadBuffer(nb);
+      const val = parseInt(nb, 10);
+      if (numpadMode === "qty" && selectedItemId && !isNaN(val)) {
+        const item = cart.find((i) => i.product.id === selectedItemId);
+        if (item) { const nq = Math.min(val, item.product.stockQty); if (nq > 0) setCart((p) => p.map((i) => i.product.id === selectedItemId ? { ...i, quantity: nq } : i)); }
+      } else if (numpadMode === "remise") { setDiscountAmount(Math.min(parseFloat(nb) || 0, subtotal)); }
+    }
+  };
+
   const addToCart = (product: Product) => {
     if (product.stockQty <= 0) { showToast("Stock épuisé", "error"); return; }
     setCart((prev) => {
@@ -220,6 +252,23 @@ export default function AdminCaisseInner() {
       return [...prev, { product, quantity: 1 }];
     });
   };
+
+  const handleBarcodeScan = async (barcode: string) => {
+    if (!shopId) return;
+    try {
+      const product = await ProductService.getByBarcode(barcode, shopId);
+      if (product) {
+        addToCart(product);
+        showToast(`${product.name} ajouté au panier`, "success");
+      } else {
+        showToast(`Code-barres "${barcode}" introuvable`, "error");
+      }
+    } catch {
+      showToast("Erreur lors de la recherche du code-barres", "error");
+    }
+  };
+
+  useBarcodeScanner({ onScan: handleBarcodeScan, enabled: !!cashSession });
 
   const updateQuantity = (productId: string, delta: number) => {
     setCart((prev) =>
@@ -379,6 +428,8 @@ export default function AdminCaisseInner() {
           </div>
         )}
 
+        {/* ══ LAYOUT MOBILE (masqué sur desktop) ══ */}
+        <div className="pos-mobile-view">
         <div className="pos-layout">
           <aside className="pos-sidebar">
             <div className="pos-sidebar-logo"><ShoppingBag size={18} /><div>GestShop<div className="pos-sidebar-shop">{currentShop?.name || "Boutique"}</div></div></div>
@@ -411,7 +462,7 @@ export default function AdminCaisseInner() {
             </div>
 
             <div className="pos-catalog-header">
-              <div className="pos-search-wrap"><Search /><input className="pos-search" type="text" placeholder="Nom, SKU, code-barre…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+              <div className="pos-search-wrap" style={{ display: "flex", alignItems: "center", gap: 6 }}><Search /><input className="pos-search" type="text" placeholder="Nom, SKU, code-barre…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
               <div className="pos-view-toggle">
                 <button className={`pos-view-btn ${viewMode === "grid" ? "active" : ""}`} onClick={() => setViewMode("grid")} title="Vue grille"><LayoutGrid size={16} /></button>
                 <button className={`pos-view-btn ${viewMode === "list" ? "active" : ""}`} onClick={() => setViewMode("list")} title="Vue liste"><List size={16} /></button>
@@ -559,7 +610,7 @@ export default function AdminCaisseInner() {
           </div>
         </div>
 
-        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "10px 16px", background: "var(--pos-surface)", borderTop: "1px solid var(--pos-border)", display: "flex", alignItems: "center", gap: 12, zIndex: 99 }}>
+        <div className="pos-cart-fab" style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "10px 16px", background: "var(--pos-surface)", borderTop: "1px solid var(--pos-border)", display: "flex", alignItems: "center", gap: 12, zIndex: 99 }}>
           <span style={{ fontWeight: 700, fontSize: 15, fontVariantNumeric: "tabular-nums" }}>{fmt(total)} XOF</span>
           <button onClick={() => setMobileCartOpen((v) => !v)} style={{ flex: 1, padding: "13px", background: "var(--pos-primary)", color: "#fff", border: "none", borderRadius: 12, fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "inherit" }}>
             <ShoppingCart size={18} />Panier
@@ -569,6 +620,191 @@ export default function AdminCaisseInner() {
         </div>
 
         {mobileCartOpen && (<div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 199, backdropFilter: "blur(2px)" }} onClick={() => setMobileCartOpen(false)} />)}
+        </div>{/* fin pos-mobile-view */}
+
+        {/* ══ LAYOUT DESKTOP PRO ══ */}
+        <div className="pos-desktop-view">
+
+          {/* Top bar */}
+          <div className="pdt-topbar">
+            <div className="pdt-topbar-left">
+              <div className="pdt-topbar-field">
+                <span className="pdt-topbar-label">Client</span>
+                {selectedCustomer ? (
+                  <div className="pdt-cust-pill">
+                    <User size={12} />{selectedCustomer.name}
+                    <button onClick={() => setSelectedCustomer(null)}><X size={11} /></button>
+                  </div>
+                ) : (
+                  <select className="pdt-cust-select" onChange={(e) => setSelectedCustomer(customers.find((c) => c.id === e.target.value) || null)} value="">
+                    <option value="">— Passage —</option>
+                    {customers.map((c) => <option key={c.id} value={c.id}>{c.name}{c.phone ? ` (${c.phone})` : ""}</option>)}
+                  </select>
+                )}
+              </div>
+              <div className="pdt-topbar-stat"><span>Nb lignes</span><strong>{cart.length}</strong></div>
+              <div className="pdt-topbar-stat"><span>Nb articles</span><strong>{totalItems}</strong></div>
+              {cashSession && (
+                <div className="pdt-topbar-stat pdt-session-ok">
+                  <span className="pdt-session-dot" />
+                  CA : <strong>{fmt(dailyTotal)}</strong>
+                  <span style={{ opacity: .6 }}>· {dailyCount}v</span>
+                </div>
+              )}
+            </div>
+            <div className="pdt-topbar-right">
+              <span className="pdt-topbar-total-label">Total à régler</span>
+              <span className="pdt-topbar-total">{fmt(total)} XOF</span>
+            </div>
+          </div>
+
+          {/* Zone principale : ticket | numpad */}
+          <div className="pdt-main">
+
+            {/* Ticket de vente */}
+            <div className="pdt-ticket">
+              {cart.length === 0 ? (
+                <div className="pdt-ticket-empty"><ShoppingCart size={28} /><p>Sélectionnez des produits</p></div>
+              ) : (
+                <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+                  <table className="pdt-table">
+                    <thead>
+                      <tr>
+                        <th style={{ textAlign: "left" }}>ARTICLE</th>
+                        <th>Prix U.</th>
+                        <th>Remise</th>
+                        <th>Qté</th>
+                        <th>Net Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cart.map((item) => (
+                        <tr
+                          key={item.product.id}
+                          className={`pdt-row${selectedItemId === item.product.id ? " selected" : ""}`}
+                          onClick={() => { setSelectedItemId(item.product.id); setNumpadBuffer(String(item.quantity)); setNumpadMode("qty"); }}
+                        >
+                          <td className="pdt-td-name">{item.product.name}</td>
+                          <td className="pdt-td-num">{fmt(item.product.sellingPrice)}</td>
+                          <td className="pdt-td-num">—</td>
+                          <td className="pdt-td-num pdt-qty">{item.quantity}</td>
+                          <td className="pdt-td-num pdt-net">{fmt(item.product.sellingPrice * item.quantity)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="pdt-ticket-footer">
+                <div className="pdt-tot-row"><span>Sous-total</span><span>{fmt(subtotal)} XOF</span></div>
+                {discAmt > 0 && <div className="pdt-tot-row pdt-disc"><span>Remise</span><span>-{fmt(discAmt)} XOF</span></div>}
+                <div className="pdt-tot-row pdt-grand"><span>TOTAL</span><span>{fmt(total)} XOF</span></div>
+              </div>
+            </div>
+
+            {/* Panneau numpad + paiement */}
+            <div className="pdt-numpad-panel">
+              <div className="pdt-total-box">
+                <span className="pdt-total-label">Total à régler</span>
+                <span className="pdt-total-val">{fmt(total)} XOF</span>
+              </div>
+              <div className="pdt-mode-grid">
+                <button className={`pdt-mode-btn${numpadMode === "qty" ? " active" : ""}`} onClick={() => { setNumpadMode("qty"); setNumpadBuffer(selectedItemId ? String(cart.find((i) => i.product.id === selectedItemId)?.quantity ?? "") : ""); }}>Quantité</button>
+                <button className="pdt-mode-btn pdt-btn-danger" onClick={() => { if (selectedItemId) { setCart((p) => p.filter((i) => i.product.id !== selectedItemId)); setSelectedItemId(null); setNumpadBuffer(""); } }}>Enlever</button>
+                <button className={`pdt-mode-btn${numpadMode === "remise" ? " active" : ""}`} onClick={() => { setNumpadMode("remise"); setNumpadBuffer(discountAmount ? String(discountAmount) : ""); }}>Remise</button>
+                <button className="pdt-mode-btn" onClick={() => { setCart([]); setSelectedItemId(null); setNumpadBuffer(""); }}>Vider</button>
+              </div>
+              <div className="pdt-buffer-display">
+                {numpadMode === "qty" && selectedItemId && <span>Qté : <strong>{numpadBuffer || "—"}</strong></span>}
+                {numpadMode === "remise" && <span>Remise : <strong>{numpadBuffer || "0"} XOF</strong></span>}
+                {numpadMode === "qty" && !selectedItemId && <span style={{ opacity: .4 }}>← Sélectionnez un article</span>}
+              </div>
+              <div className="pdt-numpad">
+                {["7","8","9","4","5","6","1","2","3","C","0","⌫"].map((k) => (
+                  <button key={k} className={`pdt-num-btn${k === "C" ? " clear" : k === "⌫" ? " backspace" : ""}`} onClick={() => handleNumpadKey(k)}>{k}</button>
+                ))}
+              </div>
+              <div className="pdt-payment">
+                <div className="pdt-pay-methods">
+                  <button className={`pdt-pay-btn${paymentMethod === "CASH" ? " active" : ""}`} onClick={() => setPaymentMethod("CASH")}><Banknote size={13} />Espèces</button>
+                  <button className={`pdt-pay-btn${paymentMethod === "MOBILE_MONEY" ? " active" : ""}`} onClick={() => setPaymentMethod("MOBILE_MONEY")}><Smartphone size={13} />Mobile</button>
+                </div>
+                {paymentMethod === "CASH" && (
+                  <input className="pdt-cash-input" type="number" placeholder="Montant reçu…" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} />
+                )}
+                {paymentMethod === "CASH" && received > 0 && cart.length > 0 && (
+                  <div className="pdt-change-row"><span>Monnaie à rendre</span><strong>{fmt(change)} XOF</strong></div>
+                )}
+                {paymentMethod === "MOBILE_MONEY" && (
+                  <div className="pdt-mobile-ops">
+                    {(["WAVE","ORANGE","MTN"] as const).map((op) => (
+                      <button key={op} className={`pdt-mob-op${mobileProvider === op ? " active" : ""}`} onClick={() => setMobileProvider(op)}>{op}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="pdt-annexe">
+                {cart.length > 0 && <button className="pdt-hold-btn" onClick={handlePutOnHold}><Pause size={12} />Attente</button>}
+                {pendingCarts.length > 0 && <button className="pdt-hold-btn" onClick={() => setShowPendingModal(true)}><Clock size={12} />{pendingCarts.length} en attente</button>}
+              </div>
+            </div>
+          </div>
+
+          {/* Barre recherche + catégories */}
+          <div className="pdt-catbar">
+            <div className="pdt-search-box">
+              <Search size={14} />
+              <input className="pdt-search" type="text" placeholder="Nom, SKU du produit…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+            <div className="pdt-cats">
+              <button className={`pdt-cat-btn${!selectedCategory ? " active" : ""}`} onClick={() => setSelectedCategory(null)}>
+                Tous <span className="pdt-cat-count">{totalProducts}</span>
+              </button>
+              {categories.map((cat) => (
+                <button key={cat.id} className={`pdt-cat-btn${selectedCategory === cat.id ? " active" : ""}`} onClick={() => setSelectedCategory(cat.id)}>
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Grille produits */}
+          <div className="pdt-products">
+            {products.length === 0 ? (
+              <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "20px", opacity: .4, fontSize: 12 }}>Aucun produit</div>
+            ) : (
+              products.map((p) => {
+                const ci = inCart(p.id);
+                const noStock = p.stockQty < 1;
+                return (
+                  <button
+                    key={p.id}
+                    className={`pdt-prod-btn${noStock ? " no-stock" : ""}${ci ? " in-cart" : ""}`}
+                    onClick={() => !noStock && addToCart(p)}
+                    title={`${p.name} — ${fmt(p.sellingPrice)} XOF`}
+                  >
+                    {ci && <span className="pdt-prod-badge">{ci.quantity}</span>}
+                    <span className="pdt-prod-name">{p.name}</span>
+                    <span className="pdt-prod-price">{fmt(p.sellingPrice)}</span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          {/* Footer Encaisser */}
+          <div className="pdt-footer">
+            <button
+              className="pdt-encaisser-btn"
+              onClick={handleCheckout}
+              disabled={cart.length === 0 || isProcessing || !cashSession}
+            >
+              <CheckCircle2 size={20} />
+              {isProcessing ? "Traitement en cours…" : `ENCAISSER  —  ${fmt(total)} XOF`}
+            </button>
+          </div>
+
+        </div>{/* fin pos-desktop-view */}
       </div>
 
       {showPendingModal && (
@@ -640,6 +876,7 @@ export default function AdminCaisseInner() {
           </div>
         </div>
       )}
+
     </AppLayout>
   );
 }

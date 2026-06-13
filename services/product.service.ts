@@ -148,6 +148,22 @@ const ProductService = {
     });
   },
 
+  /** Lookup exact par code-barres. Retourne le produit ou null si 404. */
+  async getByBarcode(barcode: string, shopId?: string): Promise<Product | null> {
+    try {
+      const params: any = {};
+      if (shopId) params.shopId = shopId;
+      const response = await axiosInstance.get(
+        `/products/barcode/${encodeURIComponent(barcode)}`,
+        { params }
+      );
+      return response.data as Product;
+    } catch (err: any) {
+      if (err?.response?.status === 404) return null;
+      throw err;
+    }
+  },
+
   /** Alertes stock. OFFLINE : cache. */
   async getStockAlerts(shopId: string): Promise<Product[]> {
     return withOfflineCache(

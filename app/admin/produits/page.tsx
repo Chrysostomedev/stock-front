@@ -29,8 +29,17 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  Layers,
+  Archive,
+  Clock,
+  X,
 } from "lucide-react";
 import ExportButton from "@/components/ui/ExportButton";
+import ProductBatchService from "@/services/super/productBatch.service";
+import ProductComponentService from "@/services/productComponent.service";
+import { ProductBatch, ProductComponent, CreateProductBatchDto, CreateProductComponentDto } from "@/types/super";
+import { format, parseISO } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export default function AdminProduitsPage() {
   const { showToast } = useToast();
@@ -74,6 +83,22 @@ export default function AdminProduitsPage() {
     isActive: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // États pour les modales Lots & Kit
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [isKitModalOpen, setIsKitModalOpen] = useState(false);
+  const [productForDetail, setProductForDetail] = useState<Product | null>(null);
+  const [batches, setBatches] = useState<ProductBatch[]>([]);
+  const [kitComponents, setKitComponents] = useState<ProductComponent[]>([]);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [batchForm, setBatchForm] = useState<Partial<CreateProductBatchDto>>({
+    batchNumber: "", quantity: 0, buyingPrice: 0, expiresAt: "", receivedAt: "",
+  });
+  const [componentForm, setComponentForm] = useState<Partial<CreateProductComponentDto>>({
+    componentProductId: "", quantity: 1,
+  });
+  const [submittingBatch, setSubmittingBatch] = useState(false);
+  const [submittingComponent, setSubmittingComponent] = useState(false);
 
   // Effet de debounce pour le terme de recherche
   useEffect(() => {
@@ -257,6 +282,108 @@ export default function AdminProduitsPage() {
     }
   };
 
+  // ── Batch (lots) modal ──────────────────────────────────────────────────
+  const openBatchModal = async (product: Product) => {
+    setProductForDetail(product);
+    setIsBatchModalOpen(true);
+    setLoadingDetail(true);
+    setBatchForm({ batchNumber: "", quantity: 0, buyingPrice: product.buyingPrice, expiresAt: "", receivedAt: "" });
+    try {
+      const data = await ProductBatchService.getByProduct(product.id);
+      setBatches(Array.isArray(data) ? data : []);
+    } catch {
+      setBatches([]);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const handleAddBatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productForDetail || !batchForm.batchNumber || !batchForm.quantity) {
+      showToast("Numéro de lot et quantité obligatoires", "error");
+      return;
+    }
+    setSubmittingBatch(true);
+    try {
+      const dto: CreateProductBatchDto = {
+        productId: productForDetail.id,
+        batchNumber: batchForm.batchNumber!,
+        quantity: Number(batchForm.quantity),
+        buyingPrice: Number(batchForm.buyingPrice ?? 0),
+        expiresAt: batchForm.expiresAt || undefined,
+        receivedAt: batchForm.receivedAt || undefined,
+      };
+      const created = await ProductBatchService.create(dto);
+      setBatches((prev) => [created, ...prev]);
+      setBatchForm({ batchNumber: "", quantity: 0, buyingPrice: productForDetail.buyingPrice, expiresAt: "", receivedAt: "" });
+      showToast("Lot enregistré", "success");
+    } catch {
+      showToast("Erreur lors de l'enregistrement du lot", "error");
+    } finally {
+      setSubmittingBatch(false);
+    }
+  };
+
+  // ── Kit (composition) modal ─────────────────────────────────────────────
+  const openKitModal = async (product: Product) => {
+    setProductForDetail(product);
+    setIsKitModalOpen(true);
+    setLoadingDetail(true);
+    setComponentForm({ componentProductId: "", quantity: 1 });
+    try {
+      const data = await ProductComponentService.getByKit(product.id);
+      setKitComponents(Array.isArray(data) ? data : []);
+    } catch {
+      setKitComponents([]);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const handleAddComponent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productForDetail || !componentForm.componentProductId || !componentForm.quantity) {
+      showToast("Produit composant et quantité obligatoires", "error");
+      return;
+    }
+    setSubmittingComponent(true);
+    try {
+      const dto: CreateProductComponentDto = {
+        kitProductId: productForDetail.id,
+        componentProductId: componentForm.componentProductId!,
+        quantity: Number(componentForm.quantity),
+      };
+      const created = await ProductComponentService.create(dto);
+      setKitComponents((prev) => [...prev, created]);
+      setComponentForm({ componentProductId: "", quantity: 1 });
+      showToast("Composant ajouté", "success");
+    } catch {
+      showToast("Erreur lors de l'ajout du composant", "error");
+    } finally {
+      setSubmittingComponent(false);
+    }
+  };
+
+  const handleDeleteComponent = async (id: string) => {
+    try {
+      await ProductComponentService.delete(id);
+      setKitComponents((prev) => prev.filter((c) => c.id !== id));
+      showToast("Composant retiré", "success");
+    } catch {
+      showToast("Erreur lors de la suppression", "error");
+    }
+  };
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "—";
+    try {
+      return format(parseISO(dateStr), "dd MMM yyyy", { locale: fr });
+    } catch {
+      return dateStr;
+    }
+  };
+
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat("fr-FR", {
       style: "currency",
@@ -379,18 +506,34 @@ export default function AdminProduitsPage() {
     {
       header: "Actions",
       accessor: (item: Product) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => handleOpenModal(item)}
+            title="Modifier"
             className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
           >
             <Edit2 className="h-4 w-4 text-zinc-500" />
+          </button>
+          <button
+            onClick={() => openBatchModal(item)}
+            title="Lots / Arrivages"
+            className="p-2 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg transition-colors"
+          >
+            <Archive className="h-4 w-4 text-blue-500" />
+          </button>
+          <button
+            onClick={() => openKitModal(item)}
+            title="Composition kit"
+            className="p-2 hover:bg-violet-50 dark:hover:bg-violet-950/20 rounded-lg transition-colors"
+          >
+            <Layers className="h-4 w-4 text-violet-500" />
           </button>
           <button
             onClick={() => {
               setSelectedProduct(item);
               setIsConfirmOpen(true);
             }}
+            title="Supprimer"
             className="p-2 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors"
           >
             <Trash2 className="h-4 w-4 text-red-500" />
@@ -807,6 +950,223 @@ export default function AdminProduitsPage() {
         title="Supprimer ?"
         message={`Retirer "${selectedProduct?.name}" du catalogue ?`}
       />
+
+      {/* ── Modal : Lots / Arrivages ───────────────────────────────────── */}
+      <Modal
+        isOpen={isBatchModalOpen}
+        onClose={() => setIsBatchModalOpen(false)}
+        title={`Lots — ${productForDetail?.name ?? ""}`}
+        size="lg"
+      >
+        <div className="flex flex-col gap-5 p-1 max-h-[80vh] overflow-y-auto">
+
+          {/* Historique des lots */}
+          <div className="flex flex-col gap-2">
+            <h4 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
+              <Clock className="h-3 w-3" /> Historique des lots
+            </h4>
+            {loadingDetail ? (
+              <div className="flex justify-center py-6">
+                <RefreshCw className="h-5 w-5 animate-spin text-zinc-400" />
+              </div>
+            ) : batches.length === 0 ? (
+              <p className="text-[11px] text-zinc-400 font-bold py-4 text-center">Aucun lot enregistré</p>
+            ) : (
+              <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+                {batches.map((b) => (
+                  <div
+                    key={b.id}
+                    className={`flex items-center justify-between gap-3 p-3 rounded-xl border ${
+                      b.isExpired
+                        ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50"
+                        : b.isExpiringSoon
+                        ? "bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900/50"
+                        : "bg-zinc-50 dark:bg-zinc-800/50 border-zinc-200 dark:border-zinc-700"
+                    }`}
+                  >
+                    <div>
+                      <p className="text-xs font-black text-foreground">#{b.batchNumber}</p>
+                      <p className="text-[10px] font-bold text-zinc-500">
+                        {b.quantity} unité{b.quantity !== 1 ? "s" : ""} · {formatPrice(b.buyingPrice)} /u
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      {b.expiresAt && (
+                        <p className={`text-[10px] font-black uppercase tracking-wider ${
+                          b.isExpired ? "text-red-600" : b.isExpiringSoon ? "text-orange-600" : "text-zinc-500"
+                        }`}>
+                          {b.isExpired ? "Expiré" : b.isExpiringSoon ? "Bientôt" : "Exp."} {formatDate(b.expiresAt)}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-zinc-400 font-bold">Reçu {formatDate(b.receivedAt)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Formulaire arrivage */}
+          <form onSubmit={handleAddBatch} className="flex flex-col gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+            <h4 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
+              <Archive className="h-3 w-3" /> Enregistrer un arrivage
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">N° de lot <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  placeholder="LOT-2026-001"
+                  value={batchForm.batchNumber}
+                  onChange={(e) => setBatchForm({ ...batchForm, batchNumber: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Quantité <span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  min={1}
+                  value={batchForm.quantity}
+                  onChange={(e) => setBatchForm({ ...batchForm, quantity: Number(e.target.value) })}
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Prix d'achat /u</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={batchForm.buyingPrice}
+                  onChange={(e) => setBatchForm({ ...batchForm, buyingPrice: Number(e.target.value) })}
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Date de péremption</label>
+                <input
+                  type="date"
+                  value={batchForm.expiresAt}
+                  onChange={(e) => setBatchForm({ ...batchForm, expiresAt: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+                />
+              </div>
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Date de réception</label>
+                <input
+                  type="date"
+                  value={batchForm.receivedAt}
+                  onChange={(e) => setBatchForm({ ...batchForm, receivedAt: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="outline" className="flex-1 h-11 text-xs" onClick={() => setIsBatchModalOpen(false)}>
+                Annuler
+              </Button>
+              <Button type="submit" variant="primary" className="flex-1 h-11 text-xs" loading={submittingBatch}>
+                Enregistrer le lot
+              </Button>
+            </div>
+          </form>
+        </div>
+      </Modal>
+
+      {/* ── Modal : Composition du kit ─────────────────────────────────── */}
+      <Modal
+        isOpen={isKitModalOpen}
+        onClose={() => setIsKitModalOpen(false)}
+        title={`Composition kit — ${productForDetail?.name ?? ""}`}
+        size="lg"
+      >
+        <div className="flex flex-col gap-5 p-1 max-h-[80vh] overflow-y-auto">
+
+          {/* Liste des composants */}
+          <div className="flex flex-col gap-2">
+            <h4 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
+              <Layers className="h-3 w-3" /> Composants du kit
+            </h4>
+            {loadingDetail ? (
+              <div className="flex justify-center py-6">
+                <RefreshCw className="h-5 w-5 animate-spin text-zinc-400" />
+              </div>
+            ) : kitComponents.length === 0 ? (
+              <p className="text-[11px] text-zinc-400 font-bold py-4 text-center">
+                Aucun composant — ce produit n'est pas encore configuré comme kit
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+                {kitComponents.map((comp) => (
+                  <div
+                    key={comp.id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-foreground truncate">
+                        {comp.componentProduct?.name ?? comp.componentProductId}
+                      </p>
+                      <p className="text-[10px] font-bold text-zinc-500">
+                        × {comp.quantity} · Stock: {comp.componentProduct?.stockQty ?? "—"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteComponent(comp.id)}
+                      className="p-1.5 hover:bg-red-100 dark:hover:bg-red-950/20 rounded-lg transition-colors flex-shrink-0"
+                    >
+                      <X className="h-3.5 w-3.5 text-red-500" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Formulaire ajout composant */}
+          <form onSubmit={handleAddComponent} className="flex flex-col gap-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+            <h4 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
+              <Plus className="h-3 w-3" /> Ajouter un composant
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Produit composant <span className="text-red-500">*</span></label>
+                <select
+                  value={componentForm.componentProductId}
+                  onChange={(e) => setComponentForm({ ...componentForm, componentProductId: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+                >
+                  <option value="">Sélectionner un produit...</option>
+                  {products
+                    .filter((p) => p.id !== productForDetail?.id)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.sku ? `(${p.sku})` : ""}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Quantité <span className="text-red-500">*</span></label>
+                <input
+                  type="number"
+                  min={1}
+                  value={componentForm.quantity}
+                  onChange={(e) => setComponentForm({ ...componentForm, quantity: Number(e.target.value) })}
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="outline" className="flex-1 h-11 text-xs" onClick={() => setIsKitModalOpen(false)}>
+                Annuler
+              </Button>
+              <Button type="submit" variant="primary" className="flex-1 h-11 text-xs" loading={submittingComponent}>
+                Ajouter
+              </Button>
+            </div>
+          </form>
+        </div>
+      </Modal>
     </AppLayout>
   );
 }

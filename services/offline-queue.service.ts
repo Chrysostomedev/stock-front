@@ -33,6 +33,7 @@ import axiosInstance from "@/core/axios";
 export type OfflineEntityType =
   | "Sale"
   | "Product"
+  | "ProductComponent"
   | "Customer"
   | "Expense"
   | "CashSession"
