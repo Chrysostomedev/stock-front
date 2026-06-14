@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
 import AppLayout from "@/components/layouts/AppLayout";
 import { useDashboard } from "@/hooks/admin/useDashboard";
 import { useShops } from "@/hooks/admin/useShops";
@@ -29,6 +30,7 @@ import {
   Building2,
   CreditCard,
   AlertTriangle,
+  CalendarDays,
 } from "lucide-react";
 const DEFAULT_QUERY: PeriodQuery = { preset: "30d" };
 
@@ -219,7 +221,18 @@ export default function SuperAdminDashboardPage() {
         {/* ── Sales Timeline ── */}
         <SalesTimeline data={timeline} loading={loading} />
         {/* ── Sales Calendar / Agenda ── */}
-        <SalesCalendar />
+        <div className="flex flex-col gap-2">
+          <div className="flex justify-end">
+            <Link
+              href="/admin/agenda"
+              className="flex items-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-black transition-all"
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              Voir l&apos;agenda complet
+            </Link>
+          </div>
+          <SalesCalendar />
+        </div>
         {/* ── Shops + Categories row ── */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-3">

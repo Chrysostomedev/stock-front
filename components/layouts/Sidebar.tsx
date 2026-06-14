@@ -24,6 +24,7 @@ import {
   Wallet,
   ChevronLeft,
   ChevronRight,
+  CalendarDays,
 } from "lucide-react";
 import { UserRole } from "@/types/auth";
 
@@ -66,6 +67,7 @@ export default function Sidebar() {
     { href: "/admin/transferts", label: "Transferts de Stock", shortLabel: "Transferts", icon: <Layers className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/devis", label: "Bons de Commande", icon: <FileText className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/fournisseurs", label: "Fournisseurs", icon: <Truck className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
+    { href: "/admin/agenda", label: "Agenda des ventes", shortLabel: "Agenda", icon: <CalendarDays className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/logs", label: "Journal d'activité", shortLabel: "Logs", icon: <Shield className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/super", label: "Dashboard Super.", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["CASHIER"] },
     { href: "/super/caisse", label: "Caisse Super.", icon: <ShoppingCart className="h-5 w-5" />, roles: ["CASHIER"] },
