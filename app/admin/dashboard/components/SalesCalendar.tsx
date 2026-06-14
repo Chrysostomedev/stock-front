@@ -346,13 +346,13 @@ export default function SalesCalendar() {
                           Boutiques ({dayDetail.shops.shops.length})
                         </p>
                       </div>
-                      <div className="rounded-xl border border-zinc-100 dark:border-zinc-800 overflow-hidden">
-                        <table className="w-full text-[10px]">
+                      <div className="rounded-xl border border-zinc-100 dark:border-zinc-800 overflow-x-auto">
+                        <table className="w-full text-[10px] min-w-[280px]">
                           <thead>
                             <tr className="bg-zinc-50 dark:bg-zinc-800/50">
                               <th className="text-left px-2 py-1.5 font-black text-zinc-500">Boutique</th>
                               <th className="text-right px-2 py-1.5 font-black text-zinc-500">CA</th>
-                              <th className="text-right px-2 py-1.5 font-black text-zinc-500 hidden sm:table-cell">Marge</th>
+                              <th className="text-right px-2 py-1.5 font-black text-zinc-500">Marge</th>
                               <th className="text-right px-2 py-1.5 font-black text-zinc-500">Tx</th>
                             </tr>
                           </thead>
@@ -371,7 +371,7 @@ export default function SalesCalendar() {
                                 <td className="px-2 py-1.5 text-right font-black text-foreground">
                                   {fmt(shop.revenue ?? 0)}
                                 </td>
-                                <td className="px-2 py-1.5 text-right hidden sm:table-cell">
+                                <td className="px-2 py-1.5 text-right">
                                   {hasAbsMargin ? (
                                     <span className="font-bold text-emerald-600">
                                       {fmt(shop.grossMargin)}
