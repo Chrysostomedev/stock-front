@@ -74,6 +74,22 @@ class QuincProductService {
     });
   }
 
+  /** Lookup exact par code-barres. Retourne le produit ou null si 404. */
+  async getByBarcode(barcode: string, shopId?: string): Promise<Product | null> {
+    try {
+      const params: any = {};
+      if (shopId) params.shopId = shopId;
+      const response = await axiosInstance.get(
+        `/products/barcode/${encodeURIComponent(barcode)}`,
+        { params }
+      );
+      return response.data as Product;
+    } catch (err: any) {
+      if (err?.response?.status === 404) return null;
+      throw err;
+    }
+  }
+
   /** Supprimer un produit. OFFLINE : enqueued. */
   async delete(id: string): Promise<void> {
     await withOfflineFallback({

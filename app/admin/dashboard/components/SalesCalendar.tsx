@@ -198,7 +198,7 @@ export default function SalesCalendar() {
             onClick={goToday}
             className="px-2.5 py-1.5 text-[10px] font-black rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800"
           >
-            Aujourd'hui
+            Aujourd&apos;hui
           </button>
           <button
             onClick={nextMonth}
@@ -229,7 +229,6 @@ export default function SalesCalendar() {
               </div>
             ))}
           </div>
-
           {loadingCalendar ? (
             <div className="flex items-center justify-center h-40">
               <div className="animate-spin h-6 w-6 rounded-full border-2 border-violet-500 border-t-transparent" />
@@ -244,7 +243,6 @@ export default function SalesCalendar() {
                 const isToday  = dateStr === todayStr;
                 const isSel    = dateStr === selectedDay;
                 const heatCls  = getHeatColor(dateStr);
-
                 return (
                   <button
                     key={`d-${day}`}
@@ -359,7 +357,10 @@ export default function SalesCalendar() {
                             </tr>
                           </thead>
                           <tbody>
-                            {dayDetail.shops.shops.map((shop, i) => (
+                            {dayDetail.shops.shops.map((shop, i) => {
+                              const hasAbsMargin = (shop.grossMargin ?? 0) > 0;
+                              const rate = shop.marginRate ?? 0;
+                              return (
                               <tr
                                 key={shop.shopId}
                                 className={i % 2 === 0 ? "" : "bg-zinc-50/50 dark:bg-zinc-800/20"}
@@ -370,20 +371,28 @@ export default function SalesCalendar() {
                                 <td className="px-2 py-1.5 text-right font-black text-foreground">
                                   {fmt(shop.revenue ?? 0)}
                                 </td>
-                                <td className="px-2 py-1.5 text-right font-bold text-emerald-600 hidden sm:table-cell">
-                                  {fmt(shop.grossMargin ?? 0)}
+                                <td className="px-2 py-1.5 text-right hidden sm:table-cell">
+                                  {hasAbsMargin ? (
+                                    <span className="font-bold text-emerald-600">
+                                      {fmt(shop.grossMargin)}
+                                    </span>
+                                  ) : (
+                                    <span className={`font-bold ${rate > 0 ? "text-emerald-600" : "text-zinc-400"}`}>
+                                      {rate.toFixed(1)}%
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="px-2 py-1.5 text-right font-bold text-zinc-500">
                                   {shop.transactions ?? 0}
                                 </td>
                               </tr>
-                            ))}
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
                     </div>
                   )}
-
                   {/* Mini P&L */}
                   <div>
                     <div className="flex items-center gap-1.5 mb-2">
@@ -432,7 +441,6 @@ export default function SalesCalendar() {
                       ))}
                     </div>
                   </div>
-
                   {/* Panier moyen */}
                   {dayDetail.shops.shops?.length > 0 && (() => {
                     const totalTx = dayDetail.shops.shops.reduce((s, sh) => s + (sh.transactions ?? 0), 0);

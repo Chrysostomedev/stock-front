@@ -159,6 +159,8 @@ export interface ProductBatch {
   expiresAt?: string;        // Date d'expiration ISO (nullable si non périssable)
   buyingPrice: number;       // Prix d'achat unitaire
   receivedAt?: string;       // Date de réception du lot
+  isExpired?: boolean;       // calculé par le backend
+  isExpiringSoon?: boolean;  // calculé par le backend (≤ 30 jours)
   createdAt: string;
   updatedAt: string;
   // Relations incluses par le backend
@@ -356,6 +358,45 @@ export interface CreateProductBatchDto {
   buyingPrice: number;
   expiresAt?: string;
   receivedAt?: string;
+}
+
+/**
+ * Composant d'un kit — Un produit peut contenir N composants.
+ *
+ * Endpoints :
+ *   POST   /product-components                  → Ajouter un composant
+ *   GET    /product-components/kit/:kitProductId → Composants d'un kit
+ *   PUT    /product-components/:id              → Modifier quantité
+ *   DELETE /product-components/:id              → Retirer du kit
+ *
+ * @see back-spservice/src/modules/product-component
+ */
+export interface ProductComponent {
+  id: string;
+  kitProductId: string;
+  componentProductId: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+  componentProduct?: {
+    id: string;
+    name: string;
+    sku?: string;
+    barcode?: string;
+    sellingPrice: number;
+    stockQty: number;
+  };
+  kitProduct?: {
+    id: string;
+    name: string;
+  };
+}
+
+/** DTO pour ajouter un composant à un kit */
+export interface CreateProductComponentDto {
+  kitProductId: string;
+  componentProductId: string;
+  quantity: number;
 }
 
 /** DTO pour créer un fournisseur */

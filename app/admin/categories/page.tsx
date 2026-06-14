@@ -15,10 +15,7 @@ import {
   Plus,
   Edit2,
   Trash2,
-  FolderTree,
   Tag,
-  Layers,
-  ChevronRight,
   Search,
 } from "lucide-react";
 import Badge from "@/components/ui/Badge";
@@ -319,7 +316,6 @@ export default function AdminCategoriesPage() {
       </div>
 
       <div className="flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto pb-12 w-full">
-
         {/* 🔍 Barre d'actions fluide */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
           <div className="relative w-full sm:flex-1 sm:max-w-md">
@@ -334,7 +330,6 @@ export default function AdminCategoriesPage() {
               className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl sm:rounded-2xl text-xs font-bold outline-none focus:border-primary transition-all shadow-sm"
             />
           </div>
-
           <div className="w-full sm:w-auto">
             <Button onClick={() => handleOpenModal()} variant="primary" className="w-full sm:w-auto h-11 sm:h-12 px-5 text-xs sm:text-sm">
               <Plus className="h-4 w-4 mr-2 shrink-0" />
@@ -342,7 +337,6 @@ export default function AdminCategoriesPage() {
             </Button>
           </div>
         </div>
-
         {/* 📋 Layout Principal Réactif */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
           {/* Bloc Tableau : Devient scrollable horizontalement sans briser l'écran global */}
@@ -357,7 +351,6 @@ export default function AdminCategoriesPage() {
               </div>
             </Card>
           </div>
-
           {/* Unités de mesure */}
           <div className="lg:col-span-1 w-full">
             <Card className="p-4 sm:p-5 border-none shadow-xl h-full flex flex-col bg-white dark:bg-zinc-900">
@@ -370,7 +363,6 @@ export default function AdminCategoriesPage() {
                   <Plus className="h-3 w-3 mr-1" /> Ajouter
                 </Button>
               </div>
-
               {loadingUnits ? (
                 <div className="flex justify-center p-8">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
@@ -396,9 +388,7 @@ export default function AdminCategoriesPage() {
             </Card>
           </div>
         </div>
-
       </div>
-
       {/*  Les modales existantes restent identiques (déjà gérées par le composant Modal interne) */}
       <Modal isOpen={isUnitModalOpen} onClose={() => setIsUnitModalOpen(false)} title="Ajouter une nouvelle unité">
         <form onSubmit={handleUnitSubmit} className="flex flex-col gap-4 p-1">
@@ -427,7 +417,6 @@ export default function AdminCategoriesPage() {
           </Button>
         </form>
       </Modal>
-
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={selectedCategory ? "Modifier la catégorie" : "Ajouter une catégorie"}>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-1">
           <div className="flex flex-col gap-1.5">
@@ -440,7 +429,6 @@ export default function AdminCategoriesPage() {
               className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
             />
           </div>
-
           <div className="flex flex-col gap-1.5">
             <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Boutique / Point de vente (Optionnel)</label>
             <select

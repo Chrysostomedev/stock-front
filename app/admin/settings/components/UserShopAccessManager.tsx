@@ -92,11 +92,9 @@ export default function UserShopAccessManager({ isOpen, onClose }: UserShopAcces
     try {
       await UserShopAccessService.assignUserToShop(selectedUser.id, selectedShopId, selectedRole);
       showToast("Accès assigné avec succès", "success");
-      
       // Refresh accesses
       const data = await UserShopAccessService.listShopsForUser(selectedUser.id);
       setAccesses(data || []);
-      
       setIsAssigning(false);
       setSelectedShopId("");
       setSelectedRole("CASHIER");
@@ -149,7 +147,6 @@ export default function UserShopAccessManager({ isOpen, onClose }: UserShopAcces
     <>
       <Modal isOpen={isOpen} onClose={onClose} title="Gestion des Accès Multi-Boutiques" size="xl">
         <div className="flex flex-col md:flex-row gap-6 h-[600px] -mx-2">
-          
           {/* LEFT PANE: Users List */}
           <div className="w-full md:w-1/3 flex flex-col border-r border-zinc-100 dark:border-zinc-800 pr-4">
             <div className="relative mb-4">
@@ -219,7 +216,6 @@ export default function UserShopAccessManager({ isOpen, onClose }: UserShopAcces
                     {isAssigning ? 'Annuler' : <><Plus className="h-4 w-4 mr-1.5" /> Nouvelle assignation</>}
                   </Button>
                 </div>
-
                 {isAssigning && (
                   <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 rounded-2xl flex flex-col gap-4 animate-in slide-in-from-top-2">
                     <h5 className="text-sm font-bold text-emerald-800 dark:text-emerald-400">Ajouter un accès boutique</h5>
@@ -254,7 +250,7 @@ export default function UserShopAccessManager({ isOpen, onClose }: UserShopAcces
                     </div>
                     <div className="flex justify-end mt-2">
                       <Button variant="primary" size="sm" onClick={handleAssignAccess} disabled={!selectedShopId}>
-                        Assigner l'accès
+                        Assigner l&apos;accès
                       </Button>
                     </div>
                   </div>
@@ -269,7 +265,7 @@ export default function UserShopAccessManager({ isOpen, onClose }: UserShopAcces
                     </div>
                   ) : accesses.length === 0 ? (
                     <div className="p-8 text-center bg-zinc-50 dark:bg-zinc-800/30 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-2xl text-zinc-500 text-sm font-bold">
-                      Cet utilisateur n'a accès à aucune boutique.
+                      Cet utilisateur n&apos;a accès à aucune boutique.
                     </div>
                   ) : (
                     <div className="flex flex-col gap-3">
@@ -316,7 +312,6 @@ export default function UserShopAccessManager({ isOpen, onClose }: UserShopAcces
           </div>
         </div>
       </Modal>
-
       {/* Edit Role Modal */}
       <Modal isOpen={!!editingAccess} onClose={() => setEditingAccess(null)} title="Modifier le rôle" size="sm">
         <div className="flex flex-col gap-4">
@@ -341,7 +336,6 @@ export default function UserShopAccessManager({ isOpen, onClose }: UserShopAcces
           </div>
         </div>
       </Modal>
-
       {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={!!deleteConfirmAccess}

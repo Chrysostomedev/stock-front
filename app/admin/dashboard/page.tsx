@@ -16,6 +16,7 @@ import CashiersTable from "./components/CashiersTable";
 import AlertsPanel from "./components/AlertsPanel";
 import FinancialReport from "./components/FinancialReport";
 import SalesCalendar from "./components/SalesCalendar";
+import ExpirationWidget from "./components/ExpirationWidget";
 
 // Lucide icons
 import {
@@ -164,7 +165,6 @@ export default function SuperAdminDashboardPage() {
               <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Boutiques actives</p>
             </div>
           </div>
-
           {/* Credit Outstanding */}
           <div className="bg-card border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-rose-500/10 flex-shrink-0">
@@ -180,7 +180,6 @@ export default function SuperAdminDashboardPage() {
               </p>
             </div>
           </div>
-
           {/* Average Basket */}
           <div className="bg-card border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-amber-500/10 flex-shrink-0">
@@ -196,7 +195,6 @@ export default function SuperAdminDashboardPage() {
               </p>
             </div>
           </div>
-
           {/* Expenses */}
           <div className="bg-card border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-orange-500/10 flex-shrink-0">
@@ -218,13 +216,10 @@ export default function SuperAdminDashboardPage() {
             </div>
           </div>
         </div>
-
         {/* ── Sales Timeline ── */}
         <SalesTimeline data={timeline} loading={loading} />
-
         {/* ── Sales Calendar / Agenda ── */}
         <SalesCalendar />
-
         {/* ── Shops + Categories row ── */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-3">
@@ -243,6 +238,9 @@ export default function SuperAdminDashboardPage() {
           <AlertsPanel data={alerts} loading={loadingAlerts} />
           <FinancialReport data={financial} loading={loading} />
         </div>
+
+        {/* ── Expiration Alerts ── */}
+        <ExpirationWidget shops={shops} />
 
       </div>
     </AppLayout>
