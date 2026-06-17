@@ -146,8 +146,8 @@ export default function QuincaillerieCaissePage() {
     if (!user?.shopId || !user?.id) return;
     try {
       const ov = await CashierDashboardService.getOverview({ userId: user.id, shopId: user.shopId });
-      setDailyTotal(ov.kpis.revenue);
-      setDailyCount(ov.kpis.totalTransactions);
+      setDailyTotal(prev => Math.max(prev, ov.kpis.revenue));
+      setDailyCount(prev => Math.max(prev, ov.kpis.totalTransactions));
     } catch {
       // non-critique
     }
@@ -350,7 +350,10 @@ export default function QuincaillerieCaissePage() {
       } as any);
 
       showToast(`Vente enregistrée : ${fmt(total)} FCFA !`, "success");
-      loadDailyStats().catch(() => {});
+      // Mise à jour optimiste — évite la race condition (loadDailyStats immédiatement
+      // après la vente peut retourner l'ancien total si le backend n'a pas encore committé).
+      setDailyTotal(prev => prev + total);
+      setDailyCount(prev => prev + 1);
 
       // Mise à jour stock locale
       setProducts((prev) =>
