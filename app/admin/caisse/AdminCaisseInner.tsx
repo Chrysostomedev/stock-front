@@ -152,8 +152,13 @@ export default function AdminCaisseInner() {
       const toDate   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
       const res = await SaleService.getAll({ shopId, userId: user.id, fromDate, toDate, limit: 1000 });
       const list = res.data && Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
-      setDailyTotal(list.reduce((acc: number, s: any) => acc + Number(s.totalAmount || s.total || 0), 0));
-      setDailyCount(res.total ?? list.length);
+      const serverTotal = list.reduce((acc: number, s: any) => acc + Number(s.totalAmount || s.total || 0), 0);
+      const serverCount = res.total ?? list.length;
+      // Ne jamais réduire un total déjà accumulé localement (protège contre
+      // les re-appels déclenchés par useAuth qui re-crée l'objet user, ou
+      // par la withOfflineCache qui retourne un cache vide si le réseau coupe).
+      setDailyTotal(prev => Math.max(prev, serverTotal));
+      setDailyCount(prev => Math.max(prev, serverCount));
     } catch {
       // non-critique
     }

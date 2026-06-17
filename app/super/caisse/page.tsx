@@ -183,8 +183,12 @@ export default function SuperCaissePage() {
         userId:  user.id,
         shopId:  user.shopId,
       });
-      setDailyTotal(overview.kpis.revenue);
-      setDailyCount(overview.kpis.totalTransactions);
+      // Jamais écraser un total plus élevé déjà accumulé localement.
+      // Empêche le bug où useEffect([user]) re-déclenche ce chargement
+      // pendant qu'une vente vient d'être faite mais n'est pas encore
+      // reflétée côté backend (lag réseau, offline queue, etc.).
+      setDailyTotal(prev => Math.max(prev, overview.kpis.revenue));
+      setDailyCount(prev => Math.max(prev, overview.kpis.totalTransactions));
     } catch {
       // non-critique : ne pas bloquer la caisse
     }
