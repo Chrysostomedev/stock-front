@@ -12,6 +12,7 @@ import {
   ArrowRight,
   UserCircle,
   BarChart2,
+  BarChart3,
   Package,
   ClipboardList,
   X,
@@ -78,6 +79,15 @@ export default function AdminDashboardPage() {
           color: "border-l-emerald-500",
           bgColor: "bg-emerald-500/10 dark:bg-emerald-500/20",
         },
+      {
+        title: "Inventaire",
+        desktopTitle: "Inventaire & Stock",
+        description: "Valorisation du stock, top produits, alertes de rupture et produits dormants.",
+        icon: <BarChart3 className="h-6 w-6 md:h-7 md:w-7 text-amber-500" />,
+        href: "/admin/inventory",
+        color: "border-l-amber-500",
+        bgColor: "bg-amber-500/10 dark:bg-amber-500/20",
+      },
       {
         title: "Approvis.",
         desktopTitle: "Approvisionnement & Devis",
