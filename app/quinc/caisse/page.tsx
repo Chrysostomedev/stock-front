@@ -18,6 +18,7 @@ import {
   Clock, Pause, X, LayoutGrid, List,
   Package, Banknote, Smartphone, CheckCircle2,
   Wallet, Scissors, User, ChevronUp, Wrench, Printer,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { POS_STYLES } from "@/types/post_caise_style";
@@ -65,6 +66,13 @@ export default function QuincaillerieCaissePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
+  /* Pagination produits */
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(12);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
   /* Panier */
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -105,38 +113,50 @@ export default function QuincaillerieCaissePage() {
 
 
   /* Chargement données */
-  const loadData = async () => {
+  /* Chargement données statiques (session, catégories, clients) */
+  const loadStaticData = async () => {
     if (!user?.shopId) {
       showToast("Erreur: votre compte n'est associé à aucune boutique.", "error");
-      setLoading(false);
       return;
     }
-    setLoading(true);
     try {
-      const [sessionRes, productsRes, catsRes, custsRes, shopRes] = await Promise.all([
+      const [sessionRes, catsRes, custsRes, shopRes] = await Promise.all([
         QuincCashSessionService.getActive(user.shopId, user.id),
-        QuincProductService.getAll(user.shopId),
         QuincCategoryService.getByShop(user.shopId, { limit: 100 }),
         QuincCustomerService.getAll(user.shopId),
         ShopService.getById(user.shopId).catch(() => null),
       ]);
       setCurrentShop(shopRes);
       setActiveSession(sessionRes);
-      const filtered = Array.isArray(productsRes)
-        ? productsRes
-            .filter((p) => p.shopId === user.shopId)
-            // Normalise : l'API peut renvoyer stockQty ou stock au lieu de stockQuantity
-            .map((p) => ({
-              ...p,
-              stockQuantity: p.stockQuantity ?? (p as unknown as Record<string, number>).stockQty ?? (p as unknown as Record<string, number>).stock ?? 0,
-              minStockAlert:  p.minStockAlert  ?? (p as unknown as Record<string, number>).minStockQty  ?? 5,
-            }))
-        : [];
-      setProducts(filtered);
       setCategories(Array.isArray(catsRes) ? catsRes : []);
       setCustomers(Array.isArray(custsRes) ? custsRes : []);
     } catch {
       showToast("Erreur lors du chargement des données.", "error");
+    }
+  };
+
+  /* Chargement produits paginés — appelé à chaque changement de page/recherche/catégorie */
+  const loadProducts = async (targetPage = page) => {
+    if (!user?.shopId) return;
+    setLoading(true);
+    try {
+      const res = await QuincProductService.getPage({
+        shopId: user.shopId,
+        page: targetPage,
+        limit,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(selectedCategory ? { categoryId: selectedCategory } : {}),
+      });
+      const normalised = res.data.map((p) => ({
+        ...p,
+        stockQuantity: p.stockQuantity ?? (p as unknown as Record<string, number>).stockQty ?? (p as unknown as Record<string, number>).stock ?? 0,
+        minStockAlert:  p.minStockAlert  ?? (p as unknown as Record<string, number>).minStockQty  ?? 5,
+      }));
+      setProducts(normalised);
+      setTotalPages(res.totalPages ?? 1);
+      setTotalProducts(res.total ?? 0);
+    } catch {
+      showToast("Erreur lors du chargement des produits.", "error");
     } finally {
       setLoading(false);
     }
@@ -153,12 +173,27 @@ export default function QuincaillerieCaissePage() {
     }
   };
 
+  /* Debounce recherche → 400ms */
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  /* Réinitialiser la page quand la recherche, la catégorie ou la taille change */
+  useEffect(() => { setPage(1); }, [debouncedSearch, selectedCategory, limit]);
+
+  /* Chargement initial des données statiques */
   useEffect(() => {
     if (user?.shopId && user?.id) {
-      loadData().catch(() => {});
+      loadStaticData().catch(() => {});
       loadDailyStats().catch(() => {});
     }
   }, [user?.shopId, user?.id]);
+
+  /* Rechargement produits à chaque changement de page/recherche/catégorie/limit */
+  useEffect(() => {
+    if (user?.shopId) loadProducts(page).catch(() => {});
+  }, [user?.shopId, page, debouncedSearch, selectedCategory, limit]);
 
   /* Session */
   const handleOpenSession = async () => {
@@ -302,13 +337,44 @@ export default function QuincaillerieCaissePage() {
 
   const inCart = (id: string) => cart.find((i) => i.product.id === id);
 
-  /* Filtrage produits */
-  const filteredProducts = products.filter((p) => {
-    const q = search.toLowerCase();
-    const matchQ = !q || p.name.toLowerCase().includes(q) || (p.sku || "").toLowerCase().includes(q);
-    const matchC = !selectedCategory || p.categoryId === selectedCategory;
-    return matchQ && matchC;
-  });
+  /* Les produits sont déjà filtrés et paginés côté serveur */
+  const filteredProducts = products;
+
+  /* Numéros de page avec ellipsis — identique à admin/produits */
+  const renderPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 3;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      const start = Math.max(2, page - 1);
+      const end = Math.min(totalPages - 1, page + 1);
+      if (start > 2) pages.push("...");
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (end < totalPages - 1) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages.map((p, idx) => {
+      if (p === "...")
+        return <span key={`dots-${idx}`} className="px-1 text-[10px] font-bold text-zinc-400">...</span>;
+      const isCurrent = p === page;
+      return (
+        <button
+          key={`page-${p}`}
+          type="button"
+          onClick={() => setPage(p as number)}
+          className={`h-6 min-w-[24px] px-1.5 rounded-lg text-[10px] font-black transition-all ${
+            isCurrent
+              ? "bg-primary text-white shadow-sm"
+              : "border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+          }`}
+        >
+          {p}
+        </button>
+      );
+    });
+  };
 
   const resetAfterQuincSale = () => {
     setShowPrintConfirm(false);
@@ -499,22 +565,18 @@ export default function QuincaillerieCaissePage() {
               >
                 <Package size={14} />
                 Tous
-                <span className="qpos-cat-count">{products.length}</span>
+                <span className="qpos-cat-count">{totalProducts}</span>
               </button>
-              {categories.map((cat) => {
-                const count = products.filter((p) => p.categoryId === cat.id).length;
-                return (
-                  <button
-                    key={cat.id}
-                    className={`qpos-cat-btn ${selectedCategory === cat.id ? "active" : ""}`}
-                    onClick={() => setSelectedCategory(cat.id)}
-                  >
-                    <Package size={14} />
-                    {cat.name}
-                    <span className="qpos-cat-count">{count}</span>
-                  </button>
-                );
-              })}
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  className={`qpos-cat-btn ${selectedCategory === cat.id ? "active" : ""}`}
+                  onClick={() => setSelectedCategory(cat.id)}
+                >
+                  <Package size={14} />
+                  {cat.name}
+                </button>
+              ))}
             </div>
             <div className="qpos-session-bar">
               {activeSession ? (
@@ -641,6 +703,45 @@ export default function QuincaillerieCaissePage() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+              {/* ── Pagination catalogue (mobile) ── */}
+              {!loading && products.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-800/20 border border-zinc-200 dark:border-zinc-700/60 rounded-2xl p-3 shadow-sm mt-3 mx-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-500">
+                    <span>Affichage de</span>
+                    <span className="text-zinc-900 dark:text-zinc-100">{Math.min((page - 1) * limit + 1, totalProducts)}</span>
+                    <span>à</span>
+                    <span className="text-zinc-900 dark:text-zinc-100">{Math.min(page * limit, totalProducts)}</span>
+                    <span>sur</span>
+                    <span className="text-primary font-black">{totalProducts}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] uppercase font-black tracking-widest text-zinc-400">Taille:</span>
+                      <select
+                        value={limit}
+                        onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                        className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-1.5 py-1 text-[10px] font-bold outline-none cursor-pointer focus:border-primary"
+                      >
+                        <option value="12">12</option>
+                        <option value="24">24</option>
+                        <option value="48">48</option>
+                        <option value="96">96</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1}
+                        className="p-1 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-all">
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </button>
+                      {renderPageNumbers()}
+                      <button type="button" onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page === totalPages}
+                        className="p-1 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-all">
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1058,7 +1159,7 @@ export default function QuincaillerieCaissePage() {
             </div>
             <div className="pdt-cats">
               <button className={`pdt-cat-btn${!selectedCategory ? " active" : ""}`} onClick={() => setSelectedCategory(null)}>
-                Tous <span className="pdt-cat-count">{products.length}</span>
+                Tous <span className="pdt-cat-count">{totalProducts}</span>
               </button>
               {categories.map((cat) => (
                 <button key={cat.id} className={`pdt-cat-btn${selectedCategory === cat.id ? " active" : ""}`} onClick={() => setSelectedCategory(cat.id)}>
@@ -1091,6 +1192,46 @@ export default function QuincaillerieCaissePage() {
               })
             )}
           </div>
+          {/* Pagination desktop — même style que admin/produits */}
+          {!loading && products.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-800/20 border border-zinc-200 dark:border-zinc-700/60 rounded-2xl p-3 shadow-sm">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-500">
+                <span>Affichage de</span>
+                <span className="text-zinc-900 dark:text-zinc-100">{Math.min((page - 1) * limit + 1, totalProducts)}</span>
+                <span>à</span>
+                <span className="text-zinc-900 dark:text-zinc-100">{Math.min(page * limit, totalProducts)}</span>
+                <span>sur</span>
+                <span className="text-primary font-black">{totalProducts}</span>
+                <span>produits</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <span className="text-[9px] uppercase font-black tracking-widest text-zinc-400">Taille:</span>
+                  <select
+                    value={limit}
+                    onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                    className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-1.5 py-1 text-[10px] font-bold outline-none cursor-pointer focus:border-primary"
+                  >
+                    <option value="12">12</option>
+                    <option value="24">24</option>
+                    <option value="48">48</option>
+                    <option value="96">96</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page === 1}
+                    className="p-1 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-all">
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  {renderPageNumbers()}
+                  <button type="button" onClick={() => setPage((p) => Math.min(p + 1, totalPages))} disabled={page === totalPages}
+                    className="p-1 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 transition-all">
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Footer Encaisser */}
           <div className="pdt-footer">
