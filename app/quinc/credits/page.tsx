@@ -130,14 +130,16 @@ export default function QuincCreditsPage() {
     }
     try {
       if (selectedCustomer) {
-        await CustomerService.update(selectedCustomer.id, formData);
+        const updated = await CustomerService.update(selectedCustomer.id, formData);
+        setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, ...updated } : c));
         showToast("Client mis à jour", "success");
       } else {
-        await QuincCustomerService.create({ ...formData, shopId: user?.shopId } as any);
+        const created = await QuincCustomerService.create({ ...formData, shopId: user?.shopId } as any);
+        // Nouveau client : aucune vente donc dette = 0 et statut sain
+        setCustomers(prev => [{ ...created, name: created.firstName + (created.lastName ? ` ${created.lastName}` : ""), totalDebt: 0, status: "Sain" as const, lastPayment: "Aucun" } as unknown as CustomerWithDebt, ...prev]);
         showToast("Client créé avec succès", "success");
       }
       setIsModalOpen(false);
-      loadData();
     } catch {
       showToast("Erreur lors de l'enregistrement", "error");
     }
@@ -147,8 +149,8 @@ export default function QuincCreditsPage() {
     if (!confirm("Voulez-vous vraiment supprimer ce client ?")) return;
     try {
       await CustomerService.delete(id);
+      setCustomers(prev => prev.filter(c => c.id !== id));
       showToast("Client supprimé", "success");
-      loadData();
     } catch {
       showToast("Erreur lors de la suppression", "error");
     }

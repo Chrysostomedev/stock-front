@@ -74,10 +74,11 @@ export default function SuperTransfertsPage() {
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
-      await StockTransferService.updateStatus(id, newStatus);
+      const updated = await StockTransferService.updateStatus(id, newStatus);
+      setTransfers(prev => prev.map(t => t.id === id ? updated : t));
+      if (selectedTransfer?.id === id) setSelectedTransfer(updated);
       showToast(`Transfert mis à jour : ${newStatus === "COMPLETED" ? "Reçu" : "Annulé"}`, "success");
       setIsViewOpen(false);
-      loadData();
     } catch (error: any) {
       showToast(error?.response?.data?.message || "Erreur lors de la mise à jour", "error");
     }

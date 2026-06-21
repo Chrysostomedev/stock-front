@@ -243,14 +243,18 @@ export default function AdminProduitsPage() {
     setIsSubmitting(true);
     try {
       if (selectedProduct) {
-        await ProductService.update(selectedProduct.id, formData);
+        const updated = await ProductService.update(selectedProduct.id, formData);
+        // Mise à jour locale — évite un rechargement complet de la liste paginée
+        setProducts(prev => prev.map(p => p.id === selectedProduct.id ? { ...p, ...updated } : p));
         showToast("Produit mis à jour", "success");
       } else {
         await ProductService.create(formData as CreateProductDto);
         showToast("Produit créé avec succès", "success");
+        // Recharge la page 1 pour faire apparaître le nouveau produit en tête de liste
+        setPage(1);
+        loadProducts();
       }
       setIsModalOpen(false);
-      loadProducts();
     } catch (error) {
       console.error("Erreur save:", error);
       showToast("Erreur lors de l'enregistrement", "error");
@@ -274,9 +278,11 @@ export default function AdminProduitsPage() {
     if (!selectedProduct) return;
     try {
       await ProductService.delete(selectedProduct.id);
+      // Suppression locale — évite un rechargement complet
+      setProducts(prev => prev.filter(p => p.id !== selectedProduct.id));
+      setTotalProducts(prev => Math.max(0, prev - 1));
       showToast("Produit supprimé", "success");
       setIsConfirmOpen(false);
-      loadProducts();
     } catch (error) {
       showToast("Erreur lors de la suppression", "error");
     }

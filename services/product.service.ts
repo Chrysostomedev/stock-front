@@ -7,6 +7,7 @@
  */
 import axiosInstance from "../core/axios";
 import { withOfflineFallback, withOfflineCache } from "../core/offline-wrapper";
+import { AxiosError } from "axios";
 
 export interface Product {
   id: string;
@@ -158,8 +159,8 @@ const ProductService = {
         { params }
       );
       return response.data as Product;
-    } catch (err: any) {
-      if (err?.response?.status === 404) return null;
+    } catch (err: unknown) {
+      if (err instanceof AxiosError && err.response?.status === 404) return null;
       throw err;
     }
   },

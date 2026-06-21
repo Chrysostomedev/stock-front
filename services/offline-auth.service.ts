@@ -1,19 +1,3 @@
-/**
- * offline-auth.service.ts
- * ─────────────────────────────────────────────────────────────────────────────
- * Gestion du token offline (30 jours) et de la validation PIN locale.
- *
- * Clés localStorage utilisées :
- *   offline_token          → JWT valide 30 jours
- *   offline_token_expiry   → ISO date d'expiration
- *   offline_user_snapshot  → objet user complet avec PIN (venant du backend)
- *
- * Endpoints backend :
- *   POST /auth/offline-session  → générer le token offline (JWT requis)
- *   POST /auth/pin-login        → valider PIN + obtenir un nouveau token offline
- * ─────────────────────────────────────────────────────────────────────────────
- */
-
 import axiosInstance from "@/core/axios";
 
 // ─────────────────────────────────────────────
@@ -58,14 +42,11 @@ const KEYS = {
 function store(): Storage | null {
   return typeof window !== "undefined" ? localStorage : null;
 }
-
 // ─────────────────────────────────────────────
 // SERVICE
 // ─────────────────────────────────────────────
-
 const OfflineAuthService = {
   // ── Appels backend ──────────────────────────
-
   /** Génère un token offline 30 jours (JWT d'accès requis). */
   async generateOfflineSession(): Promise<OfflineSessionResponse> {
     const res = await axiosInstance.post<OfflineSessionResponse>(
@@ -73,11 +54,6 @@ const OfflineAuthService = {
     );
     return res.data;
   },
-
-  /**
-   * Valide un PIN contre le backend et renouvelle le token offline.
-   * À appeler quand le token offline est expiré ET qu'on est en ligne.
-   */
   async pinLogin(username: string, pin: string): Promise<OfflineSessionResponse> {
     const res = await axiosInstance.post<OfflineSessionResponse>(
       "/auth/pin-login",
@@ -96,7 +72,6 @@ const OfflineAuthService = {
     ls.setItem(KEYS.EXPIRY,   session.expiresAt);
     ls.setItem(KEYS.SNAPSHOT, JSON.stringify(session.user));
   },
-
   /** Supprime toutes les données offline (appelé au logout). */
   clearSession(): void {
     const ls = store();
@@ -105,9 +80,7 @@ const OfflineAuthService = {
     ls.removeItem(KEYS.EXPIRY);
     ls.removeItem(KEYS.SNAPSHOT);
   },
-
   // ── Lecture ──────────────────────────────────
-
   getToken(): string | null {
     return store()?.getItem(KEYS.TOKEN) ?? null;
   },
@@ -133,15 +106,6 @@ const OfflineAuthService = {
   },
   // ── Validation PIN locale (mode offline) ────
 
-  /**
-   * Valide le PIN saisi contre le snapshot stocké localement.
-   *
-   * Support :
-   *  - PIN en clair       → comparaison directe
-   *  - PIN hashé bcrypt   → nécessite bcryptjs (avertissement si absent)
-   *
-   * Retourne true si le PIN correspond, false sinon.
-   */
   validatePinLocally(pin: string): boolean {
     const snapshot = this.getUserSnapshot();
     if (!snapshot?.pin) return false;

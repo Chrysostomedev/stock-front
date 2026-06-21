@@ -8,7 +8,7 @@ import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/contexts/ToastContext";
-import SaleService from "@/services/sale.service";
+import SaleService, { Sale } from "@/services/sale.service";
 import { useAuth } from "@/hooks/useAuth";
 import {
   FileText, Search, Calendar, User, Clock,
@@ -17,9 +17,7 @@ import {
   Package, ArrowLeftRight,
 } from "lucide-react";
 import ExportButton from "@/components/ui/ExportButton";
-
 const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(Math.round(n));
-
 const PAYMENT_METHODS = [
   { value: "CASH",         label: "Cash" },
   { value: "MOBILE_MONEY", label: "Mobile Money (MTN / Orange)" },
@@ -53,14 +51,14 @@ export default function SuperCommandesPage() {
   const LIMIT = 100;
 
   /* ── State liste ── */
-  const [sales, setSales] = useState<any[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
-  const [selectedSaleDetail, setSelectedSaleDetail] = useState<any>(null);
+  const [selectedSaleDetail, setSelectedSaleDetail] = useState<Sale | null>(null);
 
   /* ── Filtres date export ── */
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
@@ -70,13 +68,13 @@ export default function SuperCommandesPage() {
 
   /* ── State modals ── */
   const [isVoidOpen, setIsVoidOpen] = useState(false);
-  const [voidSale, setVoidSale] = useState<any>(null);
+  const [voidSale, setVoidSale] = useState<Sale | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [isVoidSubmitting, setIsVoidSubmitting] = useState(false);
 
   /* ── State modal REFUND ── */
   const [isRefundOpen, setIsRefundOpen] = useState(false);
-  const [refundSale, setRefundSale] = useState<any>(null);
+  const [refundSale, setRefundSale] = useState<Sale | null>(null);
   const [refundMode, setRefundMode] = useState<"total" | "partial">("total");
   const [refundItems, setRefundItems] = useState<
     { saleItemId: string; quantity: number; maxQty: number; productName: string }[]
@@ -273,7 +271,6 @@ export default function SuperCommandesPage() {
       }
     >
       <div className="flex flex-col gap-4 sm:gap-6 max-w-6xl mx-auto pb-12 px-2 sm:px-0">
-
         {/* ── KPIs ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           <div className="p-4 sm:p-6 bg-white dark:bg-zinc-900 rounded-2xl sm:rounded-3xl border border-zinc-100 dark:border-zinc-800/50 flex items-center gap-4 shadow-sm">
@@ -295,7 +292,6 @@ export default function SuperCommandesPage() {
             </div>
           </div>
         </div>
-
         {/* ── Barre de recherche + Export ── */}
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
@@ -335,7 +331,6 @@ export default function SuperCommandesPage() {
             />
           </div>
         </div>
-
         {/* ── Journal par jour ── */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
@@ -352,7 +347,7 @@ export default function SuperCommandesPage() {
 
           {loading ? (
             <div className="py-20 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
-              Chargement de l'historique…
+              Chargement de l&apos;historique…
             </div>
           ) : salesByDay.length === 0 ? (
             <Card className="p-12 text-center text-zinc-400 font-bold text-sm">
@@ -376,7 +371,6 @@ export default function SuperCommandesPage() {
                       {group.sales.length} {group.sales.length > 1 ? "Ventes" : "Vente"}
                     </span>
                   </button>
-
                   {/* Tableau transactions */}
                   {isOpen && (
                     <div className="overflow-x-auto">
@@ -586,7 +580,6 @@ export default function SuperCommandesPage() {
                 </table>
               </div>
             </div>
-
             <div className="flex flex-col items-end gap-1.5 border-t border-zinc-100 dark:border-zinc-800 pt-4">
               <div className="flex justify-between w-64 text-xs">
                 <span className="text-zinc-400">Sous-total :</span>
@@ -608,7 +601,6 @@ export default function SuperCommandesPage() {
           </div>
         )}
       </Modal>
-
       {/* ══════════════ MODAL VOID (ANNULATION) ══════════════ */}
       <Modal
         isOpen={isVoidOpen}
@@ -629,10 +621,9 @@ export default function SuperCommandesPage() {
                 </p>
               </div>
             </div>
-
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
-                Raison de l'annulation <span className="text-red-500">*</span>
+                Raison de l&apos;annulation <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={voidReason}
@@ -662,7 +653,7 @@ export default function SuperCommandesPage() {
                 loading={isVoidSubmitting}
                 disabled={voidReason.trim().length < 5}
               >
-                Confirmer l'annulation
+                Confirmer l&apos;annulation
               </Button>
             </div>
           </div>

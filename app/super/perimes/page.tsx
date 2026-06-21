@@ -47,15 +47,6 @@ export default function SuperPerimesPage() {
   const [search, setSearch] = useState("");
   const [daysFilter, setDaysFilter] = useState(30); // Nombre de jours avant expiration
 
-  /**
-   * Charge les lots expirant dans les N prochains jours.
-   * 
-   * Le backend filtre côté serveur :
-   *   GET /product-batches/expiring/:shopId?days=30
-   * 
-   * Retourne uniquement les lots avec une date d'expiration définie
-   * et qui expire dans la fenêtre de temps demandée.
-   */
   const loadExpiring = async () => {
     if (!user?.shopId) return;
     setLoading(true);

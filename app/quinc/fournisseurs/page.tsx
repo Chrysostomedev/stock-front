@@ -81,14 +81,15 @@ export default function QuincFournisseursPage() {
   const handleSubmit = async () => {
     try {
       if (supplierToEdit) {
-        await QuincSupplierService.update(supplierToEdit.id, formData);
+        const updated = await QuincSupplierService.update(supplierToEdit.id, formData);
+        setSuppliers(prev => prev.map(s => s.id === supplierToEdit.id ? updated : s));
         showToast("Fournisseur mis à jour", "success");
       } else {
-        await QuincSupplierService.create(formData);
+        const created = await QuincSupplierService.create(formData);
+        setSuppliers(prev => [created, ...prev]);
         showToast("Fournisseur créé", "success");
       }
       setIsModalOpen(false);
-      loadData();
     } catch (error) {
       showToast("Erreur lors de l'enregistrement", "error");
     }
@@ -98,9 +99,9 @@ export default function QuincFournisseursPage() {
     if (!supplierToEdit) return;
     try {
       await QuincSupplierService.delete(supplierToEdit.id);
+      setSuppliers(prev => prev.filter(s => s.id !== supplierToEdit.id));
       showToast("Fournisseur supprimé", "success");
       setIsConfirmOpen(false);
-      loadData();
     } catch (error) {
       showToast("Erreur lors de la suppression", "error");
     }

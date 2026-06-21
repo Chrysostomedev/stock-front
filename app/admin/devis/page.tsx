@@ -79,17 +79,28 @@ export default function AdminDevisPage() {
   const [notes, setNotes] = useState("");
   const [newOrderItems, setNewOrderItems] = useState<NewOrderItem[]>([]);
   const [productSearch, setProductSearch] = useState("");
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
-  const [catalogPage, setCatalogPage] = useState(1);
-  const [catalogSearch, setCatalogSearch] = useState("");
+  const autocompleteRef = useRef<HTMLDivElement>(null);
 
-  // Reset catalog search and page when the modal closes/opens
   useEffect(() => {
     if (!isCreateOpen) {
-      setCatalogPage(1);
-      setCatalogSearch("");
+      setProductSearch("");
+      setShowProductDropdown(false);
+      setAdvancedOpen(false);
     }
   }, [isCreateOpen]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(e.target as Node)) {
+        setShowProductDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   // Details Modal state
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -136,9 +147,11 @@ export default function AdminDevisPage() {
         setCreateShopId(activeShops[0].id);
       }
 
-      if (activeSuppliers.length > 0) {
-        setCreateSupplierId(activeSuppliers[0].id);
-      }
+      // Pre-fill with most recent order's supplier, or first in list
+      const lastSupplier = [...activeOrders].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )[0]?.supplierId;
+      setCreateSupplierId(lastSupplier ?? activeSuppliers[0]?.id ?? "");
     } catch (error) {
       console.error("Error loading PO data:", error);
       showToast("Erreur lors du chargement des données", "error");
@@ -267,13 +280,13 @@ export default function AdminDevisPage() {
       setExpectedAt("");
       setNotes("");
 
+      // Injection locale dans les deux cas (offline ET online) — évite de recharger
+      // 700 produits + 700 commandes + fournisseurs + boutiques après chaque création
+      setOrders(prev => [created as PurchaseOrder, ...prev]);
       if (isOfflineResult) {
-        // Offline : inject optimistic PO into local state immediately
-        setOrders(prev => [created as any, ...prev]);
         showToast("Bon de commande enregistré — sera synchronisé à la reconnexion", "success");
       } else {
         showToast("Bon de commande créé avec succès !", "success");
-        await loadData();
       }
     } catch (error) {
       console.error("Error creating PO:", error);
@@ -367,14 +380,12 @@ export default function AdminDevisPage() {
       const updated = await PurchaseOrderService.receiveItems(selectedPO.id, payload as any);
       showToast("Réception enregistrée avec succès !", "success");
       
-      // Update local state
+      // Mise à jour locale de la commande et fermeture de la modale
+      // Les stocks produits changent côté backend mais ne sont pas affichés ici —
+      // le catalogue est rechargé à la prochaine ouverture du wizard de création
       setOrders(prev => prev.map(o => (o.id === selectedPO.id ? updated : o)));
       setSelectedPO(updated);
       setIsReceiveOpen(false);
-      
-      // Reload products catalog in case prices/stocks updated
-      const prodRes = await ProductService.getAll({ limit: 200 });
-      setProducts(Array.isArray(prodRes) ? prodRes : prodRes?.data || []);
     } catch (error) {
       console.error("Error receiving items:", error);
       showToast("Erreur lors de la validation de la réception", "error");
@@ -401,18 +412,16 @@ export default function AdminDevisPage() {
     return matchesSearch && matchesShop && matchesSupplier && matchesStatus;
   });
 
-  // Paginated catalog stock products for the new grid interface
-  const catalogFilteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(catalogSearch.toLowerCase()) ||
-    p.sku?.toLowerCase().includes(catalogSearch.toLowerCase()) ||
-    p.barcode?.includes(catalogSearch)
-  );
-
-  const totalCatalogPages = Math.ceil(catalogFilteredProducts.length / 5) || 1;
-  const paginatedCatalogProducts = catalogFilteredProducts.slice(
-    (catalogPage - 1) * 5,
-    catalogPage * 5
-  );
+  // Autocomplete results: products matching the search, excluding already selected ones
+  const productResults = productSearch.length >= 1
+    ? products.filter(p =>
+        !newOrderItems.some(i => i.productId === p.id) && (
+          p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
+          (p.sku?.toLowerCase() ?? "").includes(productSearch.toLowerCase()) ||
+          (p.barcode ?? "").includes(productSearch)
+        )
+      ).slice(0, 10)
+    : [];
   // DataTable configuration
   const columns = [
     {
@@ -731,28 +740,39 @@ export default function AdminDevisPage() {
                 </select>
               </div>
 
-              {/* Expected Date */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Livraison prévue le</label>
-                <input
-                  type="date"
-                  value={expectedAt}
-                  onChange={(e) => setExpectedAt(e.target.value)}
-                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold outline-none"
-                />
-              </div>
+              {/* Options avancées (date + notes) */}
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen(prev => !prev)}
+                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-primary transition-colors py-0.5"
+              >
+                <ChevronRight className={`h-3 w-3 transition-transform duration-200 ${advancedOpen ? "rotate-90" : ""}`} />
+                Options avancées
+              </button>
 
-              {/* Notes */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Instructions / Notes</label>
-                <textarea
-                  placeholder="Écrire des consignes pour la livraison..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold outline-none resize-none"
-                />
-              </div>
+              {advancedOpen && (
+                <>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Livraison prévue le</label>
+                    <input
+                      type="date"
+                      value={expectedAt}
+                      onChange={(e) => setExpectedAt(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold outline-none"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Instructions / Notes</label>
+                    <textarea
+                      placeholder="Écrire des consignes pour la livraison..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={2}
+                      className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold outline-none resize-none"
+                    />
+                  </div>
+                </>
+              )}
 
               {/* Financial Recap & CTA */}
               <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 flex flex-col gap-4">
@@ -779,192 +799,75 @@ export default function AdminDevisPage() {
             {/* Catalog Browser & Selected Items (8 cols) */}
             <div className="lg:col-span-8 flex flex-col gap-6 lg:max-h-[70vh] lg:overflow-y-auto pr-1">
 
-              {/* Product catalog with pagination */}
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-zinc-500 flex items-center gap-2">
-                    <Package className="h-4.5 w-4.5 text-primary" />
-                    Catalogue Produits en Stock
-                  </h3>
+              {/* ── Recherche rapide par autocomplete ── */}
+              <div className="flex flex-col gap-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-zinc-500 flex items-center gap-2">
+                  <Package className="h-4.5 w-4.5 text-primary" />
+                  Ajouter des produits
+                </h3>
 
-                  {/* Search Bar */}
-                  <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                <div className="relative" ref={autocompleteRef}>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                     <input
                       type="text"
-                      placeholder="Rechercher un produit..."
-                      value={catalogSearch}
-                      onChange={(e) => {
-                        setCatalogSearch(e.target.value);
-                        setCatalogPage(1);
-                      }}
-                      className="w-full pl-8 pr-4 py-2 sm:py-1.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all text-zinc-750 dark:text-zinc-200"
+                      placeholder="Tapez le nom, SKU ou code-barres..."
+                      value={productSearch}
+                      onChange={(e) => { setProductSearch(e.target.value); setShowProductDropdown(true); }}
+                      onFocus={() => { if (productSearch.length >= 1) setShowProductDropdown(true); }}
+                      className="w-full pl-10 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
                     />
+                    {productSearch && (
+                      <button
+                        type="button"
+                        onClick={() => { setProductSearch(""); setShowProductDropdown(false); }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
-                </div>
 
-                {/* Paginated Products List — Mobile Cards */}
-                <div className="md:hidden flex flex-col gap-2">
-                  {paginatedCatalogProducts.length === 0 ? (
-                    <p className="text-center py-6 text-zinc-400 font-bold text-xs">Aucun produit disponible.</p>
-                  ) : (
-                    paginatedCatalogProducts.map(product => {
-                      const alreadyInList = newOrderItems.some(i => i.productId === product.id);
-                      return (
-                        <div
+                  {/* Dropdown résultats */}
+                  {showProductDropdown && productResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
+                      {productResults.map(product => (
+                        <button
                           key={product.id}
-                          className="bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 rounded-2xl p-3 flex flex-col gap-2 shadow-sm"
+                          type="button"
+                          onClick={() => { addProductToOrder(product); setProductSearch(""); setShowProductDropdown(false); }}
+                          className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors text-left gap-3"
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-black text-zinc-800 dark:text-zinc-100 text-xs leading-tight truncate">{product.name}</p>
-                              <p className="text-[9px] font-mono text-zinc-400 mt-0.5">SKU: {product.sku || "N/A"}</p>
-                            </div>
-                            <span className={`shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full border ${
-                              product.stockQty <= product.minStockQty
-                                ? "bg-red-500/10 text-red-600 border-red-500/20"
-                                : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                            }`}>
-                              {product.stockQty} stock
-                            </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-black text-zinc-800 dark:text-zinc-100 truncate">{product.name}</p>
+                            <p className="text-[10px] font-mono text-zinc-400">
+                              {product.sku || "—"} · {new Intl.NumberFormat("fr-FR").format(product.buyingPrice || 0)} XOF
+                            </p>
                           </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-[11px] font-black text-zinc-700 dark:text-zinc-300">
-                              {new Intl.NumberFormat("fr-FR").format(product.buyingPrice || 0)} XOF
-                            </span>
-                            {alreadyInList ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                                Ajouté
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => addProductToOrder(product)}
-                                className="inline-flex items-center gap-1.5 text-[10px] font-black text-white bg-primary px-3 py-1.5 rounded-xl transition-all active:scale-95"
-                              >
-                                <Plus className="h-3.5 w-3.5" />
-                                Ajouter
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
+                          <span className={`shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full ${
+                            product.stockQty <= product.minStockQty
+                              ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                              : "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          }`}>
+                            {product.stockQty}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   )}
-                  {/* Mobile Pagination */}
-                  {totalCatalogPages > 1 && (
-                    <div className="flex items-center justify-between pt-1">
-                      <button
-                        type="button"
-                        disabled={catalogPage <= 1}
-                        onClick={() => setCatalogPage(prev => Math.max(1, prev - 1))}
-                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border border-zinc-200 dark:border-zinc-700 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        Précédent
-                      </button>
-                      <span className="text-[10px] font-bold text-zinc-500">
-                        {catalogPage} / {totalCatalogPages}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={catalogPage >= totalCatalogPages}
-                        onClick={() => setCatalogPage(prev => Math.min(totalCatalogPages, prev + 1))}
-                        className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border border-zinc-200 dark:border-zinc-700 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        Suivant
-                      </button>
+
+                  {showProductDropdown && productSearch.length >= 2 && productResults.length === 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl p-4 text-center text-[11px] text-zinc-400 font-bold">
+                      Aucun produit trouvé pour &ldquo;{productSearch}&rdquo;
                     </div>
                   )}
                 </div>
 
-                {/* Paginated Products List — Desktop Table */}
-                <div className="hidden md:block border border-zinc-150 dark:border-zinc-800 rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
-                  <table className="w-full text-left text-xs font-bold">
-                    <thead>
-                      <tr className="bg-zinc-50 dark:bg-zinc-800/40 border-b border-zinc-150 dark:border-zinc-800/80 text-[10px] text-zinc-400 uppercase tracking-wider">
-                        <th className="p-2.5">Produit</th>
-                        <th className="p-2.5 text-center">Stock Actuel</th>
-                        <th className="p-2.5 text-right">Prix d'Achat</th>
-                        <th className="p-2.5 text-center w-24">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-850">
-                      {paginatedCatalogProducts.map(product => {
-                        const alreadyInList = newOrderItems.some(i => i.productId === product.id);
-                        return (
-                          <tr key={product.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/20">
-                            <td className="p-2.5">
-                              <p className="font-black text-zinc-800 dark:text-zinc-150 text-[11px]">{product.name}</p>
-                              <p className="text-[9px] font-mono text-zinc-400">SKU: {product.sku || "N/A"}</p>
-                            </td>
-                            <td className="p-2.5 text-center">
-                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
-                                product.stockQty <= product.minStockQty
-                                  ? "bg-red-500/10 text-red-600 border-red-500/20"
-                                  : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                              }`}>
-                                {product.stockQty} en stock
-                              </span>
-                            </td>
-                            <td className="p-2.5 text-right font-mono text-[10px] text-zinc-700 dark:text-zinc-300">
-                              {new Intl.NumberFormat("fr-FR").format(product.buyingPrice || 0)} XOF
-                            </td>
-                            <td className="p-2.5 text-center">
-                              {alreadyInList ? (
-                                <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                                  <CheckCircle2 className="h-3 w-3" />
-                                  Ajouté
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => addProductToOrder(product)}
-                                  className="inline-flex items-center gap-1 text-[9px] font-black text-primary hover:text-white bg-primary/10 hover:bg-primary px-2.5 py-1 rounded-lg border border-primary/20 hover:border-primary transition-all"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                  Ajouter
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {paginatedCatalogProducts.length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="p-6 text-center text-zinc-400 font-bold">
-                            Aucun produit disponible.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-
-                  {/* Catalog Pagination Footer */}
-                  {totalCatalogPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-2 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/20">
-                      <button
-                        type="button"
-                        disabled={catalogPage <= 1}
-                        onClick={() => setCatalogPage(prev => Math.max(1, prev - 1))}
-                        className="px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border border-zinc-200 dark:border-zinc-700 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-zinc-50 dark:hover:bg-zinc-850 text-zinc-750 dark:text-zinc-200"
-                      >
-                        Précédent
-                      </button>
-                      <span className="text-[10px] font-bold text-zinc-500">
-                        Page {catalogPage} sur {totalCatalogPages}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={catalogPage >= totalCatalogPages}
-                        onClick={() => setCatalogPage(prev => Math.min(totalCatalogPages, prev + 1))}
-                        className="px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border border-zinc-200 dark:border-zinc-700 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-zinc-50 dark:hover:bg-zinc-850 text-zinc-750 dark:text-zinc-200"
-                      >
-                        Suivant
-                      </button>
-                    </div>
-                  )}
-                </div>
+                {newOrderItems.length === 0 && !productSearch && (
+                  <p className="text-center text-[10px] text-zinc-400 font-bold py-3 border border-dashed border-zinc-200 dark:border-zinc-700 rounded-xl">
+                    Tapez le nom d&apos;un produit pour l&apos;ajouter à la commande
+                  </p>
+                )}
               </div>
 
               {/* Selected items — Mobile cards + Desktop table */}

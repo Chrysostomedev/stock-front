@@ -112,18 +112,28 @@ export default function QuincProduitsPage() {
     setIsModalOpen(true);
   };
 
+  const normalizeProduct = (p: any): Product => ({
+    ...p,
+    stockQuantity: p.stockQuantity ?? p.stockQty ?? p.stock ?? 0,
+    minStockAlert: p.minStockAlert ?? p.minStockQty ?? 5,
+    unit: p.unit && typeof p.unit === "string"
+      ? p.unit
+      : units.find((u) => u.id === p.unitId)?.name ?? p.unitId ?? "—",
+  });
+
   const handleSubmit = async () => {
     if (!user?.shopId) return;
     try {
       if (materialToEdit) {
-        await QuincProductService.update(materialToEdit.id, formData);
+        const updated = await QuincProductService.update(materialToEdit.id, formData);
+        setMaterials(prev => prev.map(m => m.id === materialToEdit.id ? normalizeProduct(updated) : m));
         showToast("Matériau mis à jour", "success");
       } else {
-        await QuincProductService.create({ ...formData, shopId: user.shopId });
+        const created = await QuincProductService.create({ ...formData, shopId: user.shopId });
+        setMaterials(prev => [normalizeProduct(created), ...prev]);
         showToast("Matériau créé", "success");
       }
       setIsModalOpen(false);
-      loadData();
     } catch (error) {
       showToast("Erreur lors de l'enregistrement", "error");
     }
@@ -133,9 +143,9 @@ export default function QuincProduitsPage() {
     if (!materialToEdit) return;
     try {
       await QuincProductService.delete(materialToEdit.id);
+      setMaterials(prev => prev.filter(m => m.id !== materialToEdit.id));
       showToast("Matériau supprimé", "success");
       setIsConfirmOpen(false);
-      loadData();
     } catch (error) {
       showToast("Erreur lors de la suppression", "error");
     }

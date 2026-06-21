@@ -8,7 +8,7 @@ import Badge from "@/components/ui/Badge";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
-import SaleService from "@/services/sale.service";
+import SaleService, { Sale } from "@/services/sale.service";
 import {
   Plus,
   Search,
@@ -173,7 +173,7 @@ export default function AdminBoutiquesPage() {
 
   // Detailed Sales View States
   const [salesViewShop, setSalesViewShop] = useState<Shop | null>(null);
-  const [sales, setSales] = useState<any[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
   const [salesError, setSalesError] = useState(false);
   const [salesPage, setSalesPage] = useState(1);
@@ -182,7 +182,7 @@ export default function AdminBoutiquesPage() {
   const [expandedDays, setExpandedDays] = useState<{ [key: string]: boolean }>(
     {},
   );
-  const [selectedSaleDetail, setSelectedSaleDetail] = useState<any>(null);
+  const [selectedSaleDetail, setSelectedSaleDetail] = useState<Sale | null>(null);
 
   const [formData, setFormData] = useState<Partial<Shop>>({
     name: "",

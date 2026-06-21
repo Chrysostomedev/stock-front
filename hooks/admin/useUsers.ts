@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import AdminUserService from "../../services/admin/user.service";
 import { Shop, UserAccount } from "../../types/admin";
+import { getErrorMessage } from "../../core/error";
 
 export function useUsers() {
   const [users, setUsers] = useState<UserAccount[]>([]);
@@ -12,19 +13,19 @@ export function useUsers() {
     try {
       setLoading(true);
       const response = await AdminUserService.getAllUsers();
-      let list = (response as any).data && Array.isArray((response as any).data) 
-        ? (response as any).data 
+      let list = (response as any).data && Array.isArray((response as any).data)
+        ? (response as any).data
         : (Array.isArray(response) ? response : []);
-        
-      list = list.map((u: any) => ({
+
+      list = list.map((u: UserAccount & { shopAccesses?: { shopId: string }[] }) => ({
         ...u,
-        shopId: u.shopAccesses?.length > 0 ? u.shopAccesses[0].shopId : u.shopId
+        shopId: u.shopAccesses && u.shopAccesses.length > 0 ? u.shopAccesses[0].shopId : u.shopId
       }));
 
       setUsers(list);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la récupération des utilisateurs");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Erreur lors de la récupération des utilisateurs"));
     } finally {
       setLoading(false);
     }
@@ -33,21 +34,17 @@ export function useUsers() {
   const fetchShopAccesses = useCallback(async (userId: string) => {
     try {
       setLoading(true);
-      const userResponse: any = await AdminUserService.getShopAccesses(userId);
-      console.log("user data:", userResponse);
-      // Si la réponse contient directement shopAccesses (c'est l'objet User)
-      let list = [];
+      const userResponse = await AdminUserService.getShopAccesses(userId) as any;
+      let list: Shop[] = [];
       if (userResponse && Array.isArray(userResponse.shopAccesses)) {
         list = userResponse.shopAccesses;
       } else if (userResponse?.data && Array.isArray(userResponse.data.shopAccesses)) {
-        // Au cas où c'est wrappé dans { data: ... }
         list = userResponse.data.shopAccesses;
       }
-      
       setShopAccesses(list);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la récupération des accès boutique");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Erreur lors de la récupération des accès boutique"));
     } finally {
       setLoading(false);
     }
@@ -62,8 +59,8 @@ export function useUsers() {
       const newUser = await AdminUserService.createUser(userData);
       setUsers((prev) => [...prev, { ...newUser, shopId: userData.shopId }]);
       return newUser;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || "Erreur lors de la création");
+    } catch (err: unknown) {
+      throw new Error(getErrorMessage(err, "Erreur lors de la création"));
     }
   };
 
@@ -71,12 +68,12 @@ export function useUsers() {
     try {
       const updatedUser = await AdminUserService.updateUser(id, userData);
       if (userData.shopId) {
-        await AdminUserService.assignShopToUser(id, userData.shopId, userData.role || 'CASHIER');
+        await AdminUserService.assignShopToUser(id, userData.shopId, userData.role || "CASHIER");
       }
       setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...updatedUser, shopId: userData.shopId } : u)));
       return updatedUser;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || "Erreur lors de la mise à jour");
+    } catch (err: unknown) {
+      throw new Error(getErrorMessage(err, "Erreur lors de la mise à jour"));
     }
   };
 
@@ -84,8 +81,8 @@ export function useUsers() {
     try {
       await AdminUserService.deleteUser(id);
       setUsers((prev) => prev.filter((u) => u.id !== id));
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || "Erreur lors de la suppression");
+    } catch (err: unknown) {
+      throw new Error(getErrorMessage(err, "Erreur lors de la suppression"));
     }
   };
 
@@ -94,8 +91,8 @@ export function useUsers() {
       const updatedUser = await AdminUserService.toggleUserStatus(id, !currentStatus);
       setUsers((prev) => prev.map((u) => (u.id === id ? updatedUser : u)));
       return updatedUser;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || "Erreur lors du changement de statut");
+    } catch (err: unknown) {
+      throw new Error(getErrorMessage(err, "Erreur lors du changement de statut"));
     }
   };
 

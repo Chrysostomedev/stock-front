@@ -23,7 +23,7 @@ import DataTable from "@/components/ui/DataTable";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/hooks/useAuth";
 import ProductService from "@/services/product.service";
-import CategoryService from "@/services/category.service";
+import CategoryService, { Category } from "@/services/category.service";
 import {
   Search,
   Package,
@@ -57,7 +57,7 @@ export default function SuperInventairePage() {
 
   // === État du composant ===
   const [products, setProducts] = useState<InventoryProduct[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");

@@ -8,7 +8,7 @@ import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Pagination from "@/components/ui/Pagination";
 import { useToast } from "@/contexts/ToastContext";
-import SaleService from "@/services/sale.service";
+import SaleService, { Sale } from "@/services/sale.service";
 import { useAuth } from "@/hooks/useAuth";
 import {
   FileText, Search, Calendar, User, Clock,
@@ -51,24 +51,24 @@ export default function QuincCommandesPage() {
   const LIMIT = 100;
 
   /* ── State liste ── */
-  const [sales, setSales] = useState<any[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
-  const [selectedSaleDetail, setSelectedSaleDetail] = useState<any>(null);
+  const [selectedSaleDetail, setSelectedSaleDetail] = useState<Sale | null>(null);
 
   /* ── State modal VOID ── */
   const [isVoidOpen, setIsVoidOpen] = useState(false);
-  const [voidSale, setVoidSale] = useState<any>(null);
+  const [voidSale, setVoidSale] = useState<Sale | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [isVoidSubmitting, setIsVoidSubmitting] = useState(false);
 
   /* ── State modal REFUND ── */
   const [isRefundOpen, setIsRefundOpen] = useState(false);
-  const [refundSale, setRefundSale] = useState<any>(null);
+  const [refundSale, setRefundSale] = useState<Sale | null>(null);
   const [refundMode, setRefundMode] = useState<"total" | "partial">("total");
   const [refundItems, setRefundItems] = useState<
     { saleItemId: string; quantity: number; maxQty: number; productName: string }[]
@@ -311,7 +311,7 @@ export default function QuincCommandesPage() {
 
           {loading ? (
             <div className="py-20 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
-              Chargement de l'historique…
+              Chargement de l&apos;historique…
             </div>
           ) : salesByDay.length === 0 ? (
             <Card className="p-12 text-center text-zinc-400 font-bold text-sm">
@@ -570,7 +570,7 @@ export default function QuincCommandesPage() {
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
-                Raison de l'annulation <span className="text-red-500">*</span>
+                Raison de l&apos;annulation <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={voidReason}
@@ -597,7 +597,7 @@ export default function QuincCommandesPage() {
                 loading={isVoidSubmitting}
                 disabled={voidReason.trim().length < 5}
               >
-                Confirmer l'annulation
+                Confirmer l&apos;annulation
               </Button>
             </div>
           </div>

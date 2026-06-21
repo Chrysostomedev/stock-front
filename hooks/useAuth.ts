@@ -21,7 +21,7 @@
 
 import { useState, useEffect } from "react";
 import Cookies from "js-cookie";
-import { User, UserRole } from "../types/auth";
+import { LoginCredentials, User, UserRole } from "../types/auth";
 import AuthService from "../services/auth.service";
 import { useRouter } from "next/navigation";
 import { isReallyOnline } from "@/core/network-check";
@@ -34,6 +34,28 @@ function getStoredToken(): string | null {
     localStorage.getItem("access_token") ||
     null
   );
+}
+
+/** Décode le payload d'un JWT sans vérification de signature (côté client) */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(b64));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Vérifie si un JWT est expiré (avec 60s de marge pour anticiper le réseau).
+ * Retourne true si le token est invalide ou expiré.
+ */
+function isJwtExpired(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload || typeof payload.exp !== "number") return true;
+  return Date.now() / 1000 > payload.exp - 60;
 }
 
 /** Lit le user depuis localStorage (évite un appel réseau au démarrage) */
@@ -64,13 +86,52 @@ export function useAuth() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = Cookies.get("access_token");
-      // console.log("token:", token);
+      const token = getStoredToken();
       if (!token) {
         setLoading(false);
         setIsAuthenticated(false);
         setUser(null);
         return;
+      }
+
+      // Vérification locale de l'expiration JWT avant tout appel réseau.
+      // Évite les 401 sur /auth/me quand le cookie browser (7j) est encore
+      // présent mais que le JWT (24h) a expiré.
+      if (isJwtExpired(token)) {
+        const userId = typeof window !== "undefined"
+          ? localStorage.getItem("user_id")
+          : null;
+        let tokenRefreshed = false;
+
+        if (userId) {
+          try {
+            const res = await AuthService.refreshToken(userId);
+            const newToken = res.accessToken || res.token?.accessToken;
+            if (newToken) {
+              Cookies.set("access_token", newToken, { expires: 7 });
+              Cookies.set("token", newToken, { expires: 7 });
+              localStorage.setItem("access_token", newToken);
+              localStorage.setItem("token", newToken);
+              if (res.refreshToken || res.token?.refreshToken) {
+                localStorage.setItem(
+                  "refresh_token",
+                  res.refreshToken || res.token?.refreshToken
+                );
+              }
+              tokenRefreshed = true;
+            }
+          } catch {
+            // Refresh échoué (token refresh expiré ou backend indisponible)
+          }
+        }
+
+        if (!tokenRefreshed) {
+          _clearStorage();
+          setUser(null);
+          setIsAuthenticated(false);
+          setLoading(false);
+          return;
+        }
       }
 
       const cachedUser = getStoredUser();
@@ -121,7 +182,7 @@ export function useAuth() {
     checkAuth();
   }, []);
 
-  const login = async (credentials: any) => {
+  const login = async (credentials: LoginCredentials) => {
     const online = await isReallyOnline();
     if (!online) {
       throw new Error("Aucune connexion internet. Vérifiez votre réseau et réessayez.");
