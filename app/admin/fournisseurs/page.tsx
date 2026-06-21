@@ -99,14 +99,15 @@ export default function AdminFournisseursPage() {
     }
     try {
       if (supplierToEdit) {
-        await QuincSupplierService.update(supplierToEdit.id, formData);
+        const updated = await QuincSupplierService.update(supplierToEdit.id, formData);
+        setSuppliers(prev => prev.map(s => s.id === supplierToEdit.id ? updated : s));
         showToast("Fournisseur mis à jour avec succès", "success");
       } else {
-        await QuincSupplierService.create(formData);
+        const created = await QuincSupplierService.create(formData);
+        setSuppliers(prev => [created, ...prev]);
         showToast("Fournisseur créé avec succès", "success");
       }
       setIsModalOpen(false);
-      loadData();
     } catch (error) {
       showToast("Erreur lors de l'enregistrement", "error");
     }
@@ -121,9 +122,9 @@ export default function AdminFournisseursPage() {
     if (!supplierToDelete) return;
     try {
       await QuincSupplierService.delete(supplierToDelete.id);
+      setSuppliers(prev => prev.filter(s => s.id !== supplierToDelete.id));
       showToast("Fournisseur supprimé avec succès", "success");
       setIsConfirmOpen(false);
-      loadData();
     } catch (error) {
       showToast("Impossible de supprimer ce fournisseur.", "error");
     }

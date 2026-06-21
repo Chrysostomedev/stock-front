@@ -1,22 +1,4 @@
 "use client";
-
-/**
- * NetworkContext.tsx
- * ─────────────────────────────────────────────────────────────────────────────
- * Contexte global réseau — conforme au README.offline.md du backend.
- *
- * Endpoints backend utilisés :
- *  POST /api/v1/sync-queue          → enqueue un item (EnqueueSyncItemDto)
- *  POST /api/v1/sync-queue/process  → déclenche le traitement du batch
- *  POST /api/v1/sync-queue/retry    → relance les items en erreur
- *  GET  /api/v1/sync-queue/stats    → statistiques de la queue
- *  PATCH /api/v1/sync-queue/:id/resolve → résolution de conflit
- *
- * Tous ces appels nécessitent un JWT valide (ADMIN ou SUPER_ADMIN).
- * Le token est injecté automatiquement par l'intercepteur axios.
- * ─────────────────────────────────────────────────────────────────────────────
- */
-
 import React, {
   createContext,
   useContext,
@@ -315,18 +297,26 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
   }, [refreshPendingCount]);
 
   // ─────────────────────────────────────────────
-  // [11] fullSync périodique toutes les 5 min si online
+  // [11] Sync périodique — PUSH toutes les 10 min si des items sont en attente,
+  // PULL uniquement si la dernière sync date de plus de 15 min.
+  // Évite de consommer du quota serveur pour rien quand la queue est vide.
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!isOnline) return;
     const interval = setInterval(() => {
       const pending = OfflineQueueService.getPendingCount();
-      const hasSyncTime = !!SyncService.getLastSyncTime();
-      if (pending > 0 || hasSyncTime) {
-        console.log("[NetworkContext] ⏰ fullSync périodique (5 min)");
+      const lastSync = SyncService.getLastSyncTime();
+      const lastSyncDate = lastSync ? new Date(lastSync).getTime() : 0;
+      const needsPull = lastSyncDate > 0 && Date.now() - lastSyncDate > 15 * 60 * 1000;
+
+      if (pending > 0) {
+        console.log("[NetworkContext] ⏰ fullSync périodique — items en attente:", pending);
+        fullSync();
+      } else if (needsPull) {
+        console.log("[NetworkContext] ⏰ PULL périodique (>15 min sans sync)");
         fullSync();
       }
-    }, 5 * 60 * 1000); // [11] toutes les 5 minutes
+    }, 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, [isOnline, fullSync]);
 

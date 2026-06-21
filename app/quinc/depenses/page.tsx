@@ -65,11 +65,12 @@ export default function QuincDepensesPage() {
       return;
     }
     try {
-      await QuincExpenseService.create({
+      const created = await QuincExpenseService.create({
         ...formData,
         shopId: user.shopId,
         userId: user.id
       });
+      setExpenses(prev => [created, ...prev]);
       showToast("Dépense enregistrée", "success");
       setIsModalOpen(false);
       setFormData({
@@ -79,7 +80,6 @@ export default function QuincDepensesPage() {
         paymentMethod: "CASH",
         date: new Date().toISOString().split("T")[0]
       });
-      loadData();
     } catch (error: any) {
       console.error("Error creating expense:", error);
       showToast(error?.response?.data?.message || "Erreur lors de l'enregistrement", "error");
@@ -90,8 +90,8 @@ export default function QuincDepensesPage() {
     if (!confirm("Voulez-vous supprimer cette dépense ?")) return;
     try {
       await QuincExpenseService.delete(id);
+      setExpenses(prev => prev.filter(e => e.id !== id));
       showToast("Dépense supprimée", "success");
-      loadData();
     } catch (error) {
       showToast("Erreur lors de la suppression", "error");
     }

@@ -3,6 +3,7 @@
  */
 import axiosInstance from "../../core/axios";
 import { withOfflineFallback, withOfflineCache } from "../../core/offline-wrapper";
+import { AxiosError } from "axios";
 import { Product } from "../../types/quinc";
 
 class QuincProductService {
@@ -84,8 +85,8 @@ class QuincProductService {
         { params }
       );
       return response.data as Product;
-    } catch (err: any) {
-      if (err?.response?.status === 404) return null;
+    } catch (err: unknown) {
+      if (err instanceof AxiosError && err.response?.status === 404) return null;
       throw err;
     }
   }

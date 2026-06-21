@@ -1,29 +1,4 @@
-/**
- * ============================================================================
- * TYPES MODULE SUPERETTE
- * ============================================================================
- * 
- * Ce fichier centralise TOUS les types TypeScript utilisés par le module
- * Superette (app/super). Chaque interface est mappée 1:1 sur les entités
- * et DTOs du backend NestJS (back-spservice).
- * 
- * Convention de nommage :
- * - Les interfaces correspondent aux entités retournées par le backend
- * - Les types "Create*Dto" correspondent aux payloads envoyés au backend
- * - Les enums reprennent exactement les valeurs Prisma du backend
- * 
- * @see back-spservice/src/modules/
- * ============================================================================
- */
 
-// ============================================================================
-// ENUMS — Alignés sur Prisma (back-spservice)
-// ============================================================================
-
-/**
- * Catégories de dépenses — correspond à ExpenseCategory dans le backend
- * @see back-spservice/src/modules/expense/domain/entities/expense.entity.ts
- */
 export enum ExpenseCategory {
   RENT = "RENT",               // Loyer
   UTILITIES = "UTILITIES",     // Eau / Électricité

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import DashboardService from "../../services/admin/dashboard.service";
+import { getErrorMessage } from "../../core/error";
 import {
   OverviewResponse,
   ShopsPerformanceResponse,
@@ -66,11 +67,11 @@ export function useDashboard(query: PeriodQuery) {
         loading: false,
         lastRefresh: new Date(),
       }));
-    } catch (err: any) {
+    } catch (err: unknown) {
       setState((prev) => ({
         ...prev,
         loading: false,
-        error: err.response?.data?.message || err.message || "Erreur de chargement",
+        error: getErrorMessage(err, "Erreur de chargement"),
       }));
     }
   }, []);

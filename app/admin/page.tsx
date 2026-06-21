@@ -18,7 +18,6 @@ import {
   LogIn,
   AlertTriangle,
 } from "lucide-react";
-
 type Module = {
   title: string;
   desktopTitle: string;
@@ -31,7 +30,6 @@ type Module = {
   iconColor: string;
   disabled?: boolean;
 };
-
 export default function AdminDashboardPage() {
   const [showQuincNotice, setShowQuincNotice] = useState(false);
 
@@ -145,7 +143,6 @@ export default function AdminDashboardPage() {
       <div className="relative mb-5 md:mb-8 overflow-hidden rounded-2xl md:rounded-3xl bg-gradient-to-br from-slate-800 via-slate-900 to-slate-950 px-5 py-5 md:px-10 md:py-10">
         <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-violet-500/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 -left-12 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
-
         <div className="relative flex items-center justify-between gap-4">
           <div>
             <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-white/40 md:text-xs">
@@ -170,17 +167,14 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
-
       {/* ── Section label (desktop only) ─────────────────────────── */}
       <p className="mb-3 hidden text-[11px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-600 md:block">
         Modules disponibles
       </p>
-
       {/* ── Module Grid ───────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-2.5 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
         {modules.map((mod, idx) => {
           const { Icon } = mod;
-
           const card = (
             <div
               className={[
@@ -195,7 +189,6 @@ export default function AdminDashboardPage() {
               <div
                 className={`absolute left-0 right-0 top-0 hidden h-[3px] bg-gradient-to-r ${mod.accent} md:block`}
               />
-
               {/* ── MOBILE layout ─── */}
               <div
                 className={`md:hidden relative bg-gradient-to-br ${mod.mobileGrad} flex min-h-[90px] flex-col items-center justify-center gap-2 px-2 py-3`}
@@ -219,7 +212,6 @@ export default function AdminDashboardPage() {
                     Gérant
                   </span>
                 )}
-
                 <div className="mb-4 flex items-start justify-between">
                   <div className={`flex items-center justify-center rounded-xl p-2.5 ${mod.iconBg}`}>
                     <Icon className={`h-5 w-5 ${mod.iconColor}`} />
@@ -228,7 +220,6 @@ export default function AdminDashboardPage() {
                     <ChevronRight className="h-4 w-4 text-zinc-200 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-zinc-500 dark:text-zinc-700 dark:group-hover:text-zinc-400" />
                   )}
                 </div>
-
                 <h3 className="mb-1.5 text-sm font-black leading-snug text-zinc-800 dark:text-zinc-100">
                   {mod.desktopTitle}
                 </h3>
@@ -240,7 +231,6 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           );
-
           if (mod.disabled) {
             return (
               <div
@@ -252,7 +242,6 @@ export default function AdminDashboardPage() {
               </div>
             );
           }
-
           return (
             <Link
               key={idx}
@@ -264,7 +253,6 @@ export default function AdminDashboardPage() {
           );
         })}
       </div>
-
       {/* ── Modal Quincaillerie ───────────────────────────────────── */}
       {showQuincNotice && (
         <div
@@ -304,7 +292,6 @@ export default function AdminDashboardPage() {
                 <span className="font-black text-zinc-900 dark:text-zinc-100">Quincaillerie</span>{" "}
                 n&apos;est pas encore accessible depuis le tableau de bord administrateur.
               </p>
-
               <div className="flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
                 <p className="text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
                   Pour accéder à ce module
@@ -314,7 +301,6 @@ export default function AdminDashboardPage() {
                   <span className="font-black">compte Gérant Quincaillerie</span> pour bénéficier de toutes les fonctionnalités : caisse, gestion des stocks, historique des ventes, devis clients, fournisseurs et dépenses.
                 </p>
               </div>
-
               <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-400">
                 <LogIn className="h-3.5 w-3.5 flex-shrink-0" />
                 <span>Déconnectez-vous et reconnectez-vous avec les identifiants du Gérant.</span>

@@ -11,6 +11,12 @@ import {
   PeriodQuery,
 } from "../../types/dashboard";
 
+// Génère une clé de cache stable indépendamment de l'ordre des propriétés de l'objet.
+// JSON.stringify({ a:1, b:2 }) ≠ JSON.stringify({ b:2, a:1 }) → doublons de cache sans ça.
+function stableKey(obj: object): string {
+  return JSON.stringify(Object.fromEntries(Object.entries(obj as Record<string, unknown>).sort()));
+}
+
 // Traduit un PeriodQuery frontend vers les paramètres attendus par le backend
 // Backend attend : period ('day'|'week'|'month'|'year'|'custom'), startDate, endDate, shopIds
 function toParams(query: PeriodQuery): Record<string, string> {
@@ -78,7 +84,7 @@ function toParams(query: PeriodQuery): Record<string, string> {
 const DashboardService = {
   async getOverview(query: PeriodQuery): Promise<OverviewResponse> {
     return withOfflineCache(
-      `dashboard_overview_${JSON.stringify(query ?? {})}`,
+      `dashboard_overview_${stableKey(query ?? {})}`,
       () =>
         axiosInstance
           .get("/dashboard-super-admin/overview", { params: toParams(query) })
@@ -88,7 +94,7 @@ const DashboardService = {
   },
   async getShopsPerformance(query: PeriodQuery & { limit?: number }): Promise<ShopsPerformanceResponse> {
     return withOfflineCache(
-      `dashboard_shops_${JSON.stringify(query ?? {})}`,
+      `dashboard_shops_${stableKey(query ?? {})}`,
       () =>
         axiosInstance
           .get("/dashboard-super-admin/shops", {
@@ -101,7 +107,7 @@ const DashboardService = {
 
   async getCategoriesPerformance(query: PeriodQuery): Promise<CategoriesPerformanceResponse> {
     return withOfflineCache(
-      `dashboard_categories_${JSON.stringify(query ?? {})}`,
+      `dashboard_categories_${stableKey(query ?? {})}`,
       () =>
         axiosInstance
           .get("/dashboard-super-admin/categories", { params: toParams(query) })
@@ -112,7 +118,7 @@ const DashboardService = {
 
   async getCashiersPerformance(query: PeriodQuery & { limit?: number }): Promise<CashiersPerformanceResponse> {
     return withOfflineCache(
-      `dashboard_cashiers_${JSON.stringify(query ?? {})}`,
+      `dashboard_cashiers_${stableKey(query ?? {})}`,
       () =>
         axiosInstance
           .get("/dashboard-super-admin/cashiers", {
@@ -135,7 +141,7 @@ const DashboardService = {
   },
   async getSalesTimeline(query: PeriodQuery): Promise<SalesTimelineResponse> {
     return withOfflineCache(
-      `dashboard_timeline_${JSON.stringify(query ?? {})}`,
+      `dashboard_timeline_${stableKey(query ?? {})}`,
       () =>
         axiosInstance
           .get("/dashboard-super-admin/sales-timeline", { params: toParams(query) })
@@ -163,7 +169,7 @@ const DashboardService = {
     lookbackDays?: number;
   }): Promise<AlertsResponse> {
     return withOfflineCache(
-      `dashboard_alerts_${JSON.stringify(params ?? {})}`,
+      `dashboard_alerts_${stableKey(params ?? {})}`,
       () =>
         axiosInstance
           .get("/dashboard-super-admin/alerts", { params })
@@ -180,7 +186,7 @@ const DashboardService = {
 
   async getFinancialReport(query: PeriodQuery): Promise<FinancialReportResponse> {
     return withOfflineCache(
-      `dashboard_financial_${JSON.stringify(query ?? {})}`,
+      `dashboard_financial_${stableKey(query ?? {})}`,
       () =>
         axiosInstance
           .get("/dashboard-super-admin/financial-report", { params: toParams(query) })

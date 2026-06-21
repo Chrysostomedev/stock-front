@@ -1,13 +1,12 @@
 import axiosInstance from "../core/axios";
-import { LoginResponse, User } from "../types/auth";
+import { LoginCredentials, LoginResponse, RegisterDto, User } from "../types/auth";
 
 const AuthService = {
-  async login(credentials: { phone: string; password: string }): Promise<LoginResponse> {
+  async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await axiosInstance.post("/auth/login", credentials);
     return response.data;
   },
-
-  async register(userData: any) {
+  async register(userData: RegisterDto): Promise<User> {
     const response = await axiosInstance.post("/auth/register", userData);
     return response.data;
   },

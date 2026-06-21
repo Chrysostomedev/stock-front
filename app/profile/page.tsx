@@ -81,7 +81,6 @@ export default function ProfilePage() {
       showToast("Les mots de passe ne correspondent pas", "error");
       return;
     }
-
     setIsChangingPassword(true);
     try {
       // Le backend reçoit passwordHash en clair et le hash avec bcrypt

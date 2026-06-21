@@ -18,6 +18,19 @@ export interface User {
   shopName?: string;
   shopAccesses?:shopAccesses[];
 }
+export interface LoginCredentials {
+  phone: string;
+  password: string;
+}
+
+export interface RegisterDto {
+  name: string;
+  phone: string;
+  password: string;
+  role?: UserRole;
+  shopId?: string;
+}
+
 export interface AuthResponse {
   accessToken: string;
   user: User;

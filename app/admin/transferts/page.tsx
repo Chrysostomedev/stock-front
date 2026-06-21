@@ -128,7 +128,7 @@ export default function AdminTransfertsPage() {
     }
 
     try {
-      await StockTransferService.create({
+      const created = await StockTransferService.create({
         fromShopId,
         toShopId,
         userId: user.id,
@@ -142,15 +142,13 @@ export default function AdminTransfertsPage() {
           };
         })
       });
-
+      setTransfers(prev => [created, ...prev]);
       showToast("Transfert de stock initié avec succès !", "success");
       setIsCreateOpen(false);
-      // Reset form
       setFromShopId("");
       setToShopId("");
       setNotes("");
       setSelectedItems([]);
-      loadData();
     } catch (error: any) {
       showToast(error?.response?.data?.message || "Erreur lors du transfert", "error");
     }
@@ -158,10 +156,11 @@ export default function AdminTransfertsPage() {
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
-      await StockTransferService.updateStatus(id, newStatus);
+      const updated = await StockTransferService.updateStatus(id, newStatus);
+      setTransfers(prev => prev.map(t => t.id === id ? updated : t));
+      if (selectedTransfer?.id === id) setSelectedTransfer(updated);
       showToast(`Statut du transfert mis à jour : ${newStatus}`, "success");
       setIsViewOpen(false);
-      loadData();
     } catch (error: any) {
       showToast(error?.response?.data?.message || "Erreur lors de la mise à jour", "error");
     }

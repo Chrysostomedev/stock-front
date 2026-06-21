@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import AdminShopService from "../../services/admin/shop.service";
 import { Shop } from "../../types/admin";
+import { getErrorMessage } from "../../core/error";
 
 export function useShops() {
   const [shops, setShops] = useState<Shop[]>([]);
@@ -13,8 +14,8 @@ export function useShops() {
       const data = await AdminShopService.getAllShops();
       setShops(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de la récupération des boutiques");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Erreur lors de la récupération des boutiques"));
     } finally {
       setLoading(false);
     }
@@ -29,8 +30,8 @@ export function useShops() {
       const newShop = await AdminShopService.createShop(shopData);
       setShops((prev) => [...prev, newShop]);
       return newShop;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || "Erreur lors de la création");
+    } catch (err: unknown) {
+      throw new Error(getErrorMessage(err, "Erreur lors de la création"));
     }
   };
 
@@ -39,8 +40,8 @@ export function useShops() {
       const updatedShop = await AdminShopService.updateShop(id, shopData);
       setShops((prev) => prev.map((s) => (s.id === id ? updatedShop : s)));
       return updatedShop;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || "Erreur lors de la mise à jour");
+    } catch (err: unknown) {
+      throw new Error(getErrorMessage(err, "Erreur lors de la mise à jour"));
     }
   };
 
@@ -48,8 +49,8 @@ export function useShops() {
     try {
       await AdminShopService.deleteShop(id);
       setShops((prev) => prev.filter((s) => s.id !== id));
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || "Erreur lors de la suppression");
+    } catch (err: unknown) {
+      throw new Error(getErrorMessage(err, "Erreur lors de la suppression"));
     }
   };
 
@@ -58,8 +59,8 @@ export function useShops() {
       const updatedShop = await AdminShopService.toggleShopStatus(id, !currentStatus);
       setShops((prev) => prev.map((s) => (s.id === id ? updatedShop : s)));
       return updatedShop;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || "Erreur lors du changement de statut");
+    } catch (err: unknown) {
+      throw new Error(getErrorMessage(err, "Erreur lors du changement de statut"));
     }
   };
 
