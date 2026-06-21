@@ -7,6 +7,31 @@ import { AxiosError } from "axios";
 import { Product } from "../../types/quinc";
 
 class QuincProductService {
+  /** Produits paginés (pour la caisse). Supporte search, categoryId, page, limit. */
+  async getPage(params: {
+    shopId: string;
+    page?: number;
+    limit?: number;
+    search?: string;
+    categoryId?: string;
+  }): Promise<{ data: Product[]; total: number; totalPages: number; page: number }> {
+    const fallback = { data: [] as Product[], total: 0, totalPages: 1, page: 1 };
+    return withOfflineCache(
+      `quinc_products_page_${JSON.stringify(params)}`,
+      async () => {
+        const response = await axiosInstance.get("/products", { params });
+        const d = response.data;
+        return {
+          data: Array.isArray(d?.data) ? d.data : Array.isArray(d) ? d : [],
+          total: d?.total ?? 0,
+          totalPages: d?.totalPages ?? 1,
+          page: d?.page ?? params.page ?? 1,
+        };
+      },
+      fallback
+    );
+  }
+
   /** Tous les produits de la boutique. OFFLINE : cache. */
   async getAll(shopId: string): Promise<Product[]> {
     return withOfflineCache(
