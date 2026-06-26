@@ -26,6 +26,7 @@ import {
   ChevronRight,
   CalendarDays,
   BarChart3,
+  PieChart,
 } from "lucide-react";
 import { UserRole } from "@/types/auth";
 
@@ -70,6 +71,7 @@ export default function Sidebar() {
     { href: "/admin/fournisseurs", label: "Fournisseurs", icon: <Truck className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/agenda", label: "Agenda des ventes", shortLabel: "Agenda", icon: <CalendarDays className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/inventory", label: "Inventaire & Stock", shortLabel: "Stock", icon: <BarChart3 className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
+    { href: "/dashboard", label: "Rapports & Dashboard", shortLabel: "Rapports", icon: <PieChart className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/admin/logs", label: "Journal d'activité", shortLabel: "Logs", icon: <Shield className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
     { href: "/super", label: "Dashboard Super.", icon: <LayoutDashboard className="h-5 w-5" />, roles: ["CASHIER"] },
     { href: "/super/caisse", label: "Caisse Super.", icon: <ShoppingCart className="h-5 w-5" />, roles: ["CASHIER"] },
@@ -89,6 +91,7 @@ export default function Sidebar() {
     { href: "/quinc/fournisseurs", label: "Fournisseurs", icon: <Building2 className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/transferts", label: "Transferts Stock", icon: <Layers className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/quinc/depenses", label: "Dépenses/Charges", icon: <Wallet className="h-5 w-5" />, roles: ["MANAGER"] },
+    { href: "/dashboard", label: "Rapports & Dashboard", shortLabel: "Rapports", icon: <PieChart className="h-5 w-5" />, roles: ["MANAGER"] },
     { href: "/profile", label: "Mon Profil", icon: <UserCircle className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN", "CASHIER", "MANAGER", "AUDITOR"] },
     { href: "/admin/settings", label: "Paramètres", icon: <Settings className="h-5 w-5" />, roles: ["ADMIN", "SUPER_ADMIN"] },
   ];

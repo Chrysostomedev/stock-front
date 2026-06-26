@@ -219,7 +219,6 @@ export default function SuperCaissePage() {
       setLoading(false);
     }
   };
-
   const loadData = () => {
     loadProducts();
   };
