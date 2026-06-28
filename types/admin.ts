@@ -19,6 +19,7 @@ export interface UserAccount {
   name: string;
   username: string;
   phone?: string;
+  email?: string;
   role: UserRole;
   pin: string;
   isActive: boolean;
