@@ -28,6 +28,7 @@ const AdminUserService = {
 
     // shopId : n'envoyer que si c'est un vrai UUID (pas vide)
     if (userData.shopId) payload.shopId = userData.shopId;
+    if (userData.email) payload.email = userData.email;
 
     // username : laisser le backend le générer automatiquement (user_<timestamp>)
     // pin : champ frontend uniquement, ne pas l'envoyer au backend

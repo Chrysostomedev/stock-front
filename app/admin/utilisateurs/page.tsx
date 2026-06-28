@@ -94,6 +94,7 @@ export default function AdminUtilisateursPage() {
   const [formData, setFormData] = useState<Partial<UserAccount>>({
     name: "",
     phone: "",
+    email: "",
     role: "CASHIER",
     pin: "1234",
     isActive: true,
@@ -120,6 +121,7 @@ export default function AdminUtilisateursPage() {
         name: selectedUser.name,
         username: selectedUser.username,
         phone: selectedUser.phone,
+        email: selectedUser.email ?? "",
         role: selectedUser.role,
         pin: selectedUser.pin,
         isActive: selectedUser.isActive,
@@ -130,6 +132,7 @@ export default function AdminUtilisateursPage() {
         name: "",
         username: "",
         phone: "",
+        email: "",
         role: "CASHIER",
         pin: "1234",
         isActive: true,
@@ -432,6 +435,21 @@ export default function AdminUtilisateursPage() {
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               placeholder="Ex: 0701020304"
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+            />
+          </div>
+
+          {/* Adresse email (optionnel) */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-black text-zinc-500 uppercase">
+              Adresse email
+              <span className="ml-1 text-zinc-400 normal-case font-medium">(optionnel)</span>
+            </label>
+            <input
+              type="email"
+              value={formData.email ?? ""}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="exemple@boutique.com"
               className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
             />
           </div>
