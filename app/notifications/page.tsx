@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import Sidebar from "@/components/layouts/Sidebar";
-import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { useToast } from "@/contexts/ToastContext";
 import { Bell, ShieldCheck, ShoppingCart, TrendingUp } from "lucide-react";
