@@ -6,6 +6,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import axiosInstance from "../core/axios";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- withOfflineFallback conservé pour réactivation rapide de l'offline (voir create())
 import { withOfflineFallback, withOfflineCache } from "../core/offline-wrapper";
 
 export interface SaleItem {
@@ -106,24 +107,30 @@ export interface RefundSaleDto {
 const SaleService = {
   /**
    * Enregistrer une nouvelle vente.
-   * OFFLINE : enqueued → résultat optimiste retourné immédiatement.
+   * OFFLINE DÉSACTIVÉ : la vente nécessite une connexion active.
+   * Pour réactiver le fallback offline, décommentez le bloc ci-dessous
+   * et supprimez/commentez le bloc "ONLINE ONLY" qui suit.
    */
   async create(data: CreateSaleDto) {
-    const receiptNumber = `SP-OFFLINE-${Date.now()}`;
-    return withOfflineFallback({
-      entityType: "Sale",
-      operation: "CREATE",
-      payload: { ...(data as unknown as Record<string, unknown>), receiptNumber },
-      apiCall: () => axiosInstance.post("/sales", data).then((r) => r.data),
-      optimisticResult: {
-        ...data,
-        id: `local_${Date.now()}`,
-        receiptNumber,
-        status: "COMPLETED",
-        syncStatus: "PENDING",
-        createdAt: new Date().toISOString(),
-      },
-    });
+    // ─── BLOC OFFLINE (désactivé) ─────────────────────────────────────────
+    // const receiptNumber = `SP-OFFLINE-${Date.now()}`;
+    // return withOfflineFallback({
+    //   entityType: "Sale",
+    //   operation: "CREATE",
+    //   payload: { ...(data as unknown as Record<string, unknown>), receiptNumber },
+    //   apiCall: () => axiosInstance.post("/sales", data).then((r) => r.data),
+    //   optimisticResult: {
+    //     ...data,
+    //     id: `local_${Date.now()}`,
+    //     receiptNumber,
+    //     status: "COMPLETED",
+    //     syncStatus: "PENDING",
+    //     createdAt: new Date().toISOString(),
+    //   },
+    // });
+
+    // ─── ONLINE ONLY ────────────────────────────────────────────────────
+    return axiosInstance.post("/sales", data).then((r) => r.data);
   },
   /**
    * Récupérer les détails d'une vente.
