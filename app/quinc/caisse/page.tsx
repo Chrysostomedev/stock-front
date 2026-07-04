@@ -5,6 +5,7 @@ import { printReceipt } from "@/lib/printReceipt";
 import AppLayout from "@/components/layouts/AppLayout";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useNetworkContext } from "@/contexts/NetworkContext";
 import QuincProductService from "@/services/quinc/product.service";
 import QuincCategoryService from "@/services/quinc/category.service";
 import QuincCustomerService from "@/services/quinc/customer.service";
@@ -35,6 +36,7 @@ interface CartItem {
 export default function QuincaillerieCaissePage() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { isOnline } = useNetworkContext();
   const [lastSaleId, setLastSaleId] = useState("");
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
   const [saleCartSnapshot, setSaleCartSnapshot] = useState<CartItem[]>([]);
@@ -389,6 +391,13 @@ export default function QuincaillerieCaissePage() {
   const handleCheckout = async () => {
     if (cart.length === 0) return showToast("Panier vide", "error");
     if (!user?.shopId) return showToast("Boutique non identifiée", "error");
+    // Vente autorisée uniquement en ligne (mode offline désactivé pour le moment).
+    if (!isOnline) {
+      return showToast(
+        "Vente impossible : fonctionnalité hors-ligne non disponible pour le moment. Vérifiez votre connexion internet.",
+        "error"
+      );
+    }
     setIsProcessing(true);
     try {
       const saleResult = await QuincSaleService.create({

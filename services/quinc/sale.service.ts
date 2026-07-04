@@ -2,26 +2,36 @@
  * quinc/sale.service.ts — Ventes quincaillerie avec fallback offline
  */
 import axiosInstance from "../../core/axios";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- withOfflineFallback conservé pour réactivation rapide de l'offline (voir create())
 import { withOfflineFallback, withOfflineCache } from "../../core/offline-wrapper";
 import { Sale } from "../../types/quinc";
 
 class QuincSaleService {
-  /** Créer une vente. OFFLINE : enqueued + résultat optimiste. */
+  /**
+   * Créer une vente.
+   * OFFLINE DÉSACTIVÉ : la vente nécessite une connexion active.
+   * Pour réactiver le fallback offline, décommentez le bloc ci-dessous
+   * et supprimez/commentez le bloc "ONLINE ONLY" qui suit.
+   */
   async create(data: Partial<Sale>): Promise<Sale> {
-    return withOfflineFallback({
-      entityType: "Sale",
-      operation: "CREATE",
-      payload: data as Record<string, unknown>,
-      apiCall: () => axiosInstance.post("/sales", data).then((r) => r.data),
-      optimisticResult: {
-        ...data,
-        id: `local_${Date.now()}`,
-        receiptNumber: `SP-OFFLINE-${Date.now()}`,
-        status: "COMPLETED",
-        syncStatus: "PENDING",
-        createdAt: new Date().toISOString(),
-      } as unknown as Sale,
-    });
+    // ─── BLOC OFFLINE (désactivé) ─────────────────────────────────────────
+    // return withOfflineFallback({
+    //   entityType: "Sale",
+    //   operation: "CREATE",
+    //   payload: data as Record<string, unknown>,
+    //   apiCall: () => axiosInstance.post("/sales", data).then((r) => r.data),
+    //   optimisticResult: {
+    //     ...data,
+    //     id: `local_${Date.now()}`,
+    //     receiptNumber: `SP-OFFLINE-${Date.now()}`,
+    //     status: "COMPLETED",
+    //     syncStatus: "PENDING",
+    //     createdAt: new Date().toISOString(),
+    //   } as unknown as Sale,
+    // });
+
+    // ─── ONLINE ONLY ────────────────────────────────────────────────────
+    return axiosInstance.post("/sales", data).then((r) => r.data);
   }
 
   /** Lister les ventes. OFFLINE : cache. */
