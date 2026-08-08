@@ -11,6 +11,8 @@ interface DataTableProps<T> {
   data: T[];
   onRowClick?: (item: T) => void;
   isLoading?: boolean;
+  /** Épingle la dernière colonne (ex: Actions) à droite pendant le défilement horizontal. */
+  stickyLastColumn?: boolean;
 }
 
 export default function DataTable<T>({
@@ -18,7 +20,13 @@ export default function DataTable<T>({
   data,
   onRowClick,
   isLoading,
+  stickyLastColumn,
 }: DataTableProps<T>) {
+  const lastColIdx = columns.length - 1;
+  const stickyCellClass = (idx: number) =>
+    stickyLastColumn && idx === lastColIdx
+      ? "sticky right-0 z-10 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]"
+      : "";
   return (
     <div className="w-full overflow-hidden border border-zinc-200 dark:border-zinc-800 rounded-2xl bg-card">
       <div className="overflow-x-auto">
@@ -28,7 +36,7 @@ export default function DataTable<T>({
               {columns.map((col, idx) => (
                 <th
                   key={idx}
-                  className={`px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-wider ${col.className || ""}`}
+                  className={`px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-wider bg-zinc-50 dark:bg-zinc-800/50 ${stickyCellClass(idx)} ${col.className || ""}`}
                 >
                   {col.header}
                 </th>
@@ -63,7 +71,7 @@ export default function DataTable<T>({
                   {columns.map((col, colIdx) => (
                     <td
                       key={colIdx}
-                      className={`px-6 py-4 text-xs font-bold text-zinc-700 dark:text-zinc-300 ${col.className || ""}`}
+                      className={`px-6 py-4 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-card ${stickyCellClass(colIdx)} ${col.className || ""}`}
                     >
                       {typeof col.accessor === "function"
                         ? col.accessor(item)

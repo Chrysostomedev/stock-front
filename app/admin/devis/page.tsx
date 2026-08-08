@@ -415,6 +415,7 @@ export default function AdminDevisPage() {
   // Autocomplete results: products matching the search, excluding already selected ones
   const productResults = productSearch.length >= 1
     ? products.filter(p =>
+        (!createShopId || p.shopId === createShopId) &&
         !newOrderItems.some(i => i.productId === p.id) && (
           p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
           (p.sku?.toLowerCase() ?? "").includes(productSearch.toLowerCase()) ||
@@ -686,6 +687,7 @@ export default function AdminDevisPage() {
               columns={columns}
               data={filteredOrders}
               isLoading={loading}
+              stickyLastColumn
             />
           </Card>
         </div>
@@ -917,8 +919,9 @@ export default function AdminDevisPage() {
                             <input
                               type="number"
                               min="0"
+                              step="0.01"
                               value={item.unitCost}
-                              onChange={(e) => updateOrderItemCost(item.productId, parseInt(e.target.value) || 0)}
+                              onChange={(e) => updateOrderItemCost(item.productId, parseFloat(e.target.value) || 0)}
                               className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-right font-bold text-xs font-mono"
                               required
                             />
@@ -965,8 +968,9 @@ export default function AdminDevisPage() {
                             <input
                               type="number"
                               min="0"
+                              step="0.01"
                               value={item.unitCost}
-                              onChange={(e) => updateOrderItemCost(item.productId, parseInt(e.target.value) || 0)}
+                              onChange={(e) => updateOrderItemCost(item.productId, parseFloat(e.target.value) || 0)}
                               className="w-28 px-2 py-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-right font-bold text-xs font-mono"
                               required
                             />
