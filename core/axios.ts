@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const PROD_API_URL = "https://back-spservice-production.up.railway.app/api/v1";
+const PROD_API_URL = "https://back-spservice.onrender.com/api/v1";
 let API_URL = process.env.NEXT_PUBLIC_API_URL || PROD_API_URL;
 if (typeof window !== "undefined") {
   try {
