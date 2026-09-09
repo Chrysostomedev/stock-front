@@ -1,12 +1,12 @@
 import axios from "axios";
 
 const PROD_API_URL = "https://back-spservice.onrender.com/api/v1";
-let API_URL = process.env.NEXT_PUBLIC_API_URL || PROD_API_URL;
+let API_URL = PROD_API_URL;
 if (typeof window !== "undefined") {
   try {
     const proto = window.location.protocol || "";
     if (proto.startsWith("capacitor-electron")) {
-      API_URL = process.env.NEXT_PUBLIC_API_URL || PROD_API_URL;
+      API_URL = PROD_API_URL;
     }
   } catch {
     // ignore
@@ -17,7 +17,7 @@ const axiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  
+
   timeout: 8000,
 });
 
@@ -39,9 +39,9 @@ axiosInstance.interceptors.request.use(
       if (token) config.headers.Authorization = `Bearer ${token}`;
     } else {
       // Mode offline — utiliser le token offline s'il est encore valide
-      const offlineToken  = localStorage.getItem("offline_token");
+      const offlineToken = localStorage.getItem("offline_token");
       const offlineExpiry = localStorage.getItem("offline_token_expiry");
-      const offlineValid  =
+      const offlineValid =
         offlineToken && offlineExpiry && new Date(offlineExpiry) > new Date();
 
       if (offlineValid) {
