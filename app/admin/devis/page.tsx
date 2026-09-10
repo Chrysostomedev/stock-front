@@ -92,6 +92,58 @@ export default function AdminDevisPage() {
     }
   }, [isCreateOpen]);
 
+  // Re-fetch products when creation modal is open or when createShopId changes
+  useEffect(() => {
+    if (!isCreateOpen) return;
+
+    const loadShopProducts = async () => {
+      try {
+        const reqParams: any = { limit: 1000 };
+        if (createShopId) reqParams.shopId = createShopId;
+        const res = await ProductService.getAll(reqParams);
+        const shopProducts = Array.isArray(res) ? res : res?.data || [];
+        if (shopProducts.length > 0) {
+          setProducts(prev => {
+            const map = new Map<string, Product>();
+            prev.forEach(p => map.set(p.id, p));
+            shopProducts.forEach((p: Product) => map.set(p.id, p));
+            return Array.from(map.values());
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching products for shop:", err);
+      }
+    };
+
+    loadShopProducts();
+  }, [createShopId, isCreateOpen]);
+
+  // Dynamic debounced search when user types in product autocomplete
+  useEffect(() => {
+    if (!isCreateOpen || !productSearch || productSearch.trim().length < 1) return;
+
+    const handler = setTimeout(async () => {
+      try {
+        const reqParams: any = { search: productSearch.trim(), limit: 50 };
+        if (createShopId) reqParams.shopId = createShopId;
+        const searchRes = await ProductService.getAll(reqParams);
+        const found = Array.isArray(searchRes) ? searchRes : searchRes?.data || [];
+        if (found.length > 0) {
+          setProducts(prev => {
+            const map = new Map<string, Product>();
+            prev.forEach(p => map.set(p.id, p));
+            found.forEach((p: Product) => map.set(p.id, p));
+            return Array.from(map.values());
+          });
+        }
+      } catch (err) {
+        console.error("Dynamic product search error:", err);
+      }
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [productSearch, createShopId, isCreateOpen]);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (autocompleteRef.current && !autocompleteRef.current.contains(e.target as Node)) {
@@ -413,15 +465,20 @@ export default function AdminDevisPage() {
   });
 
   // Autocomplete results: products matching the search, excluding already selected ones
-  const productResults = productSearch.length >= 1
-    ? products.filter(p =>
-        (!createShopId || p.shopId === createShopId) &&
-        !newOrderItems.some(i => i.productId === p.id) && (
-          p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-          (p.sku?.toLowerCase() ?? "").includes(productSearch.toLowerCase()) ||
-          (p.barcode ?? "").includes(productSearch)
-        )
-      ).slice(0, 10)
+  const productResults = productSearch.trim().length >= 1
+    ? products.filter(p => {
+        const isNotSelected = !newOrderItems.some(i => i.productId === p.id);
+        const matchesShop =
+          !createShopId ||
+          p.shopId === createShopId ||
+          (p as any).shop?.id === createShopId ||
+          !p.shopId;
+        const term = productSearch.toLowerCase().trim();
+        const matchesName = (p.name || "").toLowerCase().includes(term);
+        const matchesSku = (p.sku?.toLowerCase() ?? "").includes(term);
+        const matchesBarcode = (p.barcode ?? "").includes(term);
+        return isNotSelected && matchesShop && (matchesName || matchesSku || matchesBarcode);
+      }).slice(0, 15)
     : [];
   // DataTable configuration
   const columns = [
