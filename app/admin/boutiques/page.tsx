@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
@@ -9,6 +9,8 @@ import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import SaleService, { Sale } from "@/services/sale.service";
+import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Plus,
   Search,
@@ -28,11 +30,26 @@ import {
   Clock,
   User,
   Wrench,
+  AlertTriangle,
+  RotateCcw,
+  XCircle,
+  Package,
+  CheckCircle2,
 } from "lucide-react";
 import { useShops } from "@/hooks/admin/useShops";
 import { Shop } from "@/types/admin";
 import { ShopType } from "@/services/shop.service";
 import Pagination from "@/components/ui/Pagination";
+
+const PAYMENT_METHODS = [
+  { value: "CASH", label: "Espèces (Cash)" },
+  { value: "MOBILE_MONEY", label: "Mobile Money (Wave, Orange, MTN...)" },
+  { value: "BANK_CARD", label: "Carte Bancaire" },
+  { value: "CHECK", label: "Chèque" },
+  { value: "OTHER", label: "Autre" },
+];
+
+const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(n);
 const SHOP_TYPE_LABELS: Record<string, string> = {
   SUPERMARKET:  "Superette / Épicerie",
   HARDWARE:     "Quincaillerie / Matériaux",
@@ -152,6 +169,8 @@ function MobileShopCard({
 }
 export default function AdminBoutiquesPage() {
   const router = useRouter();
+  const { showToast } = useToast();
+  const { user } = useAuth();
   const {
     shops,
     loading,
@@ -183,6 +202,141 @@ export default function AdminBoutiquesPage() {
     {},
   );
   const [selectedSaleDetail, setSelectedSaleDetail] = useState<Sale | null>(null);
+
+  // Handlers VOID (Annulation)
+  const [isVoidOpen, setIsVoidOpen] = useState(false);
+  const [voidSale, setVoidSale] = useState<Sale | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [isVoidSubmitting, setIsVoidSubmitting] = useState(false);
+
+  // Handlers REFUND (Remboursement / Retour)
+  const [isRefundOpen, setIsRefundOpen] = useState(false);
+  const [refundSale, setRefundSale] = useState<Sale | null>(null);
+  const [refundMode, setRefundMode] = useState<"total" | "partial">("total");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundReference, setRefundReference] = useState("");
+  const [refundPaymentMethod, setRefundPaymentMethod] = useState("CASH");
+  const [returnToStock, setReturnToStock] = useState(true);
+  const [refundItems, setRefundItems] = useState<
+    { saleItemId: string; quantity: number; maxQty: number; productName: string }[]
+  >([]);
+  const [isRefundSubmitting, setIsRefundSubmitting] = useState(false);
+
+  /* ── Actions Annulation ── */
+  const openVoidModal = (sale: any) => {
+    setVoidSale(sale);
+    setVoidReason("");
+    setIsVoidOpen(true);
+  };
+
+  const handleVoid = async () => {
+    if (!voidSale || !voidReason.trim()) return;
+    setIsVoidSubmitting(true);
+    try {
+      const updated = await SaleService.void(voidSale.id, {
+        userId: user?.id || "",
+        reason: voidReason.trim(),
+      });
+      setSales((prev) =>
+        prev.map((s) => s.id === voidSale.id ? { ...s, status: "VOIDED", notes: updated.notes } : s)
+      );
+      if (selectedSaleDetail?.id === voidSale.id) {
+        setSelectedSaleDetail((prev) => prev ? { ...prev, status: "VOIDED" } : null);
+      }
+      showToast(
+        `Vente ${updated.receiptNumber || voidSale.receiptNumber} annulée — stock restitué`,
+        "success"
+      );
+      setIsVoidOpen(false);
+      setVoidSale(null);
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.message || "Erreur lors de l'annulation", "error");
+    } finally {
+      setIsVoidSubmitting(false);
+    }
+  };
+
+  /* ── Actions Remboursement ── */
+  const openRefundModal = (sale: any) => {
+    setRefundSale(sale);
+    setRefundMode("total");
+    setRefundReason("");
+    setRefundReference("");
+    setRefundPaymentMethod("CASH");
+    setReturnToStock(true);
+    setRefundItems(
+      (sale.items || []).map((item: any) => ({
+        saleItemId: item.id,
+        quantity: 0,
+        maxQty: Number(item.quantity),
+        productName: item.productName || "Produit",
+      }))
+    );
+    setIsRefundOpen(true);
+  };
+
+  const updateRefundItemQty = (saleItemId: string, qty: number) => {
+    setRefundItems((prev) =>
+      prev.map((i) =>
+        i.saleItemId === saleItemId
+          ? { ...i, quantity: Math.max(0, Math.min(qty, i.maxQty)) }
+          : i
+      )
+    );
+  };
+
+  const refundTotal = useMemo(() => {
+    if (!refundSale) return 0;
+    if (refundMode === "total") return Number(refundSale.totalAmount || refundSale.total || 0);
+    return refundItems.reduce((acc, ri) => {
+      const item = refundSale.items?.find((i: any) => i.id === ri.saleItemId);
+      if (!item || ri.quantity === 0) return acc;
+      return acc + Number(item.unitPrice) * ri.quantity;
+    }, 0);
+  }, [refundSale, refundMode, refundItems]);
+
+  const handleRefund = async () => {
+    if (!refundSale || !refundReason.trim()) return;
+    if (refundMode === "partial" && refundItems.every((i) => i.quantity === 0)) {
+      showToast("Veuillez saisir au moins une quantité à rembourser", "error");
+      return;
+    }
+    setIsRefundSubmitting(true);
+    try {
+      const dto: any = {
+        userId: user?.id || "",
+        paymentMethod: refundPaymentMethod,
+        returnToStock,
+        reason: refundReason.trim(),
+      };
+      if ((refundPaymentMethod === "MOBILE_MONEY" || refundPaymentMethod === "BANK_CARD") && refundReference.trim()) {
+        dto.reference = refundReference.trim();
+      }
+      if (refundMode === "partial") {
+        dto.items = refundItems
+          .filter((i) => i.quantity > 0)
+          .map((i) => ({ saleItemId: i.saleItemId, quantity: i.quantity }));
+      }
+
+      const refundResult = await SaleService.refund(refundSale.id, dto);
+      setSales((prev) => [refundResult, ...prev]);
+      if (salesViewShop) {
+        fetchSales(salesViewShop, salesPage);
+      }
+      showToast(
+        `Remboursement ${refundResult.receiptNumber} créé — ${fmt(refundResult.totalAmount || refundResult.total || 0)} XOF remboursés`,
+        "success"
+      );
+      setIsRefundOpen(false);
+      setRefundSale(null);
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.message || "Erreur lors du remboursement", "error");
+    } finally {
+      setIsRefundSubmitting(false);
+    }
+  };
+
+  const needsReference = refundPaymentMethod === "MOBILE_MONEY" || refundPaymentMethod === "BANK_CARD";
 
   const [formData, setFormData] = useState<Partial<Shop>>({
     name: "",
@@ -306,7 +460,9 @@ export default function AdminBoutiquesPage() {
         groups[dateStr] = { date, sales: [], totalAmount: 0 };
       }
       groups[dateStr].sales.push(s);
-      groups[dateStr].totalAmount += Number(s.totalAmount || s.total || 0);
+      if (s.status !== "VOIDED" && s.status !== "REFUNDED") {
+        groups[dateStr].totalAmount += Number(s.totalAmount || s.total || 0);
+      }
     });
     return Object.entries(groups).sort(
       (a, b) => b[1].date.getTime() - a[1].date.getTime(),
@@ -538,6 +694,7 @@ export default function AdminBoutiquesPage() {
                               <th className="py-2.5 px-3">Ticket</th>
                               <th className="py-2.5 px-3">Heure</th>
                               <th className="py-2.5 px-3">Client</th>
+                              <th className="py-2.5 px-3">Statut</th>
                               <th className="py-2.5 px-3">Paiement</th>
                               <th className="py-2.5 px-3 text-right">
                                 Montant
@@ -551,10 +708,13 @@ export default function AdminBoutiquesPage() {
                             {group.sales.map((sale) => {
                               const paymentMethod =
                                 sale.payments?.[0]?.method || "CASH";
+                              const isVoided = sale.status === "VOIDED";
+                              const isRefunded = sale.status === "REFUNDED";
+                              const isInactive = isVoided || isRefunded;
                               return (
                                 <tr
                                   key={sale.id}
-                                  className="border-b border-zinc-100/70 dark:border-zinc-800/40 hover:bg-zinc-50/30 dark:hover:bg-zinc-800/20"
+                                  className={`border-b border-zinc-100/70 dark:border-zinc-800/40 hover:bg-zinc-50/30 dark:hover:bg-zinc-800/20 ${isInactive ? "opacity-60 bg-zinc-50/20 dark:bg-zinc-900/20" : ""}`}
                                 >
                                   <td className="py-3 px-3 text-foreground font-black">
                                     {sale.receiptNumber ||
@@ -579,6 +739,21 @@ export default function AdminBoutiquesPage() {
                                     </div>
                                   </td>
                                   <td className="py-3 px-3">
+                                    {isVoided ? (
+                                      <Badge variant="danger" className="text-[9px] uppercase tracking-wider">
+                                        Annulée
+                                      </Badge>
+                                    ) : isRefunded ? (
+                                      <Badge variant="warning" className="text-[9px] uppercase tracking-wider">
+                                        Remboursée
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="success" className="text-[9px] uppercase tracking-wider">
+                                        Payée
+                                      </Badge>
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-3">
                                     <Badge
                                       variant={
                                         paymentMethod === "CASH"
@@ -590,23 +765,43 @@ export default function AdminBoutiquesPage() {
                                       {paymentMethod}
                                     </Badge>
                                   </td>
-                                  <td className="py-3 px-3 text-right font-black text-primary">
-                                    {new Intl.NumberFormat("fr-FR").format(
-                                      sale.totalAmount || sale.total || 0,
-                                    )}{" "}
-                                    XOF
+                                  <td className={`py-3 px-3 text-right font-black ${isVoided ? "line-through text-zinc-400" : isRefunded ? "text-amber-600 dark:text-amber-400" : "text-primary"}`}>
+                                    {fmt(sale.totalAmount || sale.total || 0)} XOF
                                   </td>
                                   <td className="py-3 px-3 text-right">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="py-1 px-2.5 text-[10px] font-black uppercase tracking-wider"
-                                      onClick={() =>
-                                        setSelectedSaleDetail(sale)
-                                      }
-                                    >
-                                      Détails Panier
-                                    </Button>
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="py-1 px-2.5 text-[10px] font-black uppercase tracking-wider"
+                                        onClick={() =>
+                                          setSelectedSaleDetail(sale)
+                                        }
+                                      >
+                                        Panier
+                                      </Button>
+
+                                      {!isInactive && (
+                                        <>
+                                          <button
+                                            onClick={() => openRefundModal(sale)}
+                                            className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white dark:bg-amber-950/30 dark:text-amber-400 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border border-amber-200 dark:border-amber-800 hover:border-amber-500"
+                                            title="Rembourser / Retourner cette vente"
+                                          >
+                                            <RotateCcw className="h-3 w-3" />
+                                            Retour
+                                          </button>
+                                          <button
+                                            onClick={() => openVoidModal(sale)}
+                                            className="flex items-center gap-1 px-2.5 py-1 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white dark:bg-red-950/30 dark:text-red-400 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border border-red-200 dark:border-red-800 hover:border-red-600"
+                                            title="Annuler cette vente et restituer le stock"
+                                          >
+                                            <XCircle className="h-3 w-3" />
+                                            Annuler
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
                                   </td>
                                 </tr>
                               );
@@ -798,13 +993,271 @@ export default function AdminBoutiquesPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end mt-2">
+              <div className="flex justify-between items-center mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="flex items-center gap-2">
+                  {selectedSaleDetail.status !== "VOIDED" && selectedSaleDetail.status !== "REFUNDED" && (
+                    <>
+                      <button
+                        onClick={() => {
+                          const sale = selectedSaleDetail;
+                          setSelectedSaleDetail(null);
+                          openRefundModal(sale);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white dark:bg-amber-950/30 dark:text-amber-400 rounded-xl text-xs font-black uppercase tracking-wider transition-all border border-amber-200 dark:border-amber-800"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                        Rembourser / Retour
+                      </button>
+                      <button
+                        onClick={() => {
+                          const sale = selectedSaleDetail;
+                          setSelectedSaleDetail(null);
+                          openVoidModal(sale);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-600 text-red-600 hover:text-white dark:bg-red-950/30 dark:text-red-400 rounded-xl text-xs font-black uppercase tracking-wider transition-all border border-red-200 dark:border-red-800"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        Annuler la vente
+                      </button>
+                    </>
+                  )}
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setSelectedSaleDetail(null)}
                 >
                   Fermer
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* ══════════════ MODAL VOID (ANNULATION) ══════════════ */}
+        <Modal
+          isOpen={isVoidOpen}
+          onClose={() => { setIsVoidOpen(false); setVoidReason(""); }}
+          title="Annuler la vente"
+          size="sm"
+        >
+          {voidSale && (
+            <div className="flex flex-col gap-5">
+              <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30 rounded-xl">
+                <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs font-black text-red-800 dark:text-red-400">
+                    Annulation de la vente {voidSale.receiptNumber || voidSale.id.slice(-6).toUpperCase()}
+                  </p>
+                  <p className="text-[11px] text-red-700/80 dark:text-red-500">
+                    Le stock des articles sera automatiquement restitué. Cette action ne peut pas être inversée.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                  Raison de l&apos;annulation <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={voidReason}
+                  onChange={(e) => setVoidReason(e.target.value)}
+                  placeholder="Ex : Erreur de saisie, annulation admin, client a changé d'avis…"
+                  rows={3}
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-red-400 transition-all resize-none"
+                />
+                <p className="text-[10px] text-zinc-400">
+                  {voidReason.trim().length} / minimum 5 caractères
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => { setIsVoidOpen(false); setVoidReason(""); }}
+                  disabled={isVoidSubmitting}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1 bg-red-600 hover:bg-red-700 border-red-600"
+                  onClick={handleVoid}
+                  loading={isVoidSubmitting}
+                  disabled={voidReason.trim().length < 5}
+                >
+                  Confirmer l&apos;annulation
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* ══════════════ MODAL REFUND (REMBOURSEMENT) ══════════════ */}
+        <Modal
+          isOpen={isRefundOpen}
+          onClose={() => { setIsRefundOpen(false); setRefundSale(null); }}
+          title="Rembourser / Retourner une vente"
+          size="md"
+        >
+          {refundSale && (
+            <div className="flex flex-col gap-5">
+              {/* Info vente */}
+              <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 rounded-xl text-xs">
+                <div>
+                  <p className="font-black text-foreground">{refundSale.receiptNumber || refundSale.id.slice(-6).toUpperCase()}</p>
+                  <p className="text-zinc-400">{fmt(refundSale.totalAmount || refundSale.total || 0)} XOF</p>
+                </div>
+                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider">
+                  {refundSale.items?.length || 0} article(s)
+                </span>
+              </div>
+
+              {/* Toggle mode */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRefundMode("total")}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-all ${
+                    refundMode === "total"
+                      ? "bg-violet-600 text-white border-violet-600"
+                      : "border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-violet-400"
+                  }`}
+                >
+                  Remboursement total
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRefundMode("partial")}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-all ${
+                    refundMode === "partial"
+                      ? "bg-violet-600 text-white border-violet-600"
+                      : "border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:border-violet-400"
+                  }`}
+                >
+                  Remboursement partiel
+                </button>
+              </div>
+
+              {/* Articles (mode partiel) */}
+              {refundMode === "partial" && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                    <Package className="h-3.5 w-3.5" /> Articles à rembourser
+                  </p>
+                  <div className="border border-zinc-150 dark:border-zinc-800 rounded-xl overflow-hidden">
+                    {refundItems.map((ri) => (
+                      <div key={ri.saleItemId} className="flex items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black text-foreground truncate">{ri.productName}</p>
+                          <p className="text-[10px] text-zinc-400">Vendu : {ri.maxQty}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[10px] text-zinc-400 font-bold">Qté :</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={ri.maxQty}
+                            value={ri.quantity}
+                            onChange={(e) => updateRefundItemQty(ri.saleItemId, Number(e.target.value))}
+                            className="w-16 text-center px-2 py-1 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-black outline-none focus:border-violet-400"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Montant estimé */}
+              <div className="flex items-center justify-between p-3 bg-violet-50 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-900/30 rounded-xl">
+                <span className="text-xs font-black text-violet-700 dark:text-violet-400">Montant à rembourser</span>
+                <span className="text-sm font-black text-violet-700 dark:text-violet-300">{fmt(refundTotal)} XOF</span>
+              </div>
+
+              {/* Méthode de remboursement */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                  Méthode de remboursement <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={refundPaymentMethod}
+                  onChange={(e) => { setRefundPaymentMethod(e.target.value); setRefundReference(""); }}
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-violet-400 transition-all"
+                >
+                  {PAYMENT_METHODS.map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Référence transaction (conditionnel) */}
+              {needsReference && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                    Référence de transaction
+                  </label>
+                  <input
+                    type="text"
+                    value={refundReference}
+                    onChange={(e) => setRefundReference(e.target.value)}
+                    placeholder="Ex : OM-TXN-987654"
+                    className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-violet-400 transition-all"
+                  />
+                </div>
+              )}
+
+              {/* Retour au stock */}
+              <label className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800 rounded-xl cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all">
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
+                  returnToStock ? "bg-emerald-500 border-emerald-500" : "border-zinc-300 dark:border-zinc-600"
+                }`}>
+                  {returnToStock && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
+                </div>
+                <input
+                  type="checkbox"
+                  checked={returnToStock}
+                  onChange={(e) => setReturnToStock(e.target.checked)}
+                  className="sr-only"
+                />
+                <div>
+                  <p className="text-xs font-black text-foreground">Remettre les articles en stock</p>
+                  <p className="text-[10px] text-zinc-400">Décocher si le produit est défectueux ou ne peut pas être revendu</p>
+                </div>
+              </label>
+
+              {/* Raison */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black uppercase tracking-wider text-zinc-500">
+                  Raison du remboursement <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  placeholder="Ex : Client insatisfait, produit défectueux, erreur admin…"
+                  rows={2}
+                  className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-violet-400 transition-all resize-none"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => { setIsRefundOpen(false); setRefundSale(null); }}
+                  disabled={isRefundSubmitting}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1 bg-violet-600 hover:bg-violet-700 border-violet-600"
+                  onClick={handleRefund}
+                  loading={isRefundSubmitting}
+                  disabled={refundReason.trim().length < 5 || refundTotal === 0}
+                >
+                  Confirmer le remboursement
                 </Button>
               </div>
             </div>
