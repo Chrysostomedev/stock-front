@@ -114,60 +114,62 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Overlay mobile */}
+      {/* Overlay mobile & tablette */}
       {isOpen && (
         <div
           onClick={close}
-          className="sm:hidden fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm transition-all"
+          className="lg:hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-all cursor-pointer"
         />
       )}
 
       {/* ── SIDEBAR ─────────────────────────────────────────────────── */}
       <aside
         className={[
-          "fixed sm:static top-0 bottom-0 left-0 z-[70]",
+          "fixed lg:static top-0 bottom-0 left-0 z-[70]",
           "bg-card border-r border-border",
           "flex flex-col justify-between",
           "transition-all duration-300 ease-in-out select-none overflow-hidden",
-          // Largeur : réduite sur desktop si collapsed, pleine sur mobile
-          collapsed ? "sm:w-[68px] w-64" : "w-64",
-          // Translation mobile
-          isOpen ? "translate-x-0" : "-translate-x-full sm:translate-x-0",
+          // Largeur : réduite sur desktop si collapsed, pleine w-64 sur mobile/tablette
+          collapsed ? "lg:w-[68px] w-64 shadow-2xl lg:shadow-none" : "w-64 shadow-2xl lg:shadow-none",
+          // Translation mobile & tablette
+          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         ].join(" ")}
       >
         {/* ── Haut : logo + navigation ──────────────────────────────── */}
         <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
 
           {/* Logo + bouton collapse */}
-          <div className={`flex items-center border-b border-border flex-shrink-0 ${collapsed ? "justify-center p-3" : "justify-between px-4 py-3"}`}>
+          <div className={`flex items-center border-b border-border flex-shrink-0 ${collapsed ? "lg:justify-center p-3" : "justify-between px-4 py-3"}`}>
             <Link href={homeHref} onClick={close} className="flex items-center gap-3 min-w-0">
               <img
                 src="/img/logo.png"
                 alt="SP SERVICES"
                 className="h-9 w-9 object-contain rounded-lg flex-shrink-0"
               />
-              {!collapsed && (
-                <span className="text-sm font-black tracking-tighter text-foreground leading-none truncate">
-                  SP SERVICES
-                </span>
-              )}
+              <span className={`text-sm font-black tracking-tighter text-foreground leading-none truncate ${collapsed ? "lg:hidden" : ""}`}>
+                SP SERVICES
+              </span>
             </Link>
 
-            {/* Fermer sur mobile (visible seulement quand non collapsed) */}
-            {!collapsed && (
-              <button
-                onClick={close}
-                className="sm:hidden p-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex-shrink-0"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-
-            {/* Collapse/expand — desktop uniquement */}
+            {/* Fermer sur mobile et tablette (visible sur tout écran < 1024px) */}
             <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                close();
+              }}
+              className="lg:hidden p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-colors flex-shrink-0 min-w-[40px] min-h-[40px] flex items-center justify-center cursor-pointer active:scale-95"
+              aria-label="Fermer le menu"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Collapse/expand — desktop (lg: >= 1024px) uniquement */}
+            <button
+              type="button"
               onClick={toggleCollapsed}
               title={collapsed ? "Étendre" : "Réduire"}
-              className="hidden sm:flex items-center justify-center p-1.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-primary transition-colors flex-shrink-0"
+              className="hidden lg:flex items-center justify-center p-1.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-primary transition-colors flex-shrink-0"
             >
               {collapsed
                 ? <ChevronRight className="h-4 w-4" />
@@ -177,7 +179,7 @@ export default function Sidebar() {
           </div>
 
           {/* Liens de navigation */}
-          <nav className={`flex flex-col gap-0.5 flex-1 overflow-y-auto overflow-x-hidden py-3 ${collapsed ? "px-2" : "px-3"}`}>
+          <nav className={`flex flex-col gap-0.5 flex-1 overflow-y-auto overflow-x-hidden py-3 ${collapsed ? "lg:px-2 px-3" : "px-3"}`}>
             {sidebarLinks.map((link, idx) => {
               const isActive = pathname === link.href;
               return (
@@ -188,7 +190,7 @@ export default function Sidebar() {
                   title={collapsed ? link.label : undefined}
                   className={[
                     "flex items-center rounded-xl font-bold text-sm transition-all cursor-pointer",
-                    collapsed ? "justify-center p-3" : "gap-3.5 px-3.5 py-3",
+                    collapsed ? "lg:justify-center p-3" : "gap-3.5 px-3.5 py-3",
                     isActive
                       ? "bg-primary/10 text-primary shadow-sm"
                       : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200",
@@ -197,7 +199,7 @@ export default function Sidebar() {
                   <span className={`flex-shrink-0 ${isActive ? "text-primary" : "text-zinc-400"}`}>
                     {link.icon}
                   </span>
-                  {!collapsed && <span className="truncate">{link.label}</span>}
+                  <span className={collapsed ? "lg:hidden truncate" : "truncate"}>{link.label}</span>
                 </Link>
               );
             })}
@@ -205,18 +207,19 @@ export default function Sidebar() {
         </div>
 
         {/* ── Bas : déconnexion ─────────────────────────────────────── */}
-        <div className={`border-t border-border flex-shrink-0 ${collapsed ? "p-2" : "p-3"}`}>
+        <div className={`border-t border-border flex-shrink-0 ${collapsed ? "lg:p-2 p-3" : "p-3"}`}>
           <button
+            type="button"
             onClick={() => { close(); setShowLogoutConfirm(true); }}
             title={collapsed ? "Déconnexion" : undefined}
             className={[
               "flex items-center rounded-xl font-bold text-sm",
-              "text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all w-full",
-              collapsed ? "justify-center p-3" : "gap-3 px-3.5 py-3",
+              "text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all w-full cursor-pointer",
+              collapsed ? "lg:justify-center p-3" : "gap-3 px-3.5 py-3",
             ].join(" ")}
           >
             <LogOut className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && <span>Déconnexion</span>}
+            <span className={collapsed ? "lg:hidden" : ""}>Déconnexion</span>
           </button>
         </div>
       </aside>
@@ -246,6 +249,7 @@ export default function Sidebar() {
           })}
 
           <button
+            type="button"
             onClick={toggle}
             className={`flex flex-col items-center justify-center gap-1 py-1 flex-1 transition-all ${
               isOpen ? "text-primary font-black scale-105" : "text-zinc-400 dark:text-zinc-500 font-medium"
@@ -270,3 +274,4 @@ export default function Sidebar() {
     </>
   );
 }
+

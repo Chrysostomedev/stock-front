@@ -26,9 +26,11 @@ export default function Navbar({ title, subtitle, backUrl, rightElement }: Navba
         {/* Left Part: Title or Back Button */}
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
+            type="button"
             onClick={toggle}
-            className="flex sm:hidden items-center justify-center h-10 w-10 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors"
+            className="flex lg:hidden items-center justify-center h-10 w-10 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors cursor-pointer"
             title="Menu"
+            aria-label="Ouvrir le menu"
           >
             <Menu className="h-5 w-5" />
           </button>
