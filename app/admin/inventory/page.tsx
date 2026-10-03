@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import AppLayout from "@/components/layouts/AppLayout";
 import { useShops } from "@/hooks/admin/useShops";
 import InventoryDashboardService, {
@@ -15,7 +16,7 @@ import {
 import {
   Package, TrendingUp, AlertTriangle, PackageX,
   RefreshCw, BarChart3, Layers, Clock, ChevronDown,
-  Store, AlertCircle,
+  Store, AlertCircle, ClipboardCheck,
 } from "lucide-react";
 
 /* ── Helpers ────────────────────────────────────────────────── */
@@ -109,6 +110,28 @@ export default function InventoryPage() {
   return (
     <AppLayout title="Inventaire & Stock">
       <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto w-full pb-28 md:pb-8">
+
+        {/* ── Navigation Secondaire Inventaire ── */}
+        <div className="flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3 flex-wrap">
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black bg-primary text-white shadow-sm shadow-primary/20">
+            <BarChart3 className="h-4 w-4" />
+            Tableau de Bord & Valorisation
+          </div>
+          <Link
+            href="/admin/inventory/physique"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            Inventaire Physique (Comptage & Régularisation)
+          </Link>
+          <Link
+            href="/admin/inventory/perimes"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
+          >
+            <AlertCircle className="h-4 w-4" />
+            Alertes DLC & Rapport des Pertes
+          </Link>
+        </div>
 
         {/* ── Header ── */}
         <div className="flex flex-wrap items-center justify-between gap-3">

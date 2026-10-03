@@ -61,13 +61,49 @@ export default function AdminTransfertsPage() {
         ShopService.getAll()
       ]);
       setTransfers(Array.isArray(transRes) ? transRes : transRes.data || []);
-      setShops(shopsRes);
+      setShops(Array.isArray(shopsRes) ? shopsRes : shopsRes?.data || []);
     } catch (error) {
       showToast("Erreur de chargement", "error");
     } finally {
       setLoading(false);
     }
   };
+
+  /** Nom de boutique : relation renvoyée par l'API, sinon recherche par ID dans la liste chargée */
+  const getShopName = (embedded?: { name?: string } | null, id?: string) =>
+    embedded?.name || shops.find((s) => s.id === id)?.name || "Boutique inconnue";
+
+  // Noms de produits résolus par ID (l'API ne renvoie que productId sur les lignes de transfert)
+  const [productNames, setProductNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!selectedTransfer?.items?.length) return;
+    const missingIds = selectedTransfer.items
+      .filter((i) => !i.product?.name && i.productId && !productNames[i.productId])
+      .map((i) => i.productId);
+    if (missingIds.length === 0) return;
+
+    let cancelled = false;
+    Promise.all(
+      Array.from(new Set(missingIds)).map((id) =>
+        ProductService.getById(id)
+          .then((p) => [id, p?.name] as const)
+          .catch(() => [id, undefined] as const)
+      )
+    ).then((entries) => {
+      if (cancelled) return;
+      setProductNames((prev) => {
+        const next = { ...prev };
+        entries.forEach(([id, name]) => {
+          if (name) next[id] = name;
+        });
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTransfer]);
 
   useEffect(() => {
     loadData();
@@ -186,7 +222,7 @@ export default function AdminTransfertsPage() {
     {
       header: "Source",
       accessor: (t: StockTransfer) => (
-        <span className="text-xs font-bold text-zinc-500">{t.fromShop?.name || t.fromShopId}</span>
+        <span className="text-xs font-bold text-zinc-500">{getShopName(t.fromShop, t.fromShopId)}</span>
       )
     },
     {
@@ -196,7 +232,7 @@ export default function AdminTransfertsPage() {
     {
       header: "Destination",
       accessor: (t: StockTransfer) => (
-        <span className="text-xs font-bold text-zinc-500">{t.toShop?.name || t.toShopId}</span>
+        <span className="text-xs font-bold text-zinc-500">{getShopName(t.toShop, t.toShopId)}</span>
       )
     },
     {
@@ -362,11 +398,11 @@ export default function AdminTransfertsPage() {
             <div className="grid grid-cols-2 gap-4 text-xs font-bold">
               <div>
                 <span className="text-[10px] text-zinc-400 uppercase">Depuis :</span>
-                <p className="text-sm font-black text-foreground">{selectedTransfer.fromShop?.name || selectedTransfer.fromShopId}</p>
+                <p className="text-sm font-black text-foreground">{getShopName(selectedTransfer.fromShop, selectedTransfer.fromShopId)}</p>
               </div>
               <div>
                 <span className="text-[10px] text-zinc-400 uppercase">Vers :</span>
-                <p className="text-sm font-black text-foreground">{selectedTransfer.toShop?.name || selectedTransfer.toShopId}</p>
+                <p className="text-sm font-black text-foreground">{getShopName(selectedTransfer.toShop, selectedTransfer.toShopId)}</p>
               </div>
             </div>
 
@@ -380,14 +416,18 @@ export default function AdminTransfertsPage() {
                 <thead className="bg-zinc-50 dark:bg-zinc-800 text-zinc-400 uppercase text-[10px]">
                   <tr>
                     <th className="p-3">Article</th>
-                    <th className="p-3">Quantité</th>
+                    <th className="p-3 text-center">Quantité</th>
+                    <th className="p-3 text-right">Coût Unitaire</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedTransfer.items?.map((item, idx) => (
                     <tr key={idx} className="border-t border-zinc-150 dark:border-zinc-800">
-                      <td className="p-3">{item.product?.name || item.productId}</td>
-                      <td className="p-3">{item.quantity}</td>
+                      <td className="p-3">{item.product?.name || productNames[item.productId] || "Chargement..."}</td>
+                      <td className="p-3 text-center font-bold">{item.quantity}</td>
+                      <td className="p-3 text-right text-zinc-500 font-bold">
+                        {item.unitCost != null ? `${item.unitCost} XOF` : "—"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -398,21 +438,48 @@ export default function AdminTransfertsPage() {
             <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
               {selectedTransfer.status === "PENDING" && (
                 <>
-                  <Button variant="primary" onClick={() => handleUpdateStatus(selectedTransfer.id, "IN_TRANSIT")}>
-                    Mettre en Transit (Expédier)
+                  <Button
+                    variant="primary"
+                    onClick={() => handleUpdateStatus(selectedTransfer.id, "COMPLETED")}
+                    className="font-black bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Valider la Réception en Destination (COMPLETED)
                   </Button>
-                  <Button variant="danger" onClick={() => handleUpdateStatus(selectedTransfer.id, "CANCELLED")}>
-                    Annuler le transfert
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleUpdateStatus(selectedTransfer.id, "IN_TRANSIT")}
+                    >
+                      <Truck className="h-4 w-4 mr-1.5" />
+                      Marquer en Transit
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => handleUpdateStatus(selectedTransfer.id, "CANCELLED")}
+                    >
+                      <XCircle className="h-4 w-4 mr-1.5" />
+                      Annuler le Transfert
+                    </Button>
+                  </div>
                 </>
               )}
               {selectedTransfer.status === "IN_TRANSIT" && (
                 <>
-                  <Button variant="primary" onClick={() => handleUpdateStatus(selectedTransfer.id, "COMPLETED")}>
-                    Confirmer la Réception (Valider)
+                  <Button
+                    variant="primary"
+                    onClick={() => handleUpdateStatus(selectedTransfer.id, "COMPLETED")}
+                    className="font-black bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Confirmer la Réception (COMPLETED)
                   </Button>
-                  <Button variant="danger" onClick={() => handleUpdateStatus(selectedTransfer.id, "CANCELLED")}>
-                    Annuler le transfert
+                  <Button
+                    variant="danger"
+                    onClick={() => handleUpdateStatus(selectedTransfer.id, "CANCELLED")}
+                  >
+                    <XCircle className="h-4 w-4 mr-1.5" />
+                    Annuler le Transfert (CANCELLED)
                   </Button>
                 </>
               )}

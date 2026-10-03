@@ -222,7 +222,6 @@ export async function withOfflineFallback<T>(
         createdAt: new Date().toISOString(),
       } as unknown as T;
     }
-
     // Erreur métier (400, 404, 422, 500...) → propager normalement
     throw error;
   }

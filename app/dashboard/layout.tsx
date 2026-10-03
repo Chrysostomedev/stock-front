@@ -6,7 +6,7 @@ import { Store, ChevronDown } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 function ShopSelectorBar() {
-  const { shopId, shopName, shops, setActiveShopId } = useDashboardShop();
+  const { shopId, shopName, shops, fullShops, setActiveShopId } = useDashboardShop();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -18,7 +18,17 @@ function ShopSelectorBar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const getShopLabel = (s: any) => {
+    const name = s.shop?.name || fullShops?.find((fs) => fs.id === s.shopId)?.name || s.name;
+    if (!name || name === s.shopId) {
+      return "Boutique";
+    }
+    return name;
+  };
+
   if (shops.length <= 1) return null;
+
+  const currentLabel = shopName && shopName !== shopId ? shopName : getShopLabel(shops.find((s) => s.shopId === shopId) || shops[0]);
 
   return (
     <div className="sticky top-0 z-40 bg-white/80 dark:bg-zinc-950/80 backdrop-blur border-b border-zinc-100 dark:border-zinc-800/60 px-4 py-2">
@@ -31,7 +41,7 @@ function ShopSelectorBar() {
             onClick={() => setOpen((o) => !o)}
             className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl hover:border-primary transition-all"
           >
-            <span className="text-xs font-black text-zinc-800 dark:text-zinc-100">{shopName}</span>
+            <span className="text-xs font-black text-zinc-800 dark:text-zinc-100">{currentLabel}</span>
             <ChevronDown className={`h-3 w-3 text-zinc-400 transition-transform ${open ? "rotate-180" : ""}`} />
           </button>
 
@@ -45,7 +55,7 @@ function ShopSelectorBar() {
                 >
                   <div className={`h-2 w-2 rounded-full shrink-0 ${s.shopId === shopId ? "bg-primary" : "bg-zinc-200 dark:bg-zinc-700"}`} />
                   <span className={`text-xs font-black ${s.shopId === shopId ? "text-primary" : "text-zinc-700 dark:text-zinc-300"}`}>
-                    {s.shop?.name ?? s.shopId}
+                    {getShopLabel(s)}
                   </span>
                 </button>
               ))}
@@ -60,7 +70,7 @@ function ShopSelectorBar() {
               onClick={() => setActiveShopId(s.shopId)}
               className={`shrink-0 px-3 py-1 rounded-lg text-[10px] font-black transition-all ${s.shopId === shopId ? "bg-primary text-white" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
             >
-              {s.shop?.name ?? s.shopId}
+              {getShopLabel(s)}
             </button>
           ))}
         </div>

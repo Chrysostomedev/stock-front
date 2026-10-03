@@ -22,6 +22,7 @@ export interface Product {
   minStockQty: number;
   maxStockQty?: number;
   hasBatchTracking: boolean;
+  expiryDate?: string | null;
   metadata?: any;
   isActive: boolean;
   shopId: string;
@@ -46,6 +47,7 @@ export interface CreateProductDto {
   minStockQty?: number;
   maxStockQty?: number;
   hasBatchTracking?: boolean;
+  expiryDate?: string | null;
   metadata?: any;
   isActive?: boolean;
   shopId: string;
@@ -235,6 +237,15 @@ const ProductService = {
           .then((r) => r.data),
       []
     );
+  },
+
+  /** Génération automatique de Code-barres Interne Magasin (Format GS1 200XXXXXXXXX). */
+  async generateBarcode(shopId: string): Promise<string> {
+    const response = await axiosInstance.get("/products/generate-barcode", {
+      params: { shopId },
+    });
+    if (typeof response.data === "string") return response.data;
+    return response.data?.barcode || response.data?.data?.barcode || "";
   },
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -38,13 +38,16 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const { isOpen, close, toggle } = useSidebar();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  // Lazy init : lit localStorage une seule fois côté client, sans useEffect
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("sidebar-collapsed") === "true";
-  });
+  const [collapsed, setCollapsed] = useState<boolean>(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Chargement du statut collapsed depuis localStorage après le montage client (évite le mismatch SSR)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCollapsed(localStorage.getItem("sidebar-collapsed") === "true");
+    }
+  }, []);
 
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
@@ -98,10 +101,19 @@ export default function Sidebar() {
 
   const bottomMobileLabels = ["Administration", "Transferts de Stock", "Journal d'activité"];
 
-  const userRole = user?.role as UserRole | undefined;
+  // Inférence du rôle à partir du pathname côté serveur pour garantir une hydratation 100% cohérente
+  const inferredRole: UserRole | undefined = pathname?.startsWith("/admin")
+    ? "ADMIN"
+    : pathname?.startsWith("/super")
+    ? "CASHIER"
+    : pathname?.startsWith("/quinc")
+    ? "MANAGER"
+    : undefined;
+
+  const userRole = (user?.role as UserRole | undefined) || inferredRole;
   const allowedLinks = allLinks.filter((link) => userRole && link.roles.includes(userRole));
   const bottomNavLinks = allowedLinks.filter((link) => bottomMobileLabels.includes(link.label));
-  const sidebarLinks = allowedLinks.filter((link) => !bottomMobileLabels.includes(link.label));
+  const sidebarLinks = allowedLinks;
 
   const homeHref =
     userRole === "ADMIN" || userRole === "SUPER_ADMIN"
@@ -109,6 +121,12 @@ export default function Sidebar() {
       : userRole === "CASHIER"
       ? "/super"
       : userRole === "MANAGER"
+      ? "/quinc"
+      : inferredRole === "ADMIN"
+      ? "/admin"
+      : inferredRole === "CASHIER"
+      ? "/super"
+      : inferredRole === "MANAGER"
       ? "/quinc"
       : "/login";
 

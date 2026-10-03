@@ -20,10 +20,11 @@ import {
   List, ShoppingBag, Package,
   ChevronUp, Scissors, RefreshCw, Trash2,
   Clock, Pause, Printer, ChevronLeft, ChevronRight,
-  ArrowLeft,
+  ArrowLeft, Camera,
 } from "lucide-react";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { POS_STYLES } from "@/types/post-caise-super";
+import { BarcodeScannerModal } from "@/components/ui/BarcodeScannerModal";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("fr-FR").format(Math.round(n));
@@ -42,6 +43,7 @@ export default function AdminCaisseInner() {
 
   const pendingKey = `admin_pending_carts_${shopId}`;
   const [showPendingModal, setShowPendingModal] = useState(false);
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
   const [pendingCarts, setPendingCarts] = useState<{ id: string; name: string; items: CartItem[]; timestamp: string; total: number }[]>(() => {
     try {
       const saved = localStorage.getItem(pendingKey);
@@ -459,7 +461,32 @@ export default function AdminCaisseInner() {
 
           <div className="pos-catalog">
             <div className="pos-mobile-header">
-              <div className="pos-mobile-search-wrap"><Search /><input className="pos-mobile-search" type="text" placeholder="Rechercher un produit…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+              <div className="pos-mobile-search-wrap" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Search />
+                <input className="pos-mobile-search" type="text" placeholder="Rechercher un produit…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <button
+                  type="button"
+                  onClick={() => setIsCameraScannerOpen(true)}
+                  style={{
+                    background: "var(--pos-primary, #059669)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "7px 11px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    flexShrink: 0
+                  }}
+                  title="Scanner avec la caméra"
+                >
+                  <Camera size={15} />
+                  <span>Scanner</span>
+                </button>
+              </div>
               <div className="pos-mobile-cats">
                 <button className={`pos-mob-cat ${!selectedCategory ? "active" : ""}`} onClick={() => setSelectedCategory(null)}>Tous</button>
                 {categories.map((cat) => (<button key={cat.id} className={`pos-mob-cat ${selectedCategory === cat.id ? "active" : ""}`} onClick={() => setSelectedCategory(cat.id)}>{cat.name}</button>))}
@@ -467,7 +494,32 @@ export default function AdminCaisseInner() {
             </div>
 
             <div className="pos-catalog-header">
-              <div className="pos-search-wrap" style={{ display: "flex", alignItems: "center", gap: 6 }}><Search /><input className="pos-search" type="text" placeholder="Nom, SKU, code-barre…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+              <div className="pos-search-wrap" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Search />
+                <input className="pos-search" type="text" placeholder="Nom, SKU, code-barre…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <button
+                  type="button"
+                  onClick={() => setIsCameraScannerOpen(true)}
+                  style={{
+                    background: "var(--pos-primary, #059669)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "8px 14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    flexShrink: 0
+                  }}
+                  title="Scanner avec la caméra"
+                >
+                  <Camera size={15} />
+                  <span>Scanner Caméra</span>
+                </button>
+              </div>
               <div className="pos-view-toggle">
                 <button className={`pos-view-btn ${viewMode === "grid" ? "active" : ""}`} onClick={() => setViewMode("grid")} title="Vue grille"><LayoutGrid size={16} /></button>
                 <button className={`pos-view-btn ${viewMode === "list" ? "active" : ""}`} onClick={() => setViewMode("list")} title="Vue liste"><List size={16} /></button>
@@ -757,9 +809,31 @@ export default function AdminCaisseInner() {
 
           {/* Barre recherche + catégories */}
           <div className="pdt-catbar">
-            <div className="pdt-search-box">
+            <div className="pdt-search-box" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Search size={14} />
               <input className="pdt-search" type="text" placeholder="Nom, SKU du produit…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <button
+                type="button"
+                onClick={() => setIsCameraScannerOpen(true)}
+                style={{
+                  background: "var(--pos-primary, #059669)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "6px 12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  flexShrink: 0
+                }}
+                title="Scanner avec la caméra"
+              >
+                <Camera size={14} />
+                <span>Scanner Caméra</span>
+              </button>
             </div>
             <div className="pdt-cats">
               <button className={`pdt-cat-btn${!selectedCategory ? " active" : ""}`} onClick={() => setSelectedCategory(null)}>
@@ -881,6 +955,13 @@ export default function AdminCaisseInner() {
           </div>
         </div>
       )}
+
+      {/* MODAL SCANNER CAMÉRA VIDÉO */}
+      <BarcodeScannerModal
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onScan={handleBarcodeScan}
+      />
 
     </AppLayout>
   );

@@ -15,12 +15,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  /** Normalise le numéro : retire espaces/tirets/points, supprime le préfixe +225/225 */
+  /** Nettoie les espaces, tirets et points tout en conservant le préfixe s'il est fourni */
   const normalizePhone = (raw: string): string => {
-    let p = raw.replace(/[\s\-\.]/g, "");
-    if (p.startsWith("+225")) p = p.slice(4);
-    else if (p.startsWith("225") && p.length > 9) p = p.slice(3);
-    return p;
+    return raw.replace(/[\s\-\.]/g, "");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -35,8 +32,8 @@ export default function LoginPage() {
     }
 
     const normalizedPhone = normalizePhone(phone.trim());
-    if (normalizedPhone.length < 8) {
-      setError("Numéro de téléphone invalide.");
+    if (normalizedPhone.replace(/\D/g, "").length < 8) {
+      setError("Numéro de téléphone invalide (au moins 8 chiffres requis).");
       setLoading(false);
       return;
     }

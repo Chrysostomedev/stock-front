@@ -3,8 +3,36 @@ import { LoginCredentials, LoginResponse, RegisterDto, User } from "../types/aut
 
 const AuthService = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    const response = await axiosInstance.post("/auth/login", credentials);
-    return response.data;
+    try {
+      const response = await axiosInstance.post("/auth/login", credentials);
+      return response.data;
+    } catch (err: any) {
+      // Si 404 (utilisateur introuvable) et qu'un numéro est fourni, tenter la variante avec/sans préfixe +225
+      if (err?.response?.status === 404 && credentials.phone) {
+        const rawPhone = credentials.phone.trim();
+        let altPhone = "";
+        if (rawPhone.startsWith("+225")) {
+          altPhone = rawPhone.slice(4);
+        } else if (rawPhone.startsWith("225")) {
+          altPhone = rawPhone.slice(3);
+        } else {
+          altPhone = `+225${rawPhone}`;
+        }
+
+        if (altPhone && altPhone !== rawPhone) {
+          try {
+            const altResponse = await axiosInstance.post("/auth/login", {
+              ...credentials,
+              phone: altPhone,
+            });
+            return altResponse.data;
+          } catch {
+            // Si l'alternative échoue également, on propage l'erreur originelle
+          }
+        }
+      }
+      throw err;
+    }
   },
   async register(userData: RegisterDto): Promise<User> {
     const response = await axiosInstance.post("/auth/register", userData);

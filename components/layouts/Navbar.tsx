@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSidebar } from "@/contexts/SidebarContext";
 // Badge réseau : affiche l'état online/offline + items en attente de sync
 import NetworkStatusBadge from "@/components/ui/NetworkStatusBadge";
+import ShopSelector from "@/components/ui/ShopSelector";
 
 interface NavbarProps {
   title: string;
@@ -56,8 +57,11 @@ export default function Navbar({ title, subtitle, backUrl, rightElement }: Navba
           </div>
         </div>
 
-        {/* Right Part: Profile, Notification or Custom Element */}
+        {/* Right Part: Shop Selector, Network Badge, Profile, Notification or Custom Element */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
+          {/* Sélecteur multi-boutiques global */}
+          <ShopSelector />
+
           {/* Badge réseau — toujours visible, compact en mobile */}
           <NetworkStatusBadge variant="badge" showSyncButton={true} />
 
