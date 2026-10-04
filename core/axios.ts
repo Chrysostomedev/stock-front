@@ -1,7 +1,9 @@
 import axios from "axios";
 
 const DEFAULT_API_URL = "https://back-spservice.onrender.com/api/v1";
-const ENV_API_URL = typeof process !== "undefined" ? process.env?.NEXT_PUBLIC_API_URL : undefined;
+const rawEnvUrl = typeof process !== "undefined" ? process.env?.NEXT_PUBLIC_API_URL : undefined;
+// Si l'environnement pointe encore vers l'ancien Railway, on force Render
+const ENV_API_URL = rawEnvUrl && !rawEnvUrl.includes("railway.app") ? rawEnvUrl : undefined;
 
 let API_URL = ENV_API_URL || DEFAULT_API_URL;
 if (typeof window !== "undefined") {

@@ -7,8 +7,9 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-const PROD_API_URL = "https://back-spservice-production.up.railway.app/api/v1";
-const BASE_URL = (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL) || PROD_API_URL;
+const PROD_API_URL = "https://back-spservice.onrender.com/api/v1";
+const rawEnv = typeof process !== "undefined" ? process.env?.NEXT_PUBLIC_API_URL : undefined;
+const BASE_URL = (rawEnv && !rawEnv.includes("railway.app")) ? rawEnv : PROD_API_URL;
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;

@@ -237,8 +237,8 @@ export function setupContentSecurityPolicy(customScheme: string): void {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           electronIsDev
-            ? `default-src ${customScheme}://* 'unsafe-inline' devtools://* 'unsafe-eval' data:; connect-src ${customScheme}://* https://back-spservice-production.up.railway.app wss: ws: http://localhost:* http://127.0.0.1:*`
-            : `default-src ${customScheme}://* 'unsafe-inline' data:; connect-src ${customScheme}://* https://back-spservice-production.up.railway.app wss: https:`,
+            ? `default-src ${customScheme}://* 'unsafe-inline' devtools://* 'unsafe-eval' data:; connect-src ${customScheme}://* https://back-spservice.onrender.com https://back-spservice-production.up.railway.app wss: ws: http://localhost:* http://127.0.0.1:*`
+            : `default-src ${customScheme}://* 'unsafe-inline' data:; connect-src ${customScheme}://* https://back-spservice.onrender.com https://back-spservice-production.up.railway.app wss: https:`,
         ],
       },
     });

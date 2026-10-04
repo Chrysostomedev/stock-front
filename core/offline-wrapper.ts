@@ -123,9 +123,11 @@ export function resolveImageUrl(path: string | null | undefined): string {
   // URL absolue → pas de transformation
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   // Chemin relatif → préfixer avec le backend local
+  const rawEnv = process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "");
   const backendUrl =
-    process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ||
-    "https://back-spservice-production.up.railway.app";
+    rawEnv && !rawEnv.includes("railway.app")
+      ? rawEnv
+      : "https://back-spservice.onrender.com";
   return `${backendUrl}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
