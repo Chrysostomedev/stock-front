@@ -14,6 +14,7 @@ class QuincProductService {
     limit?: number;
     search?: string;
     categoryId?: string;
+    isActive?: boolean;
   }): Promise<{ data: Product[]; total: number; totalPages: number; page: number }> {
     const fallback = { data: [] as Product[], total: 0, totalPages: 1, page: 1 };
     return withOfflineCache(
