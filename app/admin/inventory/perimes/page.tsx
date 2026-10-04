@@ -768,7 +768,7 @@ export default function InventoryPerimesPage() {
                       lossesData.items.map((item) => (
                         <tr key={item.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30">
                           <td className="py-3 px-4 text-zinc-500 font-bold whitespace-nowrap">
-                            {formatDate(item.createdAt || item.date)}
+                            {formatDate(item.createdAt || item.date || "")}
                           </td>
                           <td className="py-3 px-4">
                             <span className="font-black text-foreground">

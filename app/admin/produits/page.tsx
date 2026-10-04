@@ -276,7 +276,7 @@ export default function AdminProduitsPage() {
   const generateBarcode = async () => {
     const targetShopId = formData.shopId || (shops.length > 0 ? shops[0].id : "");
     if (!targetShopId) {
-      showToast("Veuillez d'abord sélectionner une boutique", "warning");
+      showToast("Veuillez d'abord sélectionner une boutique", "info");
       return;
     }
     setIsGeneratingBarcode(true);

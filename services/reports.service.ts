@@ -65,6 +65,7 @@ export interface LossItemDetail {
   reason: string;
   notes?: string;
   createdAt: string;
+  date?: string;
 }
 
 export interface LossesReportResponse {
