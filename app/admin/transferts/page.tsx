@@ -31,7 +31,18 @@ import {
   Clock,
   Check,
   X,
+  Barcode,
+  Scan,
 } from "lucide-react";
+import { BarcodeScannerModal } from "@/components/ui/BarcodeScannerModal";
+
+interface SelectedTransferItem {
+  productId: string;
+  name: string;
+  sku?: string;
+  barcode?: string;
+  quantity: number;
+}
 
 type StatusFilter = "ALL" | "PENDING" | "IN_TRANSIT" | "COMPLETED" | "CANCELLED";
 
@@ -55,9 +66,12 @@ export default function AdminTransfertsPage() {
   
   // Products list of the selected source shop
   const [sourceProducts, setSourceProducts] = useState<Product[]>([]);
-  const [selectedItems, setSelectedItems] = useState<{ productId: string; name: string; quantity: number }[]>([]);
+  const [selectedItems, setSelectedItems] = useState<SelectedTransferItem[]>([]);
   const [tempProductId, setTempProductId] = useState("");
   const [tempQty, setTempQty] = useState(1);
+  const [barcodeInput, setBarcodeInput] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // View Modal States
   const [isViewOpen, setIsViewOpen] = useState(false);
@@ -93,13 +107,14 @@ export default function AdminTransfertsPage() {
   const getShopName = (embedded?: { name?: string } | null, id?: string) =>
     embedded?.name || shops.find((s) => s.id === id)?.name || "Boutique inconnue";
 
-  // Noms de produits résolus par ID (l'API ne renvoie que productId sur les lignes de transfert)
+  // Noms et détails complets des produits résolus par ID (l'API ne renvoie que productId sur les lignes de transfert)
   const [productNames, setProductNames] = useState<Record<string, string>>({});
+  const [productDetails, setProductDetails] = useState<Record<string, Product>>({});
 
   useEffect(() => {
     if (!selectedTransfer?.items?.length) return;
     const missingIds = selectedTransfer.items
-      .filter((i) => !i.product?.name && i.productId && !productNames[i.productId])
+      .filter((i) => !i.product?.name && i.productId && !productDetails[i.productId])
       .map((i) => i.productId);
     if (missingIds.length === 0) return;
 
@@ -107,15 +122,22 @@ export default function AdminTransfertsPage() {
     Promise.all(
       Array.from(new Set(missingIds)).map((id) =>
         ProductService.getById(id)
-          .then((p) => [id, p?.name] as const)
+          .then((p) => [id, p] as const)
           .catch(() => [id, undefined] as const)
       )
     ).then((entries) => {
       if (cancelled) return;
+      setProductDetails((prev) => {
+        const next = { ...prev };
+        entries.forEach(([id, p]) => {
+          if (p) next[id] = p;
+        });
+        return next;
+      });
       setProductNames((prev) => {
         const next = { ...prev };
-        entries.forEach(([id, name]) => {
-          if (name) next[id] = name;
+        entries.forEach(([id, p]) => {
+          if (p?.name) next[id] = p.name;
         });
         return next;
       });
@@ -137,8 +159,11 @@ export default function AdminTransfertsPage() {
     }
     const fetchProducts = async () => {
       try {
-        const prodRes = await ProductService.getAll({ shopId: fromShopId });
-        setSourceProducts(Array.isArray(prodRes) ? prodRes : prodRes.data || []);
+        const prodRes = await ProductService.getAll({ shopId: fromShopId, limit: 1000, isActive: true });
+        const list = (Array.isArray(prodRes) ? prodRes : prodRes.data || []).filter(
+          (p: Product) => p.isActive !== false
+        );
+        setSourceProducts(list);
       } catch (error) {
         showToast("Erreur lors du chargement des produits de la boutique source", "error");
       }
@@ -147,26 +172,123 @@ export default function AdminTransfertsPage() {
     setSelectedItems([]);
   }, [fromShopId]);
 
-  const handleAddItem = () => {
-    if (!tempProductId || tempQty <= 0) return;
-    const prod = sourceProducts.find(p => p.id === tempProductId);
-    if (!prod) return;
+  // Bip sonore synthétisé lors d'un scan réussi
+  const playBeep = () => {
+    if (typeof window === "undefined") return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(1400, ctx.currentTime);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch {
+      // AudioContext optionnel selon permissions du navigateur
+    }
+  };
 
-    if (tempQty > prod.stockQty) {
-      showToast(`Stock insuffisant (${prod.stockQty} disponibles)`, "error");
+  // Traitement direct d'un scan code-barres (douchette ou caméra)
+  const handleBarcodeScan = (scannedCode: string) => {
+    const code = scannedCode.trim();
+    if (!code) return;
+    if (!fromShopId) {
+      showToast("Veuillez d'abord sélectionner une boutique source", "error");
       return;
     }
 
-    const existingIdx = selectedItems.findIndex(i => i.productId === tempProductId);
+    // Recherche par code-barres exact ou SKU
+    const found = sourceProducts.find(
+      (p) =>
+        (p.barcode && p.barcode.toLowerCase() === code.toLowerCase()) ||
+        (p.sku && p.sku.toLowerCase() === code.toLowerCase())
+    );
+
+    if (!found) {
+      showToast("Produit non trouvé avec ce code-barres dans la boutique source", "error");
+      return;
+    }
+
+    if (found.stockQty <= 0) {
+      showToast(`Stock épuisé pour « ${found.name} » (0 dispo)`, "error");
+      return;
+    }
+
+    const existingIdx = selectedItems.findIndex((i) => i.productId === found.id);
+    const currentQty = existingIdx > -1 ? selectedItems[existingIdx].quantity : 0;
+
+    if (currentQty + 1 > found.stockQty) {
+      showToast(`Stock insuffisant (${found.stockQty} maximum disponibles pour « ${found.name} »)`, "error");
+      return;
+    }
+
+    playBeep();
+
+    if (existingIdx > -1) {
+      const updated = [...selectedItems];
+      updated[existingIdx].quantity += 1;
+      setSelectedItems(updated);
+      showToast(`Quantité incrémentée : ${found.name} (${currentQty + 1})`, "success");
+    } else {
+      setSelectedItems([
+        ...selectedItems,
+        {
+          productId: found.id,
+          name: found.name,
+          sku: found.sku,
+          barcode: found.barcode,
+          quantity: 1,
+        },
+      ]);
+      showToast(`Produit ajouté au transfert : ${found.name} (+1)`, "success");
+    }
+
+    setBarcodeInput("");
+  };
+
+  const handleAddItem = () => {
+    if (!tempProductId || tempQty <= 0) return;
+    const prod = sourceProducts.find((p) => p.id === tempProductId);
+    if (!prod) return;
+
+    if (prod.stockQty <= 0) {
+      showToast(`Le produit « ${prod.name} » est en rupture de stock`, "error");
+      return;
+    }
+
+    const existingIdx = selectedItems.findIndex((i) => i.productId === tempProductId);
+    const currentQty = existingIdx > -1 ? selectedItems[existingIdx].quantity : 0;
+
+    if (currentQty + tempQty > prod.stockQty) {
+      showToast(`Stock insuffisant (${prod.stockQty} maximum disponibles)`, "error");
+      return;
+    }
+
     if (existingIdx > -1) {
       const updated = [...selectedItems];
       updated[existingIdx].quantity += tempQty;
       setSelectedItems(updated);
     } else {
-      setSelectedItems([...selectedItems, { productId: tempProductId, name: prod.name, quantity: tempQty }]);
+      setSelectedItems([
+        ...selectedItems,
+        {
+          productId: tempProductId,
+          name: prod.name,
+          sku: prod.sku,
+          barcode: prod.barcode,
+          quantity: tempQty,
+        },
+      ]);
     }
     setTempProductId("");
     setTempQty(1);
+    setProductSearch("");
   };
 
   const handleRemoveItem = (idx: number) => {
@@ -200,6 +322,10 @@ export default function AdminTransfertsPage() {
       });
       setTransfers(prev => [created, ...prev]);
       showToast("Transfert de stock initié avec succès !", "success");
+      ProductService.invalidateCache();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("catalog-updated", { detail: { fromShopId, toShopId } }));
+      }
       setIsCreateOpen(false);
       setFromShopId("");
       setToShopId("");
@@ -216,8 +342,21 @@ export default function AdminTransfertsPage() {
       setTransfers(prev => prev.map(t => t.id === id ? updated : t));
       if (selectedTransfer?.id === id) setSelectedTransfer(updated);
       showToast(`Statut du transfert mis à jour : ${newStatus}`, "success");
+      ProductService.invalidateCache();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("catalog-updated", { detail: { transferId: id, status: newStatus } }));
+      }
       setIsViewOpen(false);
       setConfirmAction(null);
+      // Rechargement immédiat des transferts et des stocks
+      await loadData();
+      if (fromShopId) {
+        const prodRes = await ProductService.getAll({ shopId: fromShopId, limit: 1000, isActive: true });
+        const list = (Array.isArray(prodRes) ? prodRes : prodRes.data || []).filter(
+          (p: Product) => p.isActive !== false
+        );
+        setSourceProducts(list);
+      }
     } catch (error: any) {
       showToast(error?.response?.data?.message || "Erreur lors de la mise à jour", "error");
     }
@@ -683,7 +822,11 @@ export default function AdminTransfertsPage() {
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
               >
                 <option value="">Sélectionner source...</option>
-                {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {shops.map((s) => (
+                  <option key={s.id} value={s.id} disabled={s.id === toShopId}>
+                    {s.name} {s.id === toShopId ? "(Destination sélectionnée)" : ""}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
@@ -694,7 +837,11 @@ export default function AdminTransfertsPage() {
                 className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
               >
                 <option value="">Sélectionner destination...</option>
-                {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                {shops.map((s) => (
+                  <option key={s.id} value={s.id} disabled={s.id === fromShopId}>
+                    {s.name} {s.id === fromShopId ? "(Source sélectionnée)" : ""}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -712,60 +859,193 @@ export default function AdminTransfertsPage() {
 
           {/* Item addition section */}
           {fromShopId && (
-            <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4 mt-2">
-              <h5 className="text-xs font-black text-foreground uppercase mb-3 flex items-center gap-1.5">
-                <Package className="h-4 w-4 text-blue-500" />
-                Sélection des Articles à Déplacer
-              </h5>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                <div className="flex flex-col gap-1.5 sm:col-span-2">
-                  <label className="text-[10px] font-bold text-zinc-400">Produit disponible dans la boutique source</label>
-                  <select
-                    value={tempProductId}
-                    onChange={(e) => setTempProductId(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
-                  >
-                    <option value="">Sélectionner produit...</option>
-                    {sourceProducts.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} (Stock: {p.stockQty})</option>
-                    ))}
-                  </select>
+            <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4 mt-2 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-black text-foreground uppercase flex items-center gap-1.5">
+                  <Package className="h-4 w-4 text-blue-500" />
+                  Sélection des Articles à Déplacer
+                </h5>
+                <span className="text-[10px] font-black text-zinc-400">
+                  {sourceProducts.length} référence{sourceProducts.length > 1 ? "s" : ""} disponible{sourceProducts.length > 1 ? "s" : ""}
+                </span>
+              </div>
+
+              {/* ── BARRE DE SCAN CODE-BARRES / DOUCHETTE / CAMÉRA ── */}
+              <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
+                <div className="relative flex-1">
+                  <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={barcodeInput}
+                    onChange={(e) => setBarcodeInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleBarcodeScan(barcodeInput);
+                      }
+                    }}
+                    placeholder="Scanner au lecteur (douchette) ou saisir code / SKU + Entrée..."
+                    className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold font-mono outline-none focus:border-blue-500"
+                  />
                 </div>
-                <div className="flex gap-2">
-                  <div className="flex flex-col gap-1.5 w-24">
-                    <label className="text-[10px] font-bold text-zinc-400">Qté</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={tempQty}
-                      onChange={(e) => setTempQty(Number(e.target.value))}
-                      className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
-                    />
-                  </div>
-                  <Button variant="secondary" className="px-4 h-[42px] font-black" onClick={handleAddItem}>
-                    + Ajouter
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    className="text-xs font-black gap-1.5"
+                    onClick={() => handleBarcodeScan(barcodeInput)}
+                    disabled={!barcodeInput.trim()}
+                  >
+                    Valider Code
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs font-black gap-1.5"
+                    onClick={() => setIsScannerOpen(true)}
+                    title="Ouvrir la caméra pour scanner"
+                  >
+                    <Scan className="h-4 w-4 text-blue-500" />
+                    Caméra
                   </Button>
                 </div>
               </div>
 
+              {/* ── RECHERCHE MULTI-CRITÈRES (NOM, SKU, CODE-BARRES) & DROPDOWN ── */}
+              <div className="flex flex-col gap-2 p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                    Recherche par Nom, SKU ou Code-barres
+                  </label>
+                  {productSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setProductSearch("")}
+                      className="text-[10px] font-bold text-zinc-400 hover:text-zinc-600"
+                    >
+                      Effacer filtre
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                  <input
+                    type="text"
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    placeholder="Filtrer la liste (ex: Paracétamol, REF-01, 37000...)"
+                    className="w-full pl-8 pr-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end pt-1">
+                  <div className="flex flex-col gap-1 sm:col-span-2">
+                    <select
+                      value={tempProductId}
+                      onChange={(e) => setTempProductId(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-blue-500 font-mono"
+                    >
+                      <option value="">-- Choisir un produit source ({sourceProducts.length}) --</option>
+                      {sourceProducts
+                        .filter((p) => {
+                          if (!productSearch.trim()) return true;
+                          const q = productSearch.toLowerCase().trim();
+                          return (
+                            p.name.toLowerCase().includes(q) ||
+                            (p.sku && p.sku.toLowerCase().includes(q)) ||
+                            (p.barcode && p.barcode.toLowerCase().includes(q))
+                          );
+                        })
+                        .map((p) => (
+                          <option key={p.id} value={p.id} disabled={p.stockQty <= 0}>
+                            [{p.sku || "SANS-SKU"}] {p.name} (Code-barres: {p.barcode || "N/A"}) - Stock source: {p.stockQty} {p.stockQty <= 0 ? "· ÉPUISÉ" : ""}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex flex-col gap-1 w-24">
+                      <label className="text-[10px] font-bold text-zinc-400">Qté</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={sourceProducts.find((p) => p.id === tempProductId)?.stockQty || undefined}
+                        value={tempQty}
+                        onChange={(e) => setTempQty(Math.max(1, Number(e.target.value) || 1))}
+                        className="w-full px-2.5 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none text-center font-mono"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="px-4 h-[38px] font-black shrink-0"
+                      onClick={handleAddItem}
+                      disabled={!tempProductId || (sourceProducts.find((p) => p.id === tempProductId)?.stockQty ?? 0) <= 0}
+                    >
+                      + Ajouter
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Carte récapitulative du produit sélectionné */}
+                {(() => {
+                  const selectedProd = sourceProducts.find((p) => p.id === tempProductId);
+                  if (!selectedProd) return null;
+                  return (
+                    <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/40 flex items-center justify-between text-xs">
+                      <div className="min-w-0 pr-3">
+                        <p className="font-black text-foreground truncate">
+                          [{selectedProd.sku || "SANS-SKU"}] {selectedProd.name}
+                        </p>
+                        <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                          Code-barres: {selectedProd.barcode || "N/A"}
+                          {selectedProd.sellingPrice ? ` · Prix vente: ${selectedProd.sellingPrice} XOF` : ""}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-[9px] uppercase font-bold text-zinc-400 block">Stock Source</span>
+                        <span
+                          className={`font-mono font-black text-sm ${
+                            selectedProd.stockQty > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"
+                          }`}
+                        >
+                          {selectedProd.stockQty} unité(s)
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
               {/* Items Table inside modal */}
               {selectedItems.length > 0 && (
-                <div className="mt-4 border rounded-xl overflow-hidden">
+                <div className="mt-2 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-sm">
                   <table className="w-full text-left text-xs font-bold">
                     <thead className="bg-zinc-50 dark:bg-zinc-800 text-zinc-400 uppercase text-[10px]">
                       <tr>
                         <th className="p-3">Désignation</th>
+                        <th className="p-3">SKU</th>
+                        <th className="p-3">Code-barres</th>
                         <th className="p-3 text-center">Quantité</th>
                         <th className="p-3 text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                       {selectedItems.map((item, idx) => (
-                        <tr key={idx} className="border-t border-zinc-150 dark:border-zinc-800">
-                          <td className="p-3 text-foreground">{item.name}</td>
+                        <tr key={idx} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/40">
+                          <td className="p-3 text-foreground font-black">{item.name}</td>
+                          <td className="p-3 text-zinc-500 font-mono text-[11px]">{item.sku || "—"}</td>
+                          <td className="p-3 text-zinc-500 font-mono text-[11px]">{item.barcode || "—"}</td>
                           <td className="p-3 text-center font-black text-blue-600">{item.quantity}</td>
                           <td className="p-3 text-right">
-                            <button onClick={() => handleRemoveItem(idx)} className="text-red-500 hover:text-red-700 p-1">
+                            <button
+                              onClick={() => handleRemoveItem(idx)}
+                              className="text-red-500 hover:text-red-700 p-1"
+                              title="Retirer cet article"
+                            >
                               <Trash2 className="h-4 w-4 inline" />
                             </button>
                           </td>
@@ -840,24 +1120,35 @@ export default function AdminTransfertsPage() {
                 <thead className="bg-zinc-50/50 dark:bg-zinc-800/40 text-zinc-400 uppercase text-[10px]">
                   <tr>
                     <th className="p-3">Article</th>
+                    <th className="p-3">SKU</th>
+                    <th className="p-3">Code-barres</th>
                     <th className="p-3 text-center">Quantité</th>
                     <th className="p-3 text-right">Coût Est.</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                  {selectedTransfer.items?.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
-                      <td className="p-3 text-foreground">
-                        {item.product?.name || productNames[item.productId] || "Chargement..."}
-                      </td>
-                      <td className="p-3 text-center font-black text-blue-600">
-                        {item.quantity}
-                      </td>
-                      <td className="p-3 text-right text-zinc-500 font-bold">
-                        {item.unitCost != null ? `${item.unitCost} FCFA` : "—"}
-                      </td>
-                    </tr>
-                  ))}
+                  {selectedTransfer.items?.map((item, idx) => {
+                    const prod = (item.product as any) || productDetails[item.productId];
+                    return (
+                      <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                        <td className="p-3 text-foreground font-black">
+                          {prod?.name || productNames[item.productId] || "Chargement..."}
+                        </td>
+                        <td className="p-3 text-zinc-500 font-mono text-[11px]">
+                          {prod?.sku || "—"}
+                        </td>
+                        <td className="p-3 text-zinc-500 font-mono text-[11px]">
+                          {prod?.barcode || "—"}
+                        </td>
+                        <td className="p-3 text-center font-black text-blue-600">
+                          {item.quantity}
+                        </td>
+                        <td className="p-3 text-right text-zinc-500 font-bold">
+                          {item.unitCost != null ? `${item.unitCost} FCFA` : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -971,6 +1262,15 @@ export default function AdminTransfertsPage() {
           variant={confirmAction.variant}
         />
       )}
+
+      {/* ── SCANNER MODAL (CAMÉRA) ── */}
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleBarcodeScan}
+        title="Scanner un Produit pour Transfert"
+        subtitle="Scannez le code-barres de l'article à transférer depuis la boutique source"
+      />
 
     </AppLayout>
   );

@@ -54,6 +54,7 @@ export default function AdminProduitsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterShop, setFilterShop] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
 
   // États pour la pagination et recherche debouncée
   const [page, setPage] = useState(1);
@@ -113,7 +114,7 @@ export default function AdminProduitsPage() {
   // Réinitialiser la page courante à 1 si le terme de recherche ou les filtres changent
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filterShop, filterCategory]);
+  }, [debouncedSearch, filterShop, filterCategory, filterStatus]);
 
   // Chargement des données statiques (au montage)
   const loadStaticData = async () => {
@@ -157,6 +158,11 @@ export default function AdminProduitsPage() {
       if (filterCategory) {
         params.categoryId = filterCategory;
       }
+      if (filterStatus === "ACTIVE") {
+        params.isActive = true;
+      } else if (filterStatus === "INACTIVE") {
+        params.isActive = false;
+      }
       
       const prodRes = await ProductService.getAll(params);
       const prodList = prodRes.data && Array.isArray(prodRes.data) ? prodRes.data : [];
@@ -178,7 +184,7 @@ export default function AdminProduitsPage() {
 
   useEffect(() => {
     loadProducts();
-  }, [page, limit, debouncedSearch, filterShop, filterCategory]);
+  }, [page, limit, debouncedSearch, filterShop, filterCategory, filterStatus]);
 
   // Gestion des modales
   const handleOpenModal = (product: Product | null = null) => {
@@ -310,13 +316,25 @@ export default function AdminProduitsPage() {
     if (!selectedProduct) return;
     try {
       await ProductService.delete(selectedProduct.id);
-      // Suppression locale — évite un rechargement complet
+      // Suppression / désactivation locale
       setProducts(prev => prev.filter(p => p.id !== selectedProduct.id));
       setTotalProducts(prev => Math.max(0, prev - 1));
-      showToast("Produit supprimé", "success");
+      showToast(
+        selectedProduct.stockQty === 0
+          ? `Ligne dupliquée "${selectedProduct.name}" désactivée / archivée`
+          : `Produit "${selectedProduct.name}" désactivé du catalogue`,
+        "success"
+      );
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("catalog-updated", {
+            detail: { productId: selectedProduct.id, action: "deleted" },
+          })
+        );
+      }
       setIsConfirmOpen(false);
     } catch (error) {
-      showToast("Erreur lors de la suppression", "error");
+      showToast("Erreur lors de la suppression / désactivation", "error");
     }
   };
 
@@ -555,14 +573,14 @@ export default function AdminProduitsPage() {
         if (diffDays < 0) {
           return (
             <Badge variant="danger" className="text-[10px] whitespace-nowrap">
-              Périmé ({Math.abs(diffDays)}j)
+              {`Périmé (${Math.abs(diffDays)}j)`}
             </Badge>
           );
         }
         if (diffDays <= 30) {
           return (
             <Badge variant="warning" className="text-[10px] whitespace-nowrap">
-              Expire dans {diffDays}j
+              {`Expire dans ${diffDays}j`}
             </Badge>
           );
         }
@@ -598,12 +616,24 @@ export default function AdminProduitsPage() {
           >
             <Layers className="h-4 w-4 text-violet-500" />
           </button>
+          {item.stockQty === 0 && item.isActive && (
+            <button
+              onClick={() => {
+                setSelectedProduct(item);
+                setIsConfirmOpen(true);
+              }}
+              title="Archiver ce doublon (Stock = 0)"
+              className="p-2 hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-lg transition-colors text-amber-600 dark:text-amber-400"
+            >
+              <Archive className="h-4 w-4" />
+            </button>
+          )}
           <button
             onClick={() => {
               setSelectedProduct(item);
               setIsConfirmOpen(true);
             }}
-            title="Supprimer"
+            title={item.stockQty === 0 ? "Désactiver / Archiver le doublon" : "Supprimer / Désactiver"}
             className="p-2 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors"
           >
             <Trash2 className="h-4 w-4 text-red-500" />
@@ -654,6 +684,16 @@ export default function AdminProduitsPage() {
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
+              </select>
+
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as any)}
+                className="flex-1 min-w-0 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-100 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-primary cursor-pointer h-11"
+              >
+                <option value="ALL">Tous les statuts</option>
+                <option value="ACTIVE">Actifs uniquement</option>
+                <option value="INACTIVE">Désactivés / Doublons archivés</option>
               </select>
 
               <Button
@@ -1086,8 +1126,14 @@ export default function AdminProduitsPage() {
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleDelete}
-        title="Supprimer ?"
-        message={`Retirer "${selectedProduct?.name}" du catalogue ?`}
+        title={selectedProduct?.stockQty === 0 ? "Désactiver / Archiver le doublon" : "Désactiver le produit"}
+        message={
+          selectedProduct && selectedProduct.stockQty > 0
+            ? `Attention : Le produit "${selectedProduct.name}" a encore un stock disponible de ${selectedProduct.stockQty} unité(s). Veuillez d'abord transférer ou épuiser son stock avant de désactiver cette ligne dupliquée, ou confirmer pour la désactiver immédiatement.`
+            : `Confirmer la désactivation de "${selectedProduct?.name}" (Stock: 0) ? La ligne sera archivée (isActive: false) et ne sera plus proposée en caisse ni dans les transferts.`
+        }
+        confirmLabel={selectedProduct?.stockQty === 0 ? "Archiver le doublon" : "Désactiver"}
+        variant="danger"
       />
 
       {/* ── Modal : Lots / Arrivages ───────────────────────────────────── */}

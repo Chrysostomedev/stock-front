@@ -44,6 +44,7 @@ interface NewOrderItem {
   sku?: string;
   quantityOrdered: number;
   unitCost: number;
+  expiryDate?: string | null;
 }
 
 interface NewReceptionItem {
@@ -52,6 +53,7 @@ interface NewReceptionItem {
   quantityOrdered: number;
   quantityAlreadyReceived: number;
   quantityReceived: number; // Newly received count in this transaction
+  expiryDate?: string | null;
 }
 
 export default function AdminDevisPage() {
@@ -254,6 +256,51 @@ export default function AdminDevisPage() {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+
+  // Badge visuel discret pour la date d'expiration
+  const renderExpiryBadge = (expiryDate?: string | null) => {
+    if (!expiryDate) {
+      return <span className="text-zinc-400 font-bold">—</span>;
+    }
+    const dateObj = new Date(expiryDate);
+    const formatted = dateObj.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expCopy = new Date(dateObj);
+    expCopy.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((expCopy.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return (
+        <div className="inline-flex flex-col items-center">
+          <span className="font-mono text-xs text-rose-600 dark:text-rose-400 font-black">{formatted}</span>
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50">
+            Périmé ({Math.abs(diffDays)}j)
+          </span>
+        </div>
+      );
+    }
+    if (diffDays <= 30) {
+      return (
+        <div className="inline-flex flex-col items-center">
+          <span className="font-mono text-xs text-amber-600 dark:text-amber-400 font-black">{formatted}</span>
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50">
+            Expire dans {diffDays}j
+          </span>
+        </div>
+      );
+    }
+    return (
+      <span className="font-mono text-xs text-zinc-700 dark:text-zinc-300 font-bold">
+        {formatted}
+      </span>
+    );
+  };
   // Creation Wizard Methods
   const addProductToOrder = (product: Product) => {
     const alreadyExists = newOrderItems.some(item => item.productId === product.id);
@@ -268,7 +315,8 @@ export default function AdminDevisPage() {
         name: product.name,
         sku: product.sku,
         quantityOrdered: 1,
-        unitCost: product.buyingPrice || 0
+        unitCost: product.buyingPrice || 0,
+        expiryDate: product.expiryDate ? product.expiryDate.split("T")[0] : null
       }
     ]);
     setProductSearch("");
@@ -287,6 +335,12 @@ export default function AdminDevisPage() {
   const updateOrderItemCost = (productId: string, cost: number) => {
     setNewOrderItems(prev =>
       prev.map(item => (item.productId === productId ? { ...item, unitCost: Math.max(0, cost) } : item))
+    );
+  };
+
+  const updateOrderItemExpiryDate = (productId: string, expiryDate: string | null) => {
+    setNewOrderItems(prev =>
+      prev.map(item => (item.productId === productId ? { ...item, expiryDate } : item))
     );
   };
 
@@ -309,6 +363,14 @@ export default function AdminDevisPage() {
       return;
     }
 
+    // Validation : Empêcher de sélectionner une date d'expiration déjà passée
+    const todayStr = new Date().toISOString().split("T")[0];
+    const pastDateItem = newOrderItems.find(item => item.expiryDate && item.expiryDate < todayStr);
+    if (pastDateItem) {
+      showToast(`La date d'expiration pour "${pastDateItem.name}" ne peut pas être passée`, "error");
+      return;
+    }
+
     setIsSubmittingOrder(true);
     try {
       const payload = {
@@ -319,7 +381,8 @@ export default function AdminDevisPage() {
         items: newOrderItems.map(item => ({
           productId: item.productId,
           quantityOrdered: item.quantityOrdered,
-          unitCost: item.unitCost
+          unitCost: item.unitCost,
+          expiryDate: item.expiryDate ? new Date(item.expiryDate).toISOString() : null
         }))
       };
 
@@ -376,7 +439,8 @@ export default function AdminDevisPage() {
       name: getProductName(item.productId),
       quantityOrdered: item.quantityOrdered,
       quantityAlreadyReceived: item.quantityReceived || 0,
-      quantityReceived: 0 // Initialize incoming received count as 0
+      quantityReceived: 0, // Initialize incoming received count as 0
+      expiryDate: item.expiryDate ? item.expiryDate.split("T")[0] : null
     }));
 
     setReceptionItems(mapping);
@@ -393,6 +457,12 @@ export default function AdminDevisPage() {
         }
         return item;
       })
+    );
+  };
+
+  const updateReceptionExpiryDate = (productId: string, expiryDate: string | null) => {
+    setReceptionItems(prev =>
+      prev.map(item => (item.productId === productId ? { ...item, expiryDate } : item))
     );
   };
 
@@ -425,16 +495,16 @@ export default function AdminDevisPage() {
         userId: user.id,
         items: validItems.map(item => ({
           productId: item.productId,
-          quantityReceived: item.quantityReceived
+          quantityReceived: item.quantityReceived,
+          expiryDate: item.expiryDate ? new Date(item.expiryDate).toISOString() : null
         }))
       };
 
       const updated = await PurchaseOrderService.receiveItems(selectedPO.id, payload as any);
       showToast("Réception enregistrée avec succès !", "success");
+      ProductService.invalidateCache();
       
       // Mise à jour locale de la commande et fermeture de la modale
-      // Les stocks produits changent côté backend mais ne sont pas affichés ici —
-      // le catalogue est rechargé à la prochaine ouverture du wizard de création
       setOrders(prev => prev.map(o => (o.id === selectedPO.id ? updated : o)));
       setSelectedPO(updated);
       setIsReceiveOpen(false);
@@ -984,6 +1054,27 @@ export default function AdminDevisPage() {
                             />
                           </div>
                         </div>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[9px] font-black uppercase text-zinc-400 tracking-widest">Date d'expiration</label>
+                            {item.expiryDate && (
+                              <button
+                                type="button"
+                                onClick={() => updateOrderItemExpiryDate(item.productId, null)}
+                                className="text-[9px] font-bold text-red-500 hover:underline"
+                              >
+                                Effacer
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            type="date"
+                            min={new Date().toISOString().split("T")[0]}
+                            value={item.expiryDate || ""}
+                            onChange={(e) => updateOrderItemExpiryDate(item.productId, e.target.value || null)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg font-bold text-xs"
+                          />
+                        </div>
                         <div className="flex justify-end text-xs font-black text-primary font-mono">
                           Total: {new Intl.NumberFormat("fr-FR").format(item.quantityOrdered * item.unitCost)} XOF
                         </div>
@@ -998,9 +1089,10 @@ export default function AdminDevisPage() {
                     <thead>
                       <tr className="bg-zinc-50 dark:bg-zinc-800/40 border-b border-zinc-150 dark:border-zinc-800/80 text-[10px] text-zinc-400 uppercase tracking-wider">
                         <th className="p-3">Désignation</th>
-                        <th className="p-3 text-center w-28">Quantité</th>
-                        <th className="p-3 text-right w-36">Coût Unit (XOF)</th>
-                        <th className="p-3 text-right w-32">Total</th>
+                        <th className="p-3 text-center w-24">Quantité</th>
+                        <th className="p-3 text-right w-28">Coût Unit (XOF)</th>
+                        <th className="p-3 text-center w-36">Date d'exp.</th>
+                        <th className="p-3 text-right w-28">Total</th>
                         <th className="p-3 text-center w-12"></th>
                       </tr>
                     </thead>
@@ -1028,9 +1120,31 @@ export default function AdminDevisPage() {
                               step="0.01"
                               value={item.unitCost}
                               onChange={(e) => updateOrderItemCost(item.productId, parseFloat(e.target.value) || 0)}
-                              className="w-28 px-2 py-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-right font-bold text-xs font-mono"
+                              className="w-24 px-2 py-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-right font-bold text-xs font-mono"
                               required
                             />
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="relative inline-flex items-center">
+                              <input
+                                type="date"
+                                min={new Date().toISOString().split("T")[0]}
+                                value={item.expiryDate || ""}
+                                onChange={(e) => updateOrderItemExpiryDate(item.productId, e.target.value || null)}
+                                className="w-32 px-2 py-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-center font-bold text-xs"
+                                title="Date d'expiration prévue (optionnelle)"
+                              />
+                              {item.expiryDate && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateOrderItemExpiryDate(item.productId, null)}
+                                  title="Effacer la date"
+                                  className="ml-1 text-zinc-400 hover:text-red-500 p-0.5"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
                           </td>
                           <td className="p-3 text-right font-mono text-zinc-900 dark:text-zinc-50">
                             {new Intl.NumberFormat("fr-FR").format(item.quantityOrdered * item.unitCost)}
@@ -1048,7 +1162,7 @@ export default function AdminDevisPage() {
                       ))}
                       {newOrderItems.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="p-8 text-center text-zinc-400 opacity-40">
+                          <td colSpan={6} className="p-8 text-center text-zinc-400 opacity-40">
                             <Archive className="h-10 w-10 mx-auto mb-2 text-zinc-400" />
                             <p className="text-xs uppercase tracking-widest font-black">Aucun produit sélectionné</p>
                           </td>
@@ -1121,9 +1235,10 @@ export default function AdminDevisPage() {
                 <thead>
                   <tr className="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-150 dark:border-zinc-850 text-zinc-400 text-[10px] uppercase tracking-wider">
                     <th className="p-3">Désignation</th>
-                    <th className="p-3 text-center w-28">Quantités</th>
-                    <th className="p-3 w-40">Progression Réception</th>
-                    <th className="p-3 text-right w-28">Coût Unit</th>
+                    <th className="p-3 text-center w-24">Quantités</th>
+                    <th className="p-3 w-36">Progression Réception</th>
+                    <th className="p-3 text-center w-32">Date d'exp.</th>
+                    <th className="p-3 text-right w-24">Coût Unit</th>
                     <th className="p-3 text-right w-28">Total</th>
                   </tr>
                 </thead>
@@ -1158,6 +1273,9 @@ export default function AdminDevisPage() {
                             <span className="text-[9px] font-bold text-zinc-500 font-mono">{percent}% reçu</span>
                           </div>
                         </td>
+                        <td className="p-3 text-center">
+                          {renderExpiryBadge(item.expiryDate)}
+                        </td>
                         <td className="p-3 text-right font-mono">{new Intl.NumberFormat("fr-FR").format(item.unitCost)} XOF</td>
                         <td className="p-3 text-right font-mono text-zinc-900 dark:text-zinc-50">
                           {new Intl.NumberFormat("fr-FR").format(ordered * item.unitCost)} XOF
@@ -1166,7 +1284,7 @@ export default function AdminDevisPage() {
                     );
                   })}
                   <tr className="bg-zinc-50/50 dark:bg-zinc-850/20 font-black text-zinc-800 dark:text-zinc-100 border-t border-zinc-200 dark:border-zinc-700">
-                    <td colSpan={4} className="p-3 text-right uppercase tracking-wider text-[9px] text-zinc-400">Montant Total Net Réel</td>
+                    <td colSpan={5} className="p-3 text-right uppercase tracking-wider text-[9px] text-zinc-400">Montant Total Net Réel</td>
                     <td className="p-3 text-right text-indigo-500 font-mono text-sm">
                       {new Intl.NumberFormat("fr-FR").format(selectedPO.totalAmount || 0)} XOF
                     </td>
@@ -1282,8 +1400,8 @@ export default function AdminDevisPage() {
               {receptionItems.map(item => {
                 const maxRemaining = item.quantityOrdered - item.quantityAlreadyReceived;
                 return (
-                  <div key={item.productId} className="flex items-center justify-between p-3.5 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-850 transition-colors">
-                    <div className="flex-1 min-w-0 pr-4">
+                  <div key={item.productId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-850 transition-colors gap-3">
+                    <div className="flex-1 min-w-0 pr-2">
                       <p className="text-xs font-black text-zinc-800 dark:text-zinc-100 truncate">{item.name}</p>
                       <p className="text-[10px] text-zinc-500 mt-0.5">
                         Commandé: <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">{item.quantityOrdered}</span> | Déjà reçu: <span className="font-mono text-emerald-600 font-bold">{item.quantityAlreadyReceived}</span>
@@ -1291,16 +1409,42 @@ export default function AdminDevisPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
+                      {/* Date d'expiration constatée */}
+                      <div className="flex flex-col items-start sm:items-end">
+                        <span className="text-[8px] text-zinc-400 uppercase font-black tracking-wider mb-1 flex items-center gap-1">
+                          DLC constatée
+                          {item.expiryDate && (
+                            <button
+                              type="button"
+                              onClick={() => updateReceptionExpiryDate(item.productId, null)}
+                              className="text-red-500 hover:underline"
+                              title="Effacer la date"
+                            >
+                              (effacer)
+                            </button>
+                          )}
+                        </span>
+                        <input
+                          type="date"
+                          value={item.expiryDate || ""}
+                          onChange={(e) => updateReceptionExpiryDate(item.productId, e.target.value || null)}
+                          className="w-32 px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-center font-bold font-mono text-xs text-zinc-800 dark:text-zinc-100 focus:border-primary outline-none"
+                        />
+                      </div>
+
+                      {/* Quantité reçue */}
                       <div className="flex flex-col items-end">
+                        <span className="text-[8px] text-zinc-400 uppercase font-black tracking-wider mb-1">
+                          Qté reçue (max: {maxRemaining})
+                        </span>
                         <input
                           type="number"
                           min="0"
                           max={maxRemaining}
                           value={item.quantityReceived}
                           onChange={(e) => updateReceptionQuantity(item.productId, parseInt(e.target.value) || 0)}
-                          className="w-24 px-3 py-1.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-center font-bold font-mono text-xs text-zinc-800 dark:text-zinc-100 focus:border-primary outline-none"
+                          className="w-20 px-2.5 py-1.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-center font-bold font-mono text-xs text-zinc-800 dark:text-zinc-100 focus:border-primary outline-none"
                         />
-                        <span className="text-[8px] text-zinc-400 mt-1 font-bold">Reste max: {maxRemaining}</span>
                       </div>
                     </div>
                   </div>
@@ -1442,9 +1586,10 @@ export default function AdminDevisPage() {
                 <tr className="bg-[#003b95] text-white text-[9px] uppercase tracking-wider border-b border-zinc-200">
                   <th className="p-3.5 text-center w-12 bg-[#003b95]">N°</th>
                   <th className="p-3.5 pl-6">Désignation des Articles</th>
-                  <th className="p-3.5 text-right w-36">Prix Unitaire</th>
-                  <th className="p-3.5 text-center w-24">Quantité</th>
-                  <th className="p-3.5 text-right w-40">Montant Total</th>
+                  <th className="p-3.5 text-center w-28">Date d'exp.</th>
+                  <th className="p-3.5 text-right w-32">Prix Unitaire</th>
+                  <th className="p-3.5 text-center w-20">Quantité</th>
+                  <th className="p-3.5 text-right w-36">Montant Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200">
@@ -1452,6 +1597,9 @@ export default function AdminDevisPage() {
                   <tr key={item.id || `print-item-${item.productId || idx}`} className="hover:bg-zinc-50/50">
                     <td className="p-3.5 text-center bg-[#003b95] text-white font-mono text-[10px]">{String(idx + 1).padStart(2, "0")}</td>
                     <td className="p-3.5 pl-6 text-zinc-800 text-[11px] font-black">{getProductName(item.productId)}</td>
+                    <td className="p-3.5 text-center font-mono text-zinc-650 text-[10px]">
+                      {item.expiryDate ? new Date(item.expiryDate).toLocaleDateString("fr-FR") : "—"}
+                    </td>
                     <td className="p-3.5 text-right font-mono text-zinc-650">{new Intl.NumberFormat("fr-FR").format(item.unitCost)} XOF</td>
                     <td className="p-3.5 text-center font-mono text-zinc-650">{item.quantityOrdered}</td>
                     <td className="p-3.5 text-right font-mono text-zinc-900 font-black">{new Intl.NumberFormat("fr-FR").format(item.quantityOrdered * item.unitCost)} XOF</td>

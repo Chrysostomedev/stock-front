@@ -203,6 +203,7 @@ export default function SuperCaissePage() {
         shopId: user.shopId,
         page,
         limit,
+        isActive: true,
       };
       if (debouncedSearch) {
         params.search = debouncedSearch;
@@ -212,7 +213,8 @@ export default function SuperCaissePage() {
       }
 
       const prodRes = await ProductService.getAll(params);
-      const prodList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
+      const rawList = prodRes?.data && Array.isArray(prodRes.data) ? prodRes.data : (Array.isArray(prodRes) ? prodRes : []);
+      const prodList = rawList.filter((p: Product) => p.isActive !== false);
       setProducts(prodList);
       setTotalPages(prodRes?.totalPages ?? 1);
       setTotalProducts(prodRes?.total ?? prodList.length);
@@ -233,6 +235,12 @@ export default function SuperCaissePage() {
 
   useEffect(() => {
     loadProducts();
+  }, [user, page, limit, debouncedSearch, selectedCategory]);
+
+  useEffect(() => {
+    const handleCatalogUpdate = () => { loadProducts(); };
+    window.addEventListener("catalog-updated", handleCatalogUpdate);
+    return () => window.removeEventListener("catalog-updated", handleCatalogUpdate);
   }, [user, page, limit, debouncedSearch, selectedCategory]);
   /* ── Session ── */
   const handleOpenSession = async () => {
@@ -287,6 +295,10 @@ export default function SuperCaissePage() {
     try {
       const product = await ProductService.getByBarcode(barcode, user.shopId);
       if (product) {
+        if (product.isActive === false) {
+          showToast(`Le produit "${product.name}" est archivé/désactivé`, "error");
+          return;
+        }
         addToCart(product);
         showToast(`${product.name} ajouté au panier`, "success");
       } else {

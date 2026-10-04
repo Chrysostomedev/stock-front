@@ -13,6 +13,7 @@
 import axiosInstance from "../../core/axios";
 import { withOfflineFallback, withOfflineCache } from "../../core/offline-wrapper";
 import { StockTransfer, CreateStockTransferDto } from "../../types/super";
+import ProductService from "../product.service";
 
 const StockTransferService = {
   /**
@@ -20,7 +21,7 @@ const StockTransferService = {
    * ⚠️ Le stock source sera déduit et le stock destination ajouté à la sync.
    */
   async create(dto: CreateStockTransferDto): Promise<StockTransfer> {
-    return withOfflineFallback({
+    const res = await withOfflineFallback({
       entityType: "StockTransfer",
       operation: "CREATE",
       payload: dto as unknown as Record<string, unknown>,
@@ -36,6 +37,8 @@ const StockTransferService = {
         updatedAt: new Date().toISOString(),
       } as unknown as StockTransfer,
     });
+    ProductService.invalidateCache();
+    return res;
   },
 
   /**
@@ -75,7 +78,7 @@ const StockTransferService = {
     status: string,
     notes?: string
   ): Promise<StockTransfer> {
-    return withOfflineFallback({
+    const res = await withOfflineFallback({
       entityType: "StockTransfer",
       operation: "UPDATE",
       payload: { id, status, ...(notes ? { notes } : {}) } as Record<string, unknown>,
@@ -91,6 +94,8 @@ const StockTransferService = {
         updatedAt: new Date().toISOString(),
       } as unknown as StockTransfer,
     });
+    ProductService.invalidateCache();
+    return res;
   },
 };
 

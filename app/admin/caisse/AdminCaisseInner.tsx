@@ -170,15 +170,16 @@ export default function AdminCaisseInner() {
     if (!shopId) return;
     setLoading(true);
     try {
-      const reqParams: any = { shopId, page, limit };
+      const reqParams: any = { shopId, page, limit, isActive: true };
       if (debouncedSearch) reqParams.search = debouncedSearch;
       if (selectedCategory) reqParams.categoryId = selectedCategory;
 
       const prodRes = await ProductService.getAll(reqParams);
-      const prodList =
+      const rawList =
         prodRes?.data && Array.isArray(prodRes.data)
           ? prodRes.data
           : Array.isArray(prodRes) ? prodRes : [];
+      const prodList = rawList.filter((p: Product) => p.isActive !== false);
 
       setProducts(prodList);
       setTotalPages(prodRes?.totalPages ?? 1);
@@ -192,6 +193,11 @@ export default function AdminCaisseInner() {
 
   useEffect(() => { loadStaticData(); }, [shopId, user]);
   useEffect(() => { loadProducts(); }, [shopId, page, limit, debouncedSearch, selectedCategory]);
+  useEffect(() => {
+    const handleCatalogUpdate = () => { loadProducts(); };
+    window.addEventListener("catalog-updated", handleCatalogUpdate);
+    return () => window.removeEventListener("catalog-updated", handleCatalogUpdate);
+  }, [shopId, page, limit, debouncedSearch, selectedCategory]);
 
   const handleOpenSession = async () => {
     if (!user?.id || !shopId) return;
@@ -265,6 +271,10 @@ export default function AdminCaisseInner() {
     try {
       const product = await ProductService.getByBarcode(barcode, shopId);
       if (product) {
+        if (product.isActive === false) {
+          showToast(`Le produit "${product.name}" est archivé/désactivé`, "error");
+          return;
+        }
         addToCart(product);
         showToast(`${product.name} ajouté au panier`, "success");
       } else {

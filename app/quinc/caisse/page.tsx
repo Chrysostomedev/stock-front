@@ -148,14 +148,18 @@ export default function QuincaillerieCaissePage() {
         shopId: user.shopId,
         page: targetPage,
         limit,
+        isActive: true,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(selectedCategory ? { categoryId: selectedCategory } : {}),
       });
-      const normalised = res.data.map((p) => ({
-        ...p,
-        stockQuantity: p.stockQuantity ?? (p as unknown as Record<string, number>).stockQty ?? (p as unknown as Record<string, number>).stock ?? 0,
-        minStockAlert:  p.minStockAlert  ?? (p as unknown as Record<string, number>).minStockQty  ?? 5,
-      }));
+      const rawData = Array.isArray(res?.data) ? res.data : [];
+      const normalised = rawData
+        .filter((p: any) => p.isActive !== false)
+        .map((p) => ({
+          ...p,
+          stockQuantity: p.stockQuantity ?? (p as unknown as Record<string, number>).stockQty ?? (p as unknown as Record<string, number>).stock ?? 0,
+          minStockAlert:  p.minStockAlert  ?? (p as unknown as Record<string, number>).minStockQty  ?? 5,
+        }));
       setProducts(normalised);
       setTotalPages(res.totalPages ?? 1);
       setTotalProducts(res.total ?? 0);
@@ -268,6 +272,10 @@ export default function QuincaillerieCaissePage() {
     try {
       const product = await QuincProductService.getByBarcode(barcode, user?.shopId);
       if (product) {
+        if ((product as any).isActive === false) {
+          showToast(`Le produit "${product.name}" est archivé/désactivé`, "error");
+          return;
+        }
         addToCart(product);
         showToast(`${product.name} ajouté au panier`, "success");
       } else {

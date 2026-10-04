@@ -10,6 +10,7 @@ import Modal from "@/components/ui/Modal";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/hooks/useAuth";
 import StockTransferService from "@/services/super/stockTransfer.service";
+import ProductService from "@/services/product.service";
 import { StockTransfer } from "@/types/super";
 import {
   ArrowRightLeft,
@@ -78,7 +79,12 @@ export default function SuperTransfertsPage() {
       setTransfers(prev => prev.map(t => t.id === id ? updated : t));
       if (selectedTransfer?.id === id) setSelectedTransfer(updated);
       showToast(`Transfert mis à jour : ${newStatus === "COMPLETED" ? "Reçu" : "Annulé"}`, "success");
+      ProductService.invalidateCache();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("catalog-updated", { detail: { transferId: id, status: newStatus } }));
+      }
       setIsViewOpen(false);
+      await loadData();
     } catch (error: any) {
       showToast(error?.response?.data?.message || "Erreur lors de la mise à jour", "error");
     }

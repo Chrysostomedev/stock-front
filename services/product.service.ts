@@ -104,6 +104,10 @@ function searchInProductCache(params?: any): Product[] {
     list = list.filter((p) => p.categoryId === params.categoryId);
   }
 
+  if (params?.isActive !== undefined) {
+    list = list.filter((p) => Boolean(p.isActive) === Boolean(params.isActive));
+  }
+
   return list;
 }
 
@@ -163,7 +167,7 @@ const ProductService = {
 
   /** Créer un produit. OFFLINE : enqueued. */
   async create(data: CreateProductDto): Promise<Product> {
-    return withOfflineFallback({
+    const res = await withOfflineFallback({
       entityType: "Product",
       operation: "CREATE",
       payload: data as unknown as Record<string, unknown>,
@@ -180,11 +184,13 @@ const ProductService = {
         updatedAt: new Date().toISOString(),
       } as Product,
     });
+    this.invalidateCache();
+    return res;
   },
 
   /** Mettre à jour un produit. OFFLINE : enqueued. */
   async update(id: string, data: Partial<CreateProductDto>): Promise<Product> {
-    return withOfflineFallback({
+    const res = await withOfflineFallback({
       entityType: "Product",
       operation: "UPDATE",
       payload: { id, ...data } as Record<string, unknown>,
@@ -197,11 +203,13 @@ const ProductService = {
         updatedAt: new Date().toISOString(),
       } as unknown as Product,
     });
+    this.invalidateCache();
+    return res;
   },
 
-  /** Supprimer un produit. OFFLINE : enqueued. */
+  /** Supprimer/désactiver un produit (isActive: false). OFFLINE : enqueued. */
   async delete(id: string) {
-    return withOfflineFallback({
+    const res = await withOfflineFallback({
       entityType: "Product",
       operation: "DELETE",
       payload: { id },
@@ -209,6 +217,26 @@ const ProductService = {
         axiosInstance.delete(`/products/${id}`).then((r) => r.data),
       optimisticResult: { success: true, id, syncStatus: "PENDING" },
     });
+    this.invalidateCache();
+    return res;
+  },
+
+  /** Invalider le cache des produits (après création, modification, transfert ou suppression) */
+  invalidateCache() {
+    if (typeof window === "undefined") return;
+    try {
+      const prefix = "sp_cache_";
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith(prefix + "products_") || key.startsWith(prefix + "product_"))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch {
+      // Ignore
+    }
   },
 
   /** Lookup exact par code-barres. Retourne le produit ou null si 404. */

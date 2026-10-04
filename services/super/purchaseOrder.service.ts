@@ -18,6 +18,7 @@ import {
   CreatePurchaseOrderDto,
   ReceiveItemsDto,
 } from "../../types/super";
+import ProductService from "../product.service";
 
 const PurchaseOrderService = {
   /**
@@ -100,7 +101,7 @@ const PurchaseOrderService = {
    * ⚠️ Le stock sera incrémenté côté backend lors de la synchronisation.
    */
   async receiveItems(id: string, dto: ReceiveItemsDto): Promise<PurchaseOrder> {
-    return withOfflineFallback({
+    const res = await withOfflineFallback({
       entityType: "PurchaseOrder",
       operation: "UPDATE",
       payload: { id, _action: "receive", ...dto } as Record<string, unknown>,
@@ -115,6 +116,8 @@ const PurchaseOrderService = {
         updatedAt: new Date().toISOString(),
       } as unknown as PurchaseOrder,
     });
+    ProductService.invalidateCache();
+    return res;
   },
 };
 
