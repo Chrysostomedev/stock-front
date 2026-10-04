@@ -212,10 +212,20 @@ export interface PurchaseOrderItem {
   quantityOrdered: number;
   quantityReceived: number;
   unitCost: number;
+  expiryDate?: string | null;
   product?: {
     id: string;
     name: string;
+    sku?: string;
+    barcode?: string;
   };
+}
+
+/**
+ * Réponse article d'un bon de commande (API DTO)
+ */
+export interface PurchaseOrderItemResponseDto extends PurchaseOrderItem {
+  purchaseOrderId?: string;
 }
 
 /**
@@ -388,26 +398,35 @@ export interface CreateSupplierDto {
   isActive?: boolean;
 }
 
+/** DTO pour un article d'un bon de commande */
+export interface CreatePurchaseOrderItemDto {
+  productId: string;
+  quantityOrdered: number;
+  unitCost: number;
+  expiryDate?: string | null;
+}
+
 /** DTO pour créer un bon de commande */
 export interface CreatePurchaseOrderDto {
   supplierId: string;
   shopId: string;
   expectedAt?: string;
   notes?: string;
-  items: {
-    productId: string;
-    quantityOrdered: number;
-    unitCost: number;
-  }[];
+  items: CreatePurchaseOrderItemDto[];
+}
+
+/** DTO pour un article lors de la réception */
+export interface ReceiveItemDetailDto {
+  productId: string;
+  itemId?: string;           // Optionnel pour rétro-compatibilité
+  quantityReceived: number;
+  expiryDate?: string | null; // Met à jour le stock & le catalogue
 }
 
 /** DTO pour réceptionner des articles d'une commande */
 export interface ReceiveItemsDto {
   userId: string;
-  items: {
-    itemId: string;           // ID de l'item dans la commande
-    quantityReceived: number;
-  }[];
+  items: ReceiveItemDetailDto[];
 }
 
 /** DTO pour créer un transfert de stock */
