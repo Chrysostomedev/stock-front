@@ -58,9 +58,11 @@ export function useNetwork(): NetworkState {
         return;
       }
 
+      const rawApiUrl = process.env.NEXT_PUBLIC_API_URL;
       const apiUrl =
-        process.env.NEXT_PUBLIC_API_URL ||
-        "https://back-spservice-production.up.railway.app/api/v1";
+        rawApiUrl && !rawApiUrl.includes("railway.app")
+          ? rawApiUrl
+          : "https://back-spservice.onrender.com/api/v1";
 
       const response = await fetch(`${apiUrl}/sync-queue/process`, {
         method: "POST",
