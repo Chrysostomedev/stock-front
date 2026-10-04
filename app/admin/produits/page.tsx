@@ -80,9 +80,11 @@ export default function AdminProduitsPage() {
     shopId: "",
     categoryId: "",
     unitId: "",
+    expiryDate: "",
     isActive: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingBarcode, setIsGeneratingBarcode] = useState(false);
 
   // États pour les modales Lots & Kit
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -194,6 +196,7 @@ export default function AdminProduitsPage() {
         shopId: product.shopId,
         categoryId: product.categoryId || "",
         unitId: product.unitId || "",
+        expiryDate: product.expiryDate ? product.expiryDate.split("T")[0] : "",
         isActive: product.isActive,
       });
     } else {
@@ -201,14 +204,16 @@ export default function AdminProduitsPage() {
       setFormData({
         name: "",
         barcode: "",
+        sku: "",
         description: "",
         buyingPrice: 0,
         sellingPrice: 0,
         stockQty: 0,
         minStockQty: 5,
-        shopId: shops.length > 0 ? shops[0].id : "",
+        shopId: filterShop || (shops.length > 0 ? shops[0].id : ""),
         categoryId: "",
         unitId: units.length > 0 ? units[0].id : "",
+        expiryDate: "",
         isActive: true,
       });
     }
@@ -242,13 +247,18 @@ export default function AdminProduitsPage() {
 
     setIsSubmitting(true);
     try {
+      const payload: Partial<CreateProductDto> = {
+        ...formData,
+        expiryDate: formData.expiryDate ? new Date(formData.expiryDate).toISOString() : null,
+      };
+
       if (selectedProduct) {
-        const updated = await ProductService.update(selectedProduct.id, formData);
+        const updated = await ProductService.update(selectedProduct.id, payload);
         // Mise à jour locale — évite un rechargement complet de la liste paginée
         setProducts(prev => prev.map(p => p.id === selectedProduct.id ? { ...p, ...updated } : p));
         showToast("Produit mis à jour", "success");
       } else {
-        await ProductService.create(formData as CreateProductDto);
+        await ProductService.create(payload as CreateProductDto);
         showToast("Produit créé avec succès", "success");
         // Recharge la page 1 pour faire apparaître le nouveau produit en tête de liste
         setPage(1);
@@ -263,15 +273,37 @@ export default function AdminProduitsPage() {
     }
   };
 
-  const generateBarcode = () => {
-    const randomDigits = Math.floor(Math.random() * 1000000000000)
-      .toString()
-      .padStart(12, "0");
-    setFormData((prev) => ({
-      ...prev,
-      barcode: `200${randomDigits.slice(3)}`,
-    }));
-    showToast("Code-barres généré", "info");
+  const generateBarcode = async () => {
+    const targetShopId = formData.shopId || (shops.length > 0 ? shops[0].id : "");
+    if (!targetShopId) {
+      showToast("Veuillez d'abord sélectionner une boutique", "info");
+      return;
+    }
+    setIsGeneratingBarcode(true);
+    try {
+      const generated = await ProductService.generateBarcode(targetShopId);
+      if (generated) {
+        setFormData((prev) => ({
+          ...prev,
+          barcode: generated,
+        }));
+        showToast(`Code-barres GS1 généré : ${generated}`, "success");
+      } else {
+        throw new Error("Code-barres vide");
+      }
+    } catch {
+      // Fallback local en cas d'indisponibilité
+      const randomDigits = Math.floor(Math.random() * 1000000000000)
+        .toString()
+        .padStart(12, "0");
+      setFormData((prev) => ({
+        ...prev,
+        barcode: `200${randomDigits.slice(3)}`,
+      }));
+      showToast("Code-barres de secours généré", "info");
+    } finally {
+      setIsGeneratingBarcode(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -510,6 +542,38 @@ export default function AdminProduitsPage() {
       ),
     },
     {
+      header: "Expiration (DLC)",
+      accessor: (item: Product) => {
+        if (!item.expiryDate) {
+          return <span className="text-xs text-zinc-400 font-bold">—</span>;
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expDate = new Date(item.expiryDate);
+        const diffDays = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+          return (
+            <Badge variant="danger" className="text-[10px] whitespace-nowrap">
+              Périmé ({Math.abs(diffDays)}j)
+            </Badge>
+          );
+        }
+        if (diffDays <= 30) {
+          return (
+            <Badge variant="warning" className="text-[10px] whitespace-nowrap">
+              Expire dans {diffDays}j
+            </Badge>
+          );
+        }
+        return (
+          <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 whitespace-nowrap">
+            {formatDate(item.expiryDate)}
+          </span>
+        );
+      },
+    },
+    {
       header: "Actions",
       accessor: (item: Product) => (
         <div className="flex items-center gap-1.5">
@@ -664,6 +728,26 @@ export default function AdminProduitsPage() {
                         </span>
                         {item.stockQty <= item.minStockQty && <AlertTriangle className="h-3 w-3 text-red-500" />}
                       </div>
+                      {item.expiryDate && (() => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const expDate = new Date(item.expiryDate);
+                        const diffDays = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                        if (diffDays < 0) {
+                          return (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/40 text-rose-600">
+                              Périmé ({Math.abs(diffDays)}j)
+                            </span>
+                          );
+                        } else if (diffDays <= 30) {
+                          return (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-600">
+                              DLC {diffDays}j
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -783,25 +867,30 @@ export default function AdminProduitsPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                Code-barres <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+                  Code-barres <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={generateBarcode}
+                  disabled={isGeneratingBarcode}
+                  className="flex items-center gap-1.5 text-[10px] font-black text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                  title="Générer un code-barres unique GS1 (200...)"
+                >
+                  <RefreshCw className={`h-3 w-3 ${isGeneratingBarcode ? "animate-spin" : ""}`} />
+                  <span>⚡ Générer GS1</span>
+                </button>
+              </div>
               <div className="relative">
                 <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
                 <input
                   type="text"
-                  placeholder="Scanner ou saisir..."
+                  placeholder="Scanner ou générer..."
                   value={formData.barcode}
                   onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                  className="w-full pl-10 pr-12 py-2.5 md:py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 md:py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
                 />
-                <button
-                  type="button"
-                  onClick={generateBarcode}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-primary transition-colors"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                </button>
               </div>
             </div>
 
@@ -834,6 +923,50 @@ export default function AdminProduitsPage() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Date de Péremption (DLC) — Phase 1 */}
+            <div className="flex flex-col gap-1.5 bg-zinc-100/70 dark:bg-zinc-800/50 p-3 rounded-2xl border border-zinc-200/70 dark:border-zinc-700/60">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black text-zinc-600 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Clock className="h-3 w-3 text-amber-500" />
+                  Date de péremption (DLC)
+                </label>
+                <span className="text-[10px] text-zinc-400 font-bold">Optionnel</span>
+              </div>
+              <input
+                type="date"
+                value={formData.expiryDate ? String(formData.expiryDate).split("T")[0] : ""}
+                onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all cursor-pointer"
+              />
+              {formData.expiryDate && (() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const exp = new Date(formData.expiryDate);
+                const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                if (diffDays < 0) {
+                  return (
+                    <div className="flex items-center gap-1.5 text-[11px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/30 px-2.5 py-1 rounded-lg">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      Attention : Cette date est déjà dépassée ({Math.abs(diffDays)} jours).
+                    </div>
+                  );
+                } else if (diffDays <= 30) {
+                  return (
+                    <div className="flex items-center gap-1.5 text-[11px] font-black text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 rounded-lg">
+                      <Clock className="h-3.5 w-3.5 shrink-0" />
+                      Alerte : Expire sous {diffDays} jour{diffDays > 1 ? "s" : ""}.
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-lg">
+                      Produit valide ({diffDays} jours restants).
+                    </div>
+                  );
+                }
+              })()}
             </div>
           </div>
 

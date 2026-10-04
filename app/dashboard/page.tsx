@@ -37,7 +37,7 @@ const paymentBar: Record<string, string> = {
 };
 
 export default function DashboardHomePage() {
-  const { shopId } = useDashboardShop();
+  const { shopId, shopName } = useDashboardShop();
   const { showToast } = useToast();
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,7 +67,7 @@ export default function DashboardHomePage() {
   return (
     <AppLayout
       title="Dashboard"
-      subtitle="Vue d'ensemble de votre boutique"
+      subtitle={shopName && shopName !== shopId ? `Vue d'ensemble — ${shopName}` : "Vue d'ensemble de votre boutique"}
       rightElement={
         <button
           onClick={load}
@@ -335,6 +335,13 @@ export default function DashboardHomePage() {
                 href: "/dashboard/reports/monthly",
                 icon: <FileText className="h-5 w-5" />,
                 gradient: "from-violet-500 to-violet-700",
+              },
+              {
+                label: "Ventes / Marges",
+                sub: "Par produit & COGS",
+                href: "/dashboard/reports/products",
+                icon: <BarChart2 className="h-5 w-5" />,
+                gradient: "from-emerald-500 to-teal-700",
               },
               {
                 label: "Stock — Alertes",

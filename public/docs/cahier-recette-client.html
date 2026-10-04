@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cahier de Recette Fonctionnel & Guide de Test — GestShop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0f172a;
+      --primary-accent: #2563eb;
+      --emerald: #059669;
+      --emerald-light: #ecfdf5;
+      --amber: #d97706;
+      --amber-light: #fffbeb;
+      --rose: #e11d48;
+      --rose-light: #fff1f2;
+      --slate-50: #f8fafc;
+      --slate-100: #f1f5f9;
+      --slate-200: #e2e8f0;
+      --slate-400: #94a3b8;
+      --slate-600: #475569;
+      --slate-700: #334155;
+      --slate-800: #1e293b;
+      --slate-900: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--slate-800);
+      background-color: #f3f4f6;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      padding: 30px 15px;
+    }
+
+    .document-container {
+      max-width: 960px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 50px 60px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.08);
+      position: relative;
+    }
+
+    /* Print Controls Bar */
+    .print-bar {
+      position: sticky;
+      top: 15px;
+      z-index: 1000;
+      background: var(--primary);
+      color: #ffffff;
+      padding: 14px 24px;
+      border-radius: 14px;
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.3);
+    }
+
+    .print-btn {
+      background: var(--primary-accent);
+      color: #ffffff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    .print-btn:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    /* Headers */
+    .header-band {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid var(--slate-200);
+      padding-bottom: 28px;
+      margin-bottom: 35px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 20px;
+    }
+
+    .brand-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      color: var(--slate-600);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .doc-meta {
+      text-align: right;
+    }
+
+    .doc-badge {
+      display: inline-block;
+      background: var(--emerald-light);
+      color: var(--emerald);
+      padding: 4px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .doc-ref {
+      font-size: 13px;
+      color: var(--slate-600);
+      font-weight: 600;
+    }
+
+    .main-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--slate-900);
+      letter-spacing: -0.8px;
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+
+    .main-subtitle {
+      font-size: 15px;
+      color: var(--slate-600);
+      margin-bottom: 30px;
+      max-width: 800px;
+    }
+
+    /* Meta Cards Grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .summary-card {
+      background: var(--slate-50);
+      border: 1px solid var(--slate-200);
+      padding: 16px;
+      border-radius: 14px;
+    }
+
+    .summary-label {
+      font-size: 11px;
+      color: var(--slate-600);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .summary-value {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--slate-900);
+    }
+
+    /* Sections */
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--slate-900);
+      margin-top: 36px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1.5px solid var(--slate-200);
+    }
+
+    .section-num {
+      width: 26px;
+      height: 26px;
+      background: var(--primary-accent);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    p {
+      margin-bottom: 14px;
+      font-size: 14px;
+      color: var(--slate-700);
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0 25px 0;
+      font-size: 13px;
+    }
+
+    th {
+      background: var(--slate-100);
+      color: var(--slate-700);
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      padding: 12px 14px;
+      border: 1px solid var(--slate-200);
+      text-align: left;
+    }
+
+    td {
+      padding: 12px 14px;
+      border: 1px solid var(--slate-200);
+      color: var(--slate-700);
+      vertical-align: top;
+    }
+
+    tr:nth-child(even) td {
+      background: #fafbfc;
+    }
+
+    /* Test Case Card */
+    .test-case {
+      border: 1.5px solid var(--slate-200);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 24px;
+      background: #ffffff;
+      page-break-inside: avoid;
+    }
+
+    .test-case-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--slate-200);
+    }
+
+    .test-case-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--slate-900);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .tag-blue { background: #dbeafe; color: #1e40af; }
+    .tag-emerald { background: var(--emerald-light); color: var(--emerald); }
+    .tag-amber { background: var(--amber-light); color: var(--amber); }
+
+    .test-meta {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 8px;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .test-meta-label {
+      font-weight: 700;
+      color: var(--slate-600);
+    }
+
+    .test-steps {
+      margin: 12px 0;
+      padding-left: 20px;
+      font-size: 13px;
+      color: var(--slate-700);
+    }
+
+    .test-steps li {
+      margin-bottom: 6px;
+    }
+
+    .callout {
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin: 12px 0;
+      display: flex;
+      gap: 10px;
+    }
+
+    .callout-success {
+      background: var(--emerald-light);
+      border-left: 4px solid var(--emerald);
+      color: #065f46;
+    }
+
+    .callout-info {
+      background: #eff6ff;
+      border-left: 4px solid var(--primary-accent);
+      color: #1e40af;
+    }
+
+    .validation-box {
+      background: var(--slate-50);
+      border: 1px dashed var(--slate-200);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .checkbox-mock {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--slate-600);
+    }
+
+    .checkbox-box {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--slate-400);
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .sign-table {
+      margin-top: 35px;
+      page-break-inside: avoid;
+    }
+
+    .sign-box {
+      height: 90px;
+      border: 1px dashed var(--slate-400);
+      border-radius: 8px;
+      background: #fafbfc;
+      margin-top: 8px;
+    }
+
+    .page-break {
+      page-break-after: always;
+      height: 0;
+    }
+
+    /* Print Styles */
+    @media print {
+      body {
+        background: transparent;
+        padding: 0;
+      }
+      .document-container {
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+      .print-bar {
+        display: none !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 15mm 12mm 15mm 12mm;
+      }
+      .test-case {
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="document-container">
+
+    <!-- Bouton d'impression pour le client / équipe -->
+    <div class="print-bar">
+      <div>
+        <strong>📄 Version imprimable et exportable en PDF</strong>
+        <div style="font-size: 12px; opacity: 0.8; margin-top: 2px;">Cliquez pour générer ou imprimer le PDF officiel A4</div>
+      </div>
+      <button class="print-btn" onclick="window.print()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M6 14h12v8H6z"></path></svg>
+        Imprimer / Sauvegarder en PDF
+      </button>
+    </div>
+
+    <!-- En-tête officiel -->
+    <div class="header-band">
+      <div class="brand">
+        <div class="brand-icon">G</div>
+        <div>
+          <div class="brand-title">GestShop Cloud POS</div>
+          <div class="brand-subtitle">Plateforme de Gestion & Vente Multi-Boutiques</div>
+        </div>
+      </div>
+      <div class="doc-meta">
+        <span class="doc-badge">Livraison Validée</span>
+        <div class="doc-ref">Réf: <strong>REC-2026-V2.4</strong></div>
+        <div class="doc-ref" style="font-size: 11px; color: var(--slate-400); margin-top: 2px;">Date: 03 Octobre 2026</div>
+      </div>
+    </div>
+
+    <!-- Titre Principal -->
+    <h1 class="main-title">Cahier de Recette Fonctionnel & Guide de Validation Client</h1>
+    <p class="main-subtitle">
+      Ce document officiel récapitule l'ensemble des <strong>nouvelles fonctionnalités développées et livrées</strong> suite à la mise à jour majeure du système. Il fournit un <strong>protocole d'essai étape par étape</strong> permettant au client et aux équipes de vérifier la conformité de chaque module.
+    </p>
+
+    <!-- Fiche d'identification -->
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">Version Logicielle</div>
+        <div class="summary-value">v2.4.0 (Turbopack)</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Chantiers Livrés</div>
+        <div class="summary-value">7 Modules Clés</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Scénarios de Test</div>
+        <div class="summary-value">8 Protocoles Pas-à-Pas</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Branche Déployée</div>
+        <div class="summary-value" style="font-family: 'JetBrains Mono', monospace; font-size: 13px;">branch_askcustomer</div>
+      </div>
+    </div>
+
+    <!-- SECTION 1 : SYNTHÈSE DES LIVRAISONS -->
+    <h2 class="section-title">
+      <span class="section-num">1</span>
+      Matrice de Synthèse des Nouvelles Fonctionnalités
+    </h2>
+    <p>
+      Le tableau ci-dessous dresse l'inventaire des composants créés et enrichis dans l'application pour répondre au cahier des charges :
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Module</th>
+          <th>Nouvelle Fonctionnalité</th>
+          <th>Écran / Route Frontend</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Codes-barres GS1 & DLC</strong></td>
+          <td>Générateur GS1/EAN-13 par boutique, calcul clé de contrôle, saisie DLC et statut fraîcheur</td>
+          <td><code>/admin/produits</code></td>
+          <td><span class="tag tag-emerald">Prêt & Testé</span></td>
+        </tr>
+        <tr>
+          <td><strong>Caisse / POS Caméra</strong></td>
+          <td>Scanner vidéo caméra (smartphone & webcam), viseur laser, torche flash, bip audio, scan continu</td>
+          <td><code>/admin/caisse</code><br><code>/super/caisse</code><br><code>/quinc/caisse</code></td>
+          <td><span class="tag tag-emerald">Prêt & Testé</span></td>
+        </tr>
+        <tr>
+          <td><strong>Caisse / Douchette</strong></td>
+          <td>Écoute en tâche de fond pour scanners USB & Bluetooth (émulation clavier rapide + Enter)</td>
+          <td><code>/admin/caisse</code></td>
+          <td><span class="tag tag-emerald">Prêt & Testé</span></td>
+        </tr>
+        <tr>
+          <td><strong>Inventaire Physique</strong></td>
+          <td>Comptage physique en direct, calcul des écarts (surplus / perte) et ajustement automatique en stock</td>
+          <td><code>/admin/inventory/physique</code></td>
+          <td><span class="tag tag-emerald">Prêt & Testé</span></td>
+        </tr>
+        <tr>
+          <td><strong>Péremptions & Rebuts</strong></td>
+          <td>Alertes DLC (Critique, Vigilance, Périmé), déclaration de mise au rebut avec motif financier</td>
+          <td><code>/admin/inventory/perimes</code></td>
+          <td><span class="tag tag-emerald">Prêt & Testé</span></td>
+        </tr>
+        <tr>
+          <td><strong>Rapports Financiers Pertes</strong></td>
+          <td>Bilan des pertes et rebuts, répartition par cause de perte, téléchargement PDF & Excel</td>
+          <td><code>/dashboard/reports/losses</code></td>
+          <td><span class="tag tag-emerald">Prêt & Testé</span></td>
+        </tr>
+        <tr>
+          <td><strong>Analyse Ventes Produits</strong></td>
+          <td>Rapport CA, Quantités, Marges brutes (XOF) et Taux de marge (%) par produit avec exports PDF/Excel</td>
+          <td><code>/dashboard/reports/products</code></td>
+          <td><span class="tag tag-emerald">Prêt & Testé</span></td>
+        </tr>
+        <tr>
+          <td><strong>Sélecteur Multi-Boutiques</strong></td>
+          <td>Résolution globale des noms de boutique (élimination définitive des UUIDs techniques dans l'UI)</td>
+          <td><code>/dashboard</code> & Navbar</td>
+          <td><span class="tag tag-emerald">Prêt & Testé</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <!-- SECTION 2 : PROTOCOLES DE TEST DÉTAILLÉS -->
+    <h2 class="section-title">
+      <span class="section-num">2</span>
+      Guide de Recette & Protocoles de Test Pas-à-Pas
+    </h2>
+    <p>
+      Suivez les procédures ci-dessous pour tester et valider chaque fonctionnalité sur votre environnement (ordinateur, tablette ou smartphone) :
+    </p>
+
+    <!-- TEST 1 -->
+    <div class="test-case">
+      <div class="test-case-header">
+        <div class="test-case-title">
+          <span>Test 1</span>
+          <span>Création Produit & Génération de Code-Barres GS1 / DLC</span>
+        </div>
+        <span class="tag tag-blue">Catalogue & Stock</span>
+      </div>
+      <div class="test-meta">
+        <div class="test-meta-label">Objectif :</div>
+        <div>Vérifier la création d'un produit avec génération d'un EAN-13 automatique et suivi de sa DLC.</div>
+        <div class="test-meta-label">Accès :</div>
+        <div>Menu <strong>Produits</strong> (<a href="http://localhost:3000/admin/produits" target="_blank">http://localhost:3000/admin/produits</a>)</div>
+      </div>
+      <ol class="test-steps">
+        <li>Cliquez sur le bouton <strong>« + Nouveau Produit »</strong> en haut à droite.</li>
+        <li>Renseignez le Nom du produit (ex: <em>« Yaourt Fraise 125g »</em>), le Prix d'achat (ex: <em>300</em>) et le Prix de vente (ex: <em>500</em>).</li>
+        <li>Dans la section <strong>Code-barres</strong>, cliquez sur le bouton bleu <strong>« Générer GS1 »</strong> :
+          <br>→ <em>Constat :</em> Un code à 13 chiffres conforme (commençant par <code>200</code>) se remplit instantanément.
+        </li>
+        <li>Dans la section <strong>Date de péremption</strong>, sélectionnez une date (ex: dans 10 jours).</li>
+        <li>Validez la création.</li>
+      </ol>
+      <div class="callout callout-success">
+        ✓ <strong>Résultat Attendu :</strong> Le produit apparaît dans la liste avec son code-barres affiché et un badge de péremption calculé (ex: <em>"Dans 10 jours"</em>).
+      </div>
+      <div class="validation-box">
+        <span>Statut de Conformité Client :</span>
+        <span class="checkbox-mock"><span class="checkbox-box"></span> Validé avec succès</span>
+      </div>
+    </div>
+
+    <!-- TEST 2 -->
+    <div class="test-case">
+      <div class="test-case-header">
+        <div class="test-case-title">
+          <span>Test 2</span>
+          <span>Vente en Caisse par Scanner Caméra Vidéo (Smartphone / Webcam)</span>
+        </div>
+        <span class="tag tag-emerald">Point de Vente (POS)</span>
+      </div>
+      <div class="test-meta">
+        <div class="test-meta-label">Objectif :</div>
+        <div>Scanner un produit avec la caméra du téléphone/PC et l'ajouter immédiatement au panier.</div>
+        <div class="test-meta-label">Accès :</div>
+        <div>Menu <strong>Caisse</strong> (<a href="http://localhost:3000/admin/caisse" target="_blank">http://localhost:3000/admin/caisse</a>)</div>
+      </div>
+      <ol class="test-steps">
+        <li>Si la caisse est fermée, ouvrez la session avec un fond initial (ex: <em>10 000 XOF</em>).</li>
+        <li>À côté de la barre de recherche des produits, cliquez sur le bouton vert <strong>« Scanner Caméra »</strong>.</li>
+        <li>Autorisez l'accès à la caméra si le navigateur vous le demande.</li>
+        <li>Visez le code-barres d'un produit (ou affichez un code-barres sur l'écran d'un smartphone).</li>
+        <li>Observez :
+          <br>→ <strong>Bip sonore de caisse</strong> émis instantanément.
+          <br>→ <strong>Flash vert</strong> sur le viseur laser.
+          <br>→ Notification toast de confirmation d'ajout.
+          <br>→ Le produit est ajouté au panier avec quantité incrémentée.
+        </li>
+        <li>Testez les boutons du scanner :
+          <br>→ <em>Bascule caméra</em> : change d'objectif si plusieurs caméras existent.
+          <br>→ <em>Lampe torche / Flash</em> : éclaire le code si supporté par l'appareil.
+          <br>→ <em>Scan continu activé</em> : permet d'enchaîner 3 produits sans refermer la caméra.
+        </li>
+      </ol>
+      <div class="callout callout-success">
+        ✓ <strong>Résultat Attendu :</strong> Détection ultra-rapide (<0.5s), ajout direct au ticket, zéro saisie clavier obligatoire.
+      </div>
+      <div class="validation-box">
+        <span>Statut de Conformité Client :</span>
+        <span class="checkbox-mock"><span class="checkbox-box"></span> Validé avec succès</span>
+      </div>
+    </div>
+
+    <!-- TEST 3 -->
+    <div class="test-case">
+      <div class="test-case-header">
+        <div class="test-case-title">
+          <span>Test 3</span>
+          <span>Vente en Caisse avec Douchette Physique (USB / Bluetooth)</span>
+        </div>
+        <span class="tag tag-emerald">Matériel Caisse</span>
+      </div>
+      <div class="test-meta">
+        <div class="test-meta-label">Objectif :</div>
+        <div>Vérifier le scan automatique en tâche de fond avec un lecteur de code-barres physique.</div>
+        <div class="test-meta-label">Accès :</div>
+        <div>Écran de caisse actif (<a href="http://localhost:3000/admin/caisse" target="_blank">http://localhost:3000/admin/caisse</a>)</div>
+      </div>
+      <ol class="test-steps">
+        <li>Branchez votre douchette USB ou appairez la douchette Bluetooth au PC/tablette.</li>
+        <li>Sans cliquer dans aucun champ de saisie (les mains libres), visez le produit et appuyez sur la gâchette.</li>
+        <li>Observez l'ajout immédiat au panier.</li>
+      </ol>
+      <div class="callout callout-success">
+        ✓ <strong>Résultat Attendu :</strong> Le hook global intercepte la frappe haute-vitesse et ajoute l'article sans nécessiter de focus manuel.
+      </div>
+      <div class="validation-box">
+        <span>Statut de Conformité Client :</span>
+        <span class="checkbox-mock"><span class="checkbox-box"></span> Validé avec succès</span>
+      </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- TEST 4 -->
+    <div class="test-case">
+      <div class="test-case-header">
+        <div class="test-case-title">
+          <span>Test 4</span>
+          <span>Inventaire Physique & Réconciliation des Écarts de Stock</span>
+        </div>
+        <span class="tag tag-amber">Contrôle Stock</span>
+      </div>
+      <div class="test-meta">
+        <div class="test-meta-label">Objectif :</div>
+        <div>Saisir un comptage physique en rayon, identifier les écarts financiers et ajuster le stock réel.</div>
+        <div class="test-meta-label">Accès :</div>
+        <div>Menu <strong>Inventaire > Physique</strong> (<a href="http://localhost:3000/admin/inventory/physique" target="_blank">http://localhost:3000/admin/inventory/physique</a>)</div>
+      </div>
+      <ol class="test-steps">
+        <li>Sélectionnez la boutique à inventorier via le sélecteur.</li>
+        <li>Pour un produit (ex: stock théorique = 20), saisissez un comptage physique réel de <em>18</em> (manque de 2).</li>
+        <li>Pour un autre produit (stock théorique = 5), saisissez un comptage de <em>7</em> (surplus de 2).</li>
+        <li>Vérifiez la section de synthèse : le montant total des écarts en XOF s'ajuste dynamiquement.</li>
+        <li>Cliquez sur <strong>« Valider et ajuster le stock »</strong>.</li>
+      </ol>
+      <div class="callout callout-success">
+        ✓ <strong>Résultat Attendu :</strong> L'inventaire est enregistré, les quantités en stock sont réajustées en base de données et un historique d'écart est consigné.
+      </div>
+      <div class="validation-box">
+        <span>Statut de Conformité Client :</span>
+        <span class="checkbox-mock"><span class="checkbox-box"></span> Validé avec succès</span>
+      </div>
+    </div>
+
+    <!-- TEST 5 -->
+    <div class="test-case">
+      <div class="test-case-header">
+        <div class="test-case-title">
+          <span>Test 5</span>
+          <span>Surveillance des Péremptions & Mise au Rebut (Write-off)</span>
+        </div>
+        <span class="tag tag-amber">Qualité & DLC</span>
+      </div>
+      <div class="test-meta">
+        <div class="test-meta-label">Objectif :</div>
+        <div>Isoler les produits périmés ou approchant de la DLC et les déclarer au rebut avec motif financier.</div>
+        <div class="test-meta-label">Accès :</div>
+        <div>Menu <strong>Inventaire > Produits Périmés</strong> (<a href="http://localhost:3000/admin/inventory/perimes" target="_blank">http://localhost:3000/admin/inventory/perimes</a>)</div>
+      </div>
+      <ol class="test-steps">
+        <li>Consultez la grille des alertes : vérifiez les badges <em>« Périmé »</em> (rouge), <em>« Critique &lt;7j »</em> (orange), <em>« Vigilance &lt;30j »</em> (jaune).</li>
+        <li>Sur une ligne de produit périmé, cliquez sur le bouton <strong>« Mettre au rebut »</strong>.</li>
+        <li>Une modale s'ouvre : indiquez la quantité à détruire (ex: <em>3</em>) et sélectionnez le motif (ex: <code>REBUT_PERIME</code>).</li>
+        <li>Confirmez la mise au rebut.</li>
+      </ol>
+      <div class="callout callout-success">
+        ✓ <strong>Résultat Attendu :</strong> Le stock du produit est décrémenté, la perte financière est comptabilisée dans le rapport des pertes.
+      </div>
+      <div class="validation-box">
+        <span>Statut de Conformité Client :</span>
+        <span class="checkbox-mock"><span class="checkbox-box"></span> Validé avec succès</span>
+      </div>
+    </div>
+
+    <!-- TEST 6 -->
+    <div class="test-case">
+      <div class="test-case-header">
+        <div class="test-case-title">
+          <span>Test 6</span>
+          <span>Rapports Financiers des Pertes & Rebuts (Export PDF & Excel)</span>
+        </div>
+        <span class="tag tag-blue">Finance & Audit</span>
+      </div>
+      <div class="test-meta">
+        <div class="test-meta-label">Objectif :</div>
+        <div>Auditer le coût financier global des pertes et exporter les fiches comptables.</div>
+        <div class="test-meta-label">Accès :</div>
+        <div>Menu <strong>Rapports > Pertes & Rebuts</strong></div>
+      </div>
+      <ol class="test-steps">
+        <li>Consultez les KPIs de tête : Total valeur perdue (XOF), Nombre d'articles mis au rebut, Répartition par motif.</li>
+        <li>Cliquez sur le bouton <strong>« Exporter PDF »</strong> → Vérifiez le téléchargement du document PDF de synthèse.</li>
+        <li>Cliquez sur le bouton <strong>« Exporter Excel »</strong> → Vérifiez le téléchargement du classeur <code>.xlsx</code> tabulaire.</li>
+      </ol>
+      <div class="callout callout-success">
+        ✓ <strong>Résultat Attendu :</strong> Les fichiers téléchargés contiennent l'ensemble des lignes avec les montants précis en XOF.
+      </div>
+      <div class="validation-box">
+        <span>Statut de Conformité Client :</span>
+        <span class="checkbox-mock"><span class="checkbox-box"></span> Validé avec succès</span>
+      </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- TEST 7 -->
+    <div class="test-case">
+      <div class="test-case-header">
+        <div class="test-case-title">
+          <span>Test 7</span>
+          <span>Analyse Approfondie des Ventes par Produit & Rentabilité</span>
+        </div>
+        <span class="tag tag-blue">Performance Commerciale</span>
+      </div>
+      <div class="test-meta">
+        <div class="test-meta-label">Objectif :</div>
+        <div>Mesurer le chiffre d'affaires, les coûts d'achat et la marge bénéficiaire par article.</div>
+        <div class="test-meta-label">Accès :</div>
+        <div>Menu <strong>Rapports > Ventes par produit</strong> (<a href="http://localhost:3000/dashboard/reports/products" target="_blank">http://localhost:3000/dashboard/reports/products</a>)</div>
+      </div>
+      <ol class="test-steps">
+        <li>Définissez la période d'analyse (ex: Mois en cours).</li>
+        <li>Filtrez par catégorie ou saisissez une recherche de produit.</li>
+        <li>Vérifiez les colonnes du tableau :
+          <br>→ <em>Quantité vendue</em>
+          <br>→ <em>Chiffre d'Affaires total (XOF)</em>
+          <br>→ <em>Coût d'achat total (COGS)</em>
+          <br>→ <em>Marge brute (XOF)</em>
+          <br>→ <em>Taux de marge (%)</em> avec badge coloré selon la rentabilité.
+        </li>
+        <li>Cliquez sur les en-têtes de colonne pour tester le tri dynamique (tri par marge décroissante).</li>
+        <li>Cliquez sur <strong>« Exporter PDF »</strong> ou <strong>« Exporter Excel »</strong>.</li>
+      </ol>
+      <div class="callout callout-success">
+        ✓ <strong>Résultat Attendu :</strong> Analyse financière complète, indicateurs de marge justes et exports sans erreur.
+      </div>
+      <div class="validation-box">
+        <span>Statut de Conformité Client :</span>
+        <span class="checkbox-mock"><span class="checkbox-box"></span> Validé avec succès</span>
+      </div>
+    </div>
+
+    <!-- TEST 8 -->
+    <div class="test-case">
+      <div class="test-case-header">
+        <div class="test-case-title">
+          <span>Test 8</span>
+          <span>Résolution Globale du Multi-Boutiques (Élimination des UUIDs)</span>
+        </div>
+        <span class="tag tag-emerald">Ergonomie & UX</span>
+      </div>
+      <div class="test-meta">
+        <div class="test-meta-label">Objectif :</div>
+        <div>Vérifier que les sélecteurs de boutiques affichent les vrais noms commerciaux et aucun identifiant technique.</div>
+        <div class="test-meta-label">Accès :</div>
+        <div>Tableau de bord (<a href="http://localhost:3000/dashboard" target="_blank">http://localhost:3000/dashboard</a>)</div>
+      </div>
+      <ol class="test-steps">
+        <li>Rendez-vous sur la page d'accueil du Dashboard.</li>
+        <li>Observez la barre supérieure de sélection de boutique :
+          <br>→ Le bouton principal affiche le <strong>nom lisible</strong> (ex: <em>« Boutique Cocody »</em>) et non <code>cm8abc...</code>.
+          <br>→ La liste déroulante affiche tous les noms avec leurs adresses.
+          <br>→ Les onglets horizontaux affichent les noms clairs.
+        </li>
+        <li>Observez le sous-titre de la page : <em>« Vue d'ensemble — [Nom Boutique] »</em>.</li>
+        <li>Changez de boutique active : l'ensemble des chiffres et graphiques du Dashboard se mettent à jour instantanément pour la boutique sélectionnée.</li>
+      </ol>
+      <div class="callout callout-success">
+        ✓ <strong>Résultat Attendu :</strong> Expérience utilisateur fluide, zéro affichage de chaîne UUID brute.
+      </div>
+      <div class="validation-box">
+        <span>Statut de Conformité Client :</span>
+        <span class="checkbox-mock"><span class="checkbox-box"></span> Validé avec succès</span>
+      </div>
+    </div>
+
+    <!-- SECTION 3 : PROCÈS-VERBAL DE RECETTE -->
+    <h2 class="section-title">
+      <span class="section-num">3</span>
+      Procès-Verbal de Validation & Signatures
+    </h2>
+    <p>
+      Le présent document atteste que l'ensemble des modules décrits ci-dessus ont été déployés, testés et jugés conformes aux spécifications fonctionnelles du projet GestShop.
+    </p>
+
+    <table class="sign-table">
+      <thead>
+        <tr>
+          <th style="width: 50%;">Pour l'Équipe Technique (Développement)</th>
+          <th style="width: 50%;">Pour le Client / Direction Métier</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <strong>Nom :</strong> Lead Développeur Next.js<br>
+            <strong>Date :</strong> 03 / 10 / 2026<br>
+            <strong>Mention :</strong> <em>« Conforme aux spécifications v2.4 »</em>
+            <div class="sign-box"></div>
+          </td>
+          <td>
+            <strong>Nom :</strong> Responsable Projet Client<br>
+            <strong>Date :</strong> ____ / ____ / 2026<br>
+            <strong>Mention :</strong> <em>« Bon pour mise en exploitation »</em>
+            <div class="sign-box"></div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top: 30px; text-align: center; font-size: 11px; color: var(--slate-400);">
+      GestShop Multi-Store Retail Platform • Document généré automatiquement pour le suivi de recette client • Confidentiel
+    </div>
+
+  </div>
+
+</body>
+</html>

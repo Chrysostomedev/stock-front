@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SP Management Services",
-  description: "Application globale de gestion et de suivi des stocks pour les commerçants",
+  description: "Application globale de gestion et de suivi des stocks de SPSERVICE",
   manifest: "/manifest.json",
   themeColor: "#2563EB",
   appleWebApp: {

@@ -76,15 +76,23 @@ function getStoredUser(): User | null {
 }
 
 export function useAuth() {
-  // Initialisation immédiate depuis localStorage — évite le flash blanc
-  const [user, setUser] = useState<User | null>(() => getStoredUser());
+  // Initialisation stable pour garantir une stricte parité SSR / Hydratation Client
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    () => !!getStoredToken()
-  );
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
+    // Restauration synchrone côté client après le montage
+    const initialUser = getStoredUser();
+    if (initialUser) {
+      setUser(initialUser);
+    }
+    const initialToken = getStoredToken();
+    if (initialToken) {
+      setIsAuthenticated(true);
+    }
+
     const checkAuth = async () => {
       const token = getStoredToken();
       if (!token) {

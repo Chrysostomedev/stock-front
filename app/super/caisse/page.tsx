@@ -23,10 +23,11 @@ import {
   Smartphone, Banknote, Wallet, User, X, LayoutGrid,
   List, ShoppingBag, Package,
   ChevronUp, Scissors, RefreshCw, Trash2,
-  Clock, Pause, Printer, ChevronLeft, ChevronRight
+  Clock, Pause, Printer, ChevronLeft, ChevronRight, Camera
 } from "lucide-react";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { POS_STYLES } from "@/types/post-caise-super";
+import { BarcodeScannerModal } from "@/components/ui/BarcodeScannerModal";
 
 /* ─────────────────────────────────────────────────────────
    UTILITAIRES
@@ -49,6 +50,7 @@ export default function SuperCaissePage() {
   const { isOnline } = useNetworkContext();
 // États pour les paniers en attente
   const [showPendingModal, setShowPendingModal] = useState(false);
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
   const [pendingCarts, setPendingCarts] = useState<{ id: string; name: string; items: CartItem[]; timestamp: string; total: number }[]>(() => {
     try {
       const saved = localStorage.getItem("super_pending_carts");
@@ -608,7 +610,7 @@ export default function SuperCaissePage() {
           <div className="pos-catalog">
             {/* ── Header mobile : search + catégories toujours visibles ── */}
             <div className="pos-mobile-header">
-              <div className="pos-mobile-search-wrap">
+              <div className="pos-mobile-search-wrap" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <Search />
                 <input
                   className="pos-mobile-search"
@@ -617,6 +619,28 @@ export default function SuperCaissePage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setIsCameraScannerOpen(true)}
+                  style={{
+                    background: "var(--pos-primary, #059669)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "7px 11px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    flexShrink: 0
+                  }}
+                  title="Scanner avec la caméra"
+                >
+                  <Camera size={15} />
+                  <span>Scanner</span>
+                </button>
               </div>
               <div className="pos-mobile-cats">
                 <button
@@ -638,7 +662,7 @@ export default function SuperCaissePage() {
             </div>
             {/* Header desktop */}
             <div className="pos-catalog-header">
-              <div className="pos-search-wrap" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div className="pos-search-wrap" style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Search />
                 <input
                   className="pos-search"
@@ -647,6 +671,28 @@ export default function SuperCaissePage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setIsCameraScannerOpen(true)}
+                  style={{
+                    background: "var(--pos-primary, #059669)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "8px 14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    flexShrink: 0
+                  }}
+                  title="Scanner avec la caméra"
+                >
+                  <Camera size={15} />
+                  <span>Scanner Caméra</span>
+                </button>
               </div>
               <div className="pos-view-toggle">
                 <button
@@ -1189,9 +1235,31 @@ export default function SuperCaissePage() {
 
           {/* Barre recherche + catégories */}
           <div className="pdt-catbar">
-            <div className="pdt-search-box">
+            <div className="pdt-search-box" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Search size={14} />
               <input className="pdt-search" type="text" placeholder="Nom, SKU, code-barre…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <button
+                type="button"
+                onClick={() => setIsCameraScannerOpen(true)}
+                style={{
+                  background: "var(--pos-primary, #059669)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "6px 12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  flexShrink: 0
+                }}
+                title="Scanner avec la caméra"
+              >
+                <Camera size={14} />
+                <span>Scanner Caméra</span>
+              </button>
             </div>
             <div className="pdt-cats">
               <button className={`pdt-cat-btn${!selectedCategory ? " active" : ""}`} onClick={() => setSelectedCategory(null)}>
@@ -1359,6 +1427,13 @@ export default function SuperCaissePage() {
           </div>
         </div>
       )}
+
+      {/* MODAL SCANNER CAMÉRA VIDÉO */}
+      <BarcodeScannerModal
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onScan={handleBarcodeScan}
+      />
     </AppLayout>
   );
 }

@@ -29,7 +29,6 @@ export default function Button({
     outline:
       "border-2 border-zinc-200 text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800",
   };
-
   const sizeClasses = {
     sm: "px-4 py-2 text-xs",
     md: "px-6 py-3 text-sm",

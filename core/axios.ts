@@ -1,12 +1,14 @@
 import axios from "axios";
 
-const PROD_API_URL = "https://back-spservice.onrender.com/api/v1";
-let API_URL = PROD_API_URL;
+const DEFAULT_API_URL = "http://localhost:3001/api/v1";
+const ENV_API_URL = typeof process !== "undefined" ? process.env?.NEXT_PUBLIC_API_URL : undefined;
+
+let API_URL = ENV_API_URL || DEFAULT_API_URL;
 if (typeof window !== "undefined") {
   try {
     const proto = window.location.protocol || "";
     if (proto.startsWith("capacitor-electron")) {
-      API_URL = PROD_API_URL;
+      API_URL = ENV_API_URL || DEFAULT_API_URL;
     }
   } catch {
     // ignore

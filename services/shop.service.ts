@@ -44,6 +44,15 @@ const ShopService = {
     );
   },
 
+  /** Boutiques autorisées pour un utilisateur (avec support SUPER_ADMIN). OFFLINE : cache. */
+  async getUserShops(userId: string): Promise<Shop[]> {
+    return withOfflineCache(
+      `user_shops_${userId}`,
+      () => axiosInstance.get(`/users/${userId}/shops`).then((r) => r.data),
+      []
+    );
+  },
+
   /** Détail boutique. OFFLINE : cache. */
   async getById(id: string): Promise<Shop> {
     return withOfflineCache(

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import AppLayout from "@/components/layouts/AppLayout";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -15,19 +15,25 @@ import ShopService, { Shop } from "@/services/shop.service";
 import ProductService, { Product } from "@/services/product.service";
 import { StockTransfer, StockTransferStatus } from "@/types/super";
 import {
-  ArrowRightLeft,
   Plus,
   Search,
   Building2,
   Calendar,
-  AlertCircle,
   CheckCircle,
+  CheckCircle2,
   XCircle,
   Truck,
   ArrowRight,
   Eye,
-  Trash2
+  Trash2,
+  Package,
+  Boxes,
+  Clock,
+  Check,
+  X,
 } from "lucide-react";
+
+type StatusFilter = "ALL" | "PENDING" | "IN_TRANSIT" | "COMPLETED" | "CANCELLED";
 
 export default function AdminTransfertsPage() {
   const { user } = useAuth();
@@ -36,6 +42,10 @@ export default function AdminTransfertsPage() {
   const [transfers, setTransfers] = useState<StockTransfer[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filtres
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Modal Creation States
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -53,6 +63,16 @@ export default function AdminTransfertsPage() {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<StockTransfer | null>(null);
 
+  // Quick Action Confirmation State
+  const [confirmAction, setConfirmAction] = useState<{
+    id: string;
+    status: string;
+    title: string;
+    message: string;
+    confirmLabel: string;
+    variant: "primary" | "danger";
+  } | null>(null);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -61,13 +81,49 @@ export default function AdminTransfertsPage() {
         ShopService.getAll()
       ]);
       setTransfers(Array.isArray(transRes) ? transRes : transRes.data || []);
-      setShops(shopsRes);
+      setShops(Array.isArray(shopsRes) ? shopsRes : shopsRes?.data || []);
     } catch (error) {
       showToast("Erreur de chargement", "error");
     } finally {
       setLoading(false);
     }
   };
+
+  /** Nom de boutique : relation renvoyée par l'API, sinon recherche par ID dans la liste chargée */
+  const getShopName = (embedded?: { name?: string } | null, id?: string) =>
+    embedded?.name || shops.find((s) => s.id === id)?.name || "Boutique inconnue";
+
+  // Noms de produits résolus par ID (l'API ne renvoie que productId sur les lignes de transfert)
+  const [productNames, setProductNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!selectedTransfer?.items?.length) return;
+    const missingIds = selectedTransfer.items
+      .filter((i) => !i.product?.name && i.productId && !productNames[i.productId])
+      .map((i) => i.productId);
+    if (missingIds.length === 0) return;
+
+    let cancelled = false;
+    Promise.all(
+      Array.from(new Set(missingIds)).map((id) =>
+        ProductService.getById(id)
+          .then((p) => [id, p?.name] as const)
+          .catch(() => [id, undefined] as const)
+      )
+    ).then((entries) => {
+      if (cancelled) return;
+      setProductNames((prev) => {
+        const next = { ...prev };
+        entries.forEach(([id, name]) => {
+          if (name) next[id] = name;
+        });
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTransfer]);
 
   useEffect(() => {
     loadData();
@@ -161,49 +217,126 @@ export default function AdminTransfertsPage() {
       if (selectedTransfer?.id === id) setSelectedTransfer(updated);
       showToast(`Statut du transfert mis à jour : ${newStatus}`, "success");
       setIsViewOpen(false);
+      setConfirmAction(null);
     } catch (error: any) {
       showToast(error?.response?.data?.message || "Erreur lors de la mise à jour", "error");
     }
   };
 
   const getStatusBadge = (status: string) => {
-    const map: any = {
-      PENDING: <Badge variant="outline">En attente</Badge>,
-      IN_TRANSIT: <Badge variant="warning">En transit</Badge>,
-      COMPLETED: <Badge variant="success">Reçu</Badge>,
-      CANCELLED: <Badge variant="danger">Annulé</Badge>
-    };
-    return map[status] || <Badge variant="outline">{status}</Badge>;
+    switch (status) {
+      case "PENDING":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+            En attente
+          </span>
+        );
+      case "IN_TRANSIT":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30">
+            <Truck className="w-3 h-3" />
+            En transit
+          </span>
+        );
+      case "COMPLETED":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+            <CheckCircle2 className="w-3 h-3" />
+            Reçu / Validé
+          </span>
+        );
+      case "CANCELLED":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+            <XCircle className="w-3 h-3" />
+            Annulé
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+            {status}
+          </span>
+        );
+    }
   };
 
+  // Statistiques en direct
+  const countsByStatus = useMemo(() => {
+    return {
+      all: transfers.length,
+      pending: transfers.filter(t => t.status === "PENDING").length,
+      inTransit: transfers.filter(t => t.status === "IN_TRANSIT").length,
+      completed: transfers.filter(t => t.status === "COMPLETED").length,
+      cancelled: transfers.filter(t => t.status === "CANCELLED").length,
+    };
+  }, [transfers]);
+
+  // Filtrage combiné : Statut + Recherche textuelle
+  const filteredTransfers = useMemo(() => {
+    return transfers.filter((t) => {
+      const matchStatus = statusFilter === "ALL" || t.status === statusFilter;
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return matchStatus;
+
+      const fromName = getShopName(t.fromShop, t.fromShopId).toLowerCase();
+      const toName = getShopName(t.toShop, t.toShopId).toLowerCase();
+      const idMatch = t.id.toLowerCase().includes(q);
+      const notesMatch = t.notes?.toLowerCase().includes(q);
+      
+      return matchStatus && (idMatch || fromName.includes(q) || toName.includes(q) || notesMatch);
+    });
+  }, [transfers, statusFilter, searchQuery, shops]);
+
+  // Colonnes pour la vue Desktop DataTable
   const columns = [
     {
       header: "N° Transfert",
       accessor: (t: StockTransfer) => (
-        <span className="font-black text-foreground">{t.id.slice(0, 8).toUpperCase()}</span>
+        <div className="flex flex-col">
+          <span className="font-mono font-black text-xs text-foreground tracking-wider">
+            #{t.id.slice(0, 8).toUpperCase()}
+          </span>
+          <span className="text-[10px] text-zinc-400 flex items-center gap-1 mt-0.5">
+            <Calendar className="h-3 w-3" />
+            {new Date(t.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+          </span>
+        </div>
       )
     },
     {
-      header: "Source",
+      header: "Itinéraire (Source ➜ Destination)",
       accessor: (t: StockTransfer) => (
-        <span className="text-xs font-bold text-zinc-500">{t.fromShop?.name || t.fromShopId}</span>
+        <div className="flex items-center gap-2">
+          <span className="px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+            <Building2 className="h-3.5 w-3.5 text-zinc-500" />
+            {getShopName(t.fromShop, t.fromShopId)}
+          </span>
+          <ArrowRight className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+          <span className="px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-xs font-bold text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40 flex items-center gap-1.5">
+            <Building2 className="h-3.5 w-3.5 text-blue-500" />
+            {getShopName(t.toShop, t.toShopId)}
+          </span>
+        </div>
       )
     },
     {
-      header: "",
-      accessor: () => <ArrowRight className="h-4 w-4 text-zinc-400" />
-    },
-    {
-      header: "Destination",
-      accessor: (t: StockTransfer) => (
-        <span className="text-xs font-bold text-zinc-500">{t.toShop?.name || t.toShopId}</span>
-      )
-    },
-    {
-      header: "Date",
-      accessor: (t: StockTransfer) => (
-        <span className="text-xs font-bold text-zinc-400">{new Date(t.createdAt).toLocaleDateString()}</span>
-      )
+      header: "Articles & Volume",
+      accessor: (t: StockTransfer) => {
+        const totalItems = t.items?.length || 0;
+        const totalQty = t.items?.reduce((acc, i) => acc + (i.quantity || 0), 0) || 0;
+        return (
+          <div className="flex flex-col">
+            <span className="text-xs font-black text-foreground">
+              {totalItems} article{totalItems > 1 ? "s" : ""}
+            </span>
+            <span className="text-[11px] font-bold text-zinc-400">
+              {totalQty} unité{totalQty > 1 ? "s" : ""} transférée{totalQty > 1 ? "s" : ""}
+            </span>
+          </div>
+        );
+      }
     },
     {
       header: "Statut",
@@ -212,18 +345,43 @@ export default function AdminTransfertsPage() {
     {
       header: "Actions",
       accessor: (t: StockTransfer) => (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 px-2"
-          onClick={() => {
-            setSelectedTransfer(t);
-            setIsViewOpen(true);
-          }}
-        >
-          <Eye className="h-4 w-4 mr-1.5" />
-          Détails
-        </Button>
+        <div className="flex items-center justify-end gap-2">
+          {/* Quick Validate Button directly in table if actionable */}
+          {(t.status === "PENDING" || t.status === "IN_TRANSIT") && (
+            <Button
+              variant="primary"
+              size="sm"
+              className="h-8 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-black shadow-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmAction({
+                  id: t.id,
+                  status: "COMPLETED",
+                  title: "Valider la Réception",
+                  message: `Confirmer la réception du transfert #${t.id.slice(0, 8).toUpperCase()} vers « ${getShopName(t.toShop, t.toShopId)} » ? Les stocks seront immédiatement mis à jour.`,
+                  confirmLabel: "Confirmer la Réception",
+                  variant: "primary"
+                });
+              }}
+            >
+              <Check className="h-3.5 w-3.5 mr-1" />
+              Valider
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-xs"
+            onClick={() => {
+              setSelectedTransfer(t);
+              setIsViewOpen(true);
+            }}
+          >
+            <Eye className="h-3.5 w-3.5 mr-1 text-zinc-500" />
+            Détails
+          </Button>
+        </div>
       ),
       className: "text-right"
     }
@@ -232,41 +390,308 @@ export default function AdminTransfertsPage() {
   return (
     <AppLayout
       title="Transferts de Stock Inter-Boutiques"
-      subtitle="Supervision globale des mouvements de marchandises"
+      subtitle="Supervision et validation en temps réel des flux de marchandises"
       rightElement={
-        <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
+        <Button variant="primary" size="sm" onClick={() => setIsCreateOpen(true)} className="font-bold">
+          <Plus className="h-4 w-4 mr-1.5" />
           Nouveau Transfert
         </Button>
       }
     >
-      <div className="flex flex-col gap-6">
-        <Card className="p-6">
-          <DataTable columns={columns} data={transfers} isLoading={loading} />
-        </Card>
+      <div className="flex flex-col gap-6 pb-6 sm:pb-0">
+
+        {/* ── CARTES KPI RÉCAPITULATIVES (EXECUTIVE SUMMARY) ── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div 
+            onClick={() => setStatusFilter("ALL")}
+            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+              statusFilter === "ALL" 
+                ? "bg-blue-50/80 dark:bg-blue-950/30 border-blue-500/50 shadow-md shadow-blue-500/10" 
+                : "bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300"
+            }`}
+          >
+            <div className="flex items-center justify-between text-zinc-400 mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider">Total</span>
+              <Boxes className="h-4 w-4 text-blue-500" />
+            </div>
+            <div className="text-2xl font-black text-foreground">{countsByStatus.all}</div>
+            <span className="text-[11px] font-bold text-zinc-400 mt-1 block">Tous les mouvements</span>
+          </div>
+
+          <div 
+            onClick={() => setStatusFilter("PENDING")}
+            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+              statusFilter === "PENDING" 
+                ? "bg-amber-50/80 dark:bg-amber-950/30 border-amber-500/50 shadow-md shadow-amber-500/10" 
+                : "bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300"
+            }`}
+          >
+            <div className="flex items-center justify-between text-amber-500 mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider">En Attente</span>
+              <Clock className="h-4 w-4" />
+            </div>
+            <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{countsByStatus.pending}</div>
+            <span className="text-[11px] font-bold text-amber-600/80 dark:text-amber-400/80 mt-1 block">À valider rapidement</span>
+          </div>
+
+          <div 
+            onClick={() => setStatusFilter("IN_TRANSIT")}
+            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+              statusFilter === "IN_TRANSIT" 
+                ? "bg-blue-50/80 dark:bg-blue-950/30 border-blue-500/50 shadow-md shadow-blue-500/10" 
+                : "bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300"
+            }`}
+          >
+            <div className="flex items-center justify-between text-blue-500 mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider">En Transit</span>
+              <Truck className="h-4 w-4" />
+            </div>
+            <div className="text-2xl font-black text-blue-600 dark:text-blue-400">{countsByStatus.inTransit}</div>
+            <span className="text-[11px] font-bold text-blue-600/80 dark:text-blue-400/80 mt-1 block">En cours d'expédition</span>
+          </div>
+
+          <div 
+            onClick={() => setStatusFilter("COMPLETED")}
+            className={`cursor-pointer p-4 rounded-2xl border transition-all ${
+              statusFilter === "COMPLETED" 
+                ? "bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-500/50 shadow-md shadow-emerald-500/10" 
+                : "bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300"
+            }`}
+          >
+            <div className="flex items-center justify-between text-emerald-500 mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider">Réceptionnés</span>
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{countsByStatus.completed}</div>
+            <span className="text-[11px] font-bold text-emerald-600/80 dark:text-emerald-400/80 mt-1 block">Stock réceptionné</span>
+          </div>
+        </div>
+
+        {/* ── BARRE DE FILTRES PAR STATUTS & RECHERCHE ── */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          
+          {/* Onglets Filtre par Statut */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+            <button
+              onClick={() => setStatusFilter("ALL")}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                statusFilter === "ALL"
+                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 border-zinc-900 dark:border-white shadow-sm"
+                  : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100"
+              }`}
+            >
+              <span>Tous</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-700/20 dark:bg-zinc-300/20">{countsByStatus.all}</span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter("PENDING")}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                statusFilter === "PENDING"
+                  ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                  : "bg-white dark:bg-zinc-900 text-amber-600 dark:text-amber-400 border-zinc-200 dark:border-zinc-800 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span>En attente</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/10 dark:bg-white/20">{countsByStatus.pending}</span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter("IN_TRANSIT")}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                statusFilter === "IN_TRANSIT"
+                  ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                  : "bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 border-zinc-200 dark:border-zinc-800 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+              }`}
+            >
+              <Truck className="w-3 h-3" />
+              <span>En transit</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/10 dark:bg-white/20">{countsByStatus.inTransit}</span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter("COMPLETED")}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                statusFilter === "COMPLETED"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                  : "bg-white dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 border-zinc-200 dark:border-zinc-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+              }`}
+            >
+              <Check className="w-3 h-3" />
+              <span>Reçus</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/10 dark:bg-white/20">{countsByStatus.completed}</span>
+            </button>
+
+            <button
+              onClick={() => setStatusFilter("CANCELLED")}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                statusFilter === "CANCELLED"
+                  ? "bg-rose-600 text-white border-rose-600 shadow-sm"
+                  : "bg-white dark:bg-zinc-900 text-rose-600 dark:text-rose-400 border-zinc-200 dark:border-zinc-800 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+              }`}
+            >
+              <X className="w-3 h-3" />
+              <span>Annulés</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/10 dark:bg-white/20">{countsByStatus.cancelled}</span>
+            </button>
+          </div>
+
+          {/* Recherche textuelle */}
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher par N°, boutique..."
+              className="w-full pl-9 pr-8 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold outline-none focus:border-blue-500 transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 p-0.5"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── VUE MOBILE DÉDIÉE (CARDS TOUCH-FRIENDLY & VALIDATION DIRECTE) ── */}
+        <div className="block md:hidden space-y-3">
+          {loading ? (
+            <div className="space-y-3 animate-pulse">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-40 bg-zinc-200 dark:bg-zinc-800 rounded-2xl" />
+              ))}
+            </div>
+          ) : filteredTransfers.length === 0 ? (
+            <div className="text-center py-10 bg-white dark:bg-zinc-900 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800 p-6">
+              <Boxes className="h-8 w-8 text-zinc-400 mx-auto mb-2" />
+              <p className="text-xs font-bold text-zinc-500">Aucun transfert trouvé</p>
+            </div>
+          ) : (
+            filteredTransfers.map((t) => {
+              const totalItems = t.items?.length || 0;
+              const totalQty = t.items?.reduce((acc, i) => acc + (i.quantity || 0), 0) || 0;
+              const isActionable = t.status === "PENDING" || t.status === "IN_TRANSIT";
+
+              return (
+                <div
+                  key={t.id}
+                  className="rounded-2xl border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm space-y-3"
+                >
+                  {/* Ligne 1 : N° et Statut */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-mono font-black text-xs text-foreground tracking-wider block">
+                        #{t.id.slice(0, 8).toUpperCase()}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 flex items-center gap-1 mt-0.5">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(t.createdAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    {getStatusBadge(t.status)}
+                  </div>
+
+                  {/* Ligne 2 : Itinéraire visuel */}
+                  <div className="p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-xs font-bold">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Building2 className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+                      <span className="truncate text-zinc-700 dark:text-zinc-200">{getShopName(t.fromShop, t.fromShopId)}</span>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 text-blue-500 shrink-0 mx-2" />
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Building2 className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                      <span className="truncate text-blue-700 dark:text-blue-300">{getShopName(t.toShop, t.toShopId)}</span>
+                    </div>
+                  </div>
+
+                  {/* Ligne 3 : Aperçu des articles */}
+                  <div className="flex items-center justify-between text-xs text-zinc-500">
+                    <span className="font-bold flex items-center gap-1.5">
+                      <Package className="h-3.5 w-3.5 text-zinc-400" />
+                      {totalItems} article{totalItems > 1 ? "s" : ""} ({totalQty} unité{totalQty > 1 ? "s" : ""})
+                    </span>
+                    {t.notes && (
+                      <span className="text-[11px] text-zinc-400 italic truncate max-w-[140px]">
+                        "{t.notes}"
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Ligne 4 : Boutons d'Action Mobile Ergonomiques */}
+                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center gap-2">
+                    {/* Bouton de validation immédiate */}
+                    {isActionable && (
+                      <button
+                        onClick={() => {
+                          setConfirmAction({
+                            id: t.id,
+                            status: "COMPLETED",
+                            title: "Valider la Réception",
+                            message: `Confirmer la réception de ce transfert vers « ${getShopName(t.toShop, t.toShopId)} » ? Le stock sera immédiatement réceptionné.`,
+                            confirmLabel: "Valider la Réception",
+                            variant: "primary"
+                          });
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                      >
+                        <Check className="h-4 w-4" />
+                        <span>Valider Réception</span>
+                      </button>
+                    )}
+
+                    {/* Bouton Voir Détails */}
+                    <button
+                      onClick={() => {
+                        setSelectedTransfer(t);
+                        setIsViewOpen(true);
+                      }}
+                      className={`${isActionable ? "px-3" : "w-full"} py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer`}
+                    >
+                      <Eye className="h-4 w-4 text-zinc-500" />
+                      <span>{isActionable ? "Détails" : "Voir le détail complet"}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* ── VUE DESKTOP (TABLEAU AVANCÉ AVEC VALIDATION RAPIDE) ── */}
+        <div className="hidden md:block">
+          <Card className="p-6">
+            <DataTable columns={columns} data={filteredTransfers} isLoading={loading} />
+          </Card>
+        </div>
+
       </div>
 
-      {/* Creation Modal */}
-      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Créer un Transfert de Stock">
-        <div className="flex flex-col gap-4 max-h-[80vh] overflow-y-auto pr-2">
-          <div className="grid grid-cols-2 gap-4">
+      {/* ── MODAL CRÉATION DE TRANSFERT ── */}
+      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Créer un Transfert de Stock" size="lg">
+        <div className="flex flex-col gap-4 max-h-[80vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Boutique Source</label>
+              <label className="text-xs font-black text-zinc-500 uppercase">Boutique Source (Départ)</label>
               <select
                 value={fromShopId}
                 onChange={(e) => setFromShopId(e.target.value)}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
               >
                 <option value="">Sélectionner source...</option>
                 {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-black text-zinc-500 uppercase">Boutique Destination</label>
+              <label className="text-xs font-black text-zinc-500 uppercase">Boutique Destination (Arrivée)</label>
               <select
                 value={toShopId}
                 onChange={(e) => setToShopId(e.target.value)}
-                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
+                className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
               >
                 <option value="">Sélectionner destination...</option>
                 {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -275,23 +700,26 @@ export default function AdminTransfertsPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-black text-zinc-500 uppercase">Notes / Observations</label>
+            <label className="text-xs font-black text-zinc-500 uppercase">Notes / Motif du transfert</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Raison du transfert ou détails..."
-              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
+              placeholder="Ex: Réassort hebdomadaire boutique centrale..."
+              className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-blue-500"
             />
           </div>
 
           {/* Item addition section */}
           {fromShopId && (
-            <div className="border-t border-zinc-150 dark:border-zinc-800 pt-4 mt-2">
-              <h5 className="text-xs font-black text-foreground uppercase mb-3">Ajouter des Articles</h5>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <label className="text-[10px] font-bold text-zinc-400">Produit</label>
+            <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4 mt-2">
+              <h5 className="text-xs font-black text-foreground uppercase mb-3 flex items-center gap-1.5">
+                <Package className="h-4 w-4 text-blue-500" />
+                Sélection des Articles à Déplacer
+              </h5>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div className="flex flex-col gap-1.5 sm:col-span-2">
+                  <label className="text-[10px] font-bold text-zinc-400">Produit disponible dans la boutique source</label>
                   <select
                     value={tempProductId}
                     onChange={(e) => setTempProductId(e.target.value)}
@@ -308,13 +736,14 @@ export default function AdminTransfertsPage() {
                     <label className="text-[10px] font-bold text-zinc-400">Qté</label>
                     <input
                       type="number"
+                      min="1"
                       value={tempQty}
                       onChange={(e) => setTempQty(Number(e.target.value))}
-                      className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
+                      className="w-full px-3 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none"
                     />
                   </div>
-                  <Button variant="secondary" className="px-4 h-[42px]" onClick={handleAddItem}>
-                    +
+                  <Button variant="secondary" className="px-4 h-[42px] font-black" onClick={handleAddItem}>
+                    + Ajouter
                   </Button>
                 </div>
               </div>
@@ -326,17 +755,17 @@ export default function AdminTransfertsPage() {
                     <thead className="bg-zinc-50 dark:bg-zinc-800 text-zinc-400 uppercase text-[10px]">
                       <tr>
                         <th className="p-3">Désignation</th>
-                        <th className="p-3">Quantité</th>
+                        <th className="p-3 text-center">Quantité</th>
                         <th className="p-3 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedItems.map((item, idx) => (
                         <tr key={idx} className="border-t border-zinc-150 dark:border-zinc-800">
-                          <td className="p-3">{item.name}</td>
-                          <td className="p-3">{item.quantity}</td>
+                          <td className="p-3 text-foreground">{item.name}</td>
+                          <td className="p-3 text-center font-black text-blue-600">{item.quantity}</td>
                           <td className="p-3 text-right">
-                            <button onClick={() => handleRemoveItem(idx)} className="text-red-500 hover:text-red-700">
+                            <button onClick={() => handleRemoveItem(idx)} className="text-red-500 hover:text-red-700 p-1">
                               <Trash2 className="h-4 w-4 inline" />
                             </button>
                           </td>
@@ -349,77 +778,200 @@ export default function AdminTransfertsPage() {
             </div>
           )}
 
-          <Button variant="primary" className="mt-4 w-full" onClick={handleCreateTransfer}>
-            Confirmer le Transfert
+          <Button 
+            variant="primary" 
+            className="mt-4 w-full py-3.5 font-black text-xs uppercase tracking-wider" 
+            onClick={handleCreateTransfer}
+            disabled={selectedItems.length === 0}
+          >
+            Confirmer & Initier le Transfert ({selectedItems.length} article{selectedItems.length > 1 ? "s" : ""})
           </Button>
         </div>
       </Modal>
 
-      {/* Details View Modal */}
-      <Modal isOpen={isViewOpen} onClose={() => setIsViewOpen(false)} title="Détails du Transfert">
+      {/* ── MODAL DÉTAILS DU TRANSFERT & VALIDATION FLUIDE ── */}
+      <Modal isOpen={isViewOpen} onClose={() => setIsViewOpen(false)} title="Détails du Transfert de Stock" size="lg">
         {selectedTransfer && (
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4 text-xs font-bold">
+            
+            {/* Header avec N° et Statut */}
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-800">
               <div>
-                <span className="text-[10px] text-zinc-400 uppercase">Depuis :</span>
-                <p className="text-sm font-black text-foreground">{selectedTransfer.fromShop?.name || selectedTransfer.fromShopId}</p>
+                <span className="text-[10px] uppercase font-bold text-zinc-400 block">Identifiant Transfert</span>
+                <span className="font-mono font-black text-sm text-foreground">#{selectedTransfer.id.slice(0, 8).toUpperCase()}</span>
               </div>
-              <div>
-                <span className="text-[10px] text-zinc-400 uppercase">Vers :</span>
-                <p className="text-sm font-black text-foreground">{selectedTransfer.toShop?.name || selectedTransfer.toShopId}</p>
+              {getStatusBadge(selectedTransfer.status)}
+            </div>
+
+            {/* Trajet Source ➜ Destination */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-bold">
+              <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-200/80 dark:border-zinc-700/80">
+                <span className="text-[10px] text-zinc-400 uppercase block mb-1">Depuis (Boutique Source) :</span>
+                <p className="text-sm font-black text-foreground flex items-center gap-1.5">
+                  <Building2 className="h-4 w-4 text-zinc-500" />
+                  {getShopName(selectedTransfer.fromShop, selectedTransfer.fromShopId)}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/60">
+                <span className="text-[10px] text-blue-500 uppercase block mb-1">Vers (Boutique Destinataire) :</span>
+                <p className="text-sm font-black text-blue-600 dark:text-blue-300 flex items-center gap-1.5">
+                  <Building2 className="h-4 w-4 text-blue-500" />
+                  {getShopName(selectedTransfer.toShop, selectedTransfer.toShopId)}
+                </p>
               </div>
             </div>
 
-            <div className="text-xs font-bold">
-              <span className="text-[10px] text-zinc-400 uppercase">Notes :</span>
-              <p className="text-foreground">{selectedTransfer.notes || "Aucune observation."}</p>
-            </div>
+            {/* Notes / Motif */}
+            {selectedTransfer.notes && (
+              <div className="text-xs p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800">
+                <span className="text-[10px] text-zinc-400 uppercase font-bold block mb-0.5">Observations :</span>
+                <p className="text-foreground font-semibold">{selectedTransfer.notes}</p>
+              </div>
+            )}
 
-            <div className="border rounded-xl overflow-hidden mt-2">
+            {/* Liste détaillée des articles */}
+            <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden mt-1">
+              <div className="p-3 bg-zinc-50 dark:bg-zinc-800/80 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center text-xs font-black">
+                <span className="uppercase text-zinc-500 text-[10px]">Marchandises Transférées</span>
+                <span className="text-blue-500">{selectedTransfer.items?.length || 0} référence(s)</span>
+              </div>
+              
               <table className="w-full text-left text-xs font-bold">
-                <thead className="bg-zinc-50 dark:bg-zinc-800 text-zinc-400 uppercase text-[10px]">
+                <thead className="bg-zinc-50/50 dark:bg-zinc-800/40 text-zinc-400 uppercase text-[10px]">
                   <tr>
                     <th className="p-3">Article</th>
-                    <th className="p-3">Quantité</th>
+                    <th className="p-3 text-center">Quantité</th>
+                    <th className="p-3 text-right">Coût Est.</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {selectedTransfer.items?.map((item, idx) => (
-                    <tr key={idx} className="border-t border-zinc-150 dark:border-zinc-800">
-                      <td className="p-3">{item.product?.name || item.productId}</td>
-                      <td className="p-3">{item.quantity}</td>
+                    <tr key={idx} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                      <td className="p-3 text-foreground">
+                        {item.product?.name || productNames[item.productId] || "Chargement..."}
+                      </td>
+                      <td className="p-3 text-center font-black text-blue-600">
+                        {item.quantity}
+                      </td>
+                      <td className="p-3 text-right text-zinc-500 font-bold">
+                        {item.unitCost != null ? `${item.unitCost} FCFA` : "—"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Quick transition action buttons */}
-            <div className="flex flex-col gap-2 mt-4 pt-4 border-t">
+            {/* Boutons d'Action Rapide de Validation */}
+            <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
               {selectedTransfer.status === "PENDING" && (
                 <>
-                  <Button variant="primary" onClick={() => handleUpdateStatus(selectedTransfer.id, "IN_TRANSIT")}>
-                    Mettre en Transit (Expédier)
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setConfirmAction({
+                        id: selectedTransfer.id,
+                        status: "COMPLETED",
+                        title: "Valider la Réception",
+                        message: `Confirmer la réception définitive des articles vers « ${getShopName(selectedTransfer.toShop, selectedTransfer.toShopId)} » ?`,
+                        confirmLabel: "Confirmer la Réception",
+                        variant: "primary"
+                      });
+                    }}
+                    className="font-black bg-emerald-600 hover:bg-emerald-500 text-white py-3 shadow-lg shadow-emerald-600/20"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Valider la Réception en Destination
                   </Button>
-                  <Button variant="danger" onClick={() => handleUpdateStatus(selectedTransfer.id, "CANCELLED")}>
-                    Annuler le transfert
-                  </Button>
+
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleUpdateStatus(selectedTransfer.id, "IN_TRANSIT")}
+                      className="text-xs font-bold"
+                    >
+                      <Truck className="h-4 w-4 mr-1.5 text-blue-500" />
+                      Marquer en Transit
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => {
+                        setConfirmAction({
+                          id: selectedTransfer.id,
+                          status: "CANCELLED",
+                          title: "Annuler le Transfert",
+                          message: "Voulez-vous vraiment annuler ce transfert ? Les articles seront réintégrés au stock de la boutique source.",
+                          confirmLabel: "Annuler le Transfert",
+                          variant: "danger"
+                        });
+                      }}
+                      className="text-xs font-bold"
+                    >
+                      <XCircle className="h-4 w-4 mr-1.5" />
+                      Annuler le Transfert
+                    </Button>
+                  </div>
                 </>
               )}
+
               {selectedTransfer.status === "IN_TRANSIT" && (
                 <>
-                  <Button variant="primary" onClick={() => handleUpdateStatus(selectedTransfer.id, "COMPLETED")}>
-                    Confirmer la Réception (Valider)
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setConfirmAction({
+                        id: selectedTransfer.id,
+                        status: "COMPLETED",
+                        title: "Confirmer la Réception",
+                        message: `Confirmer la réception de la marchandise arrivée à « ${getShopName(selectedTransfer.toShop, selectedTransfer.toShopId)} » ?`,
+                        confirmLabel: "Confirmer la Réception",
+                        variant: "primary"
+                      });
+                    }}
+                    className="font-black bg-emerald-600 hover:bg-emerald-500 text-white py-3 shadow-lg shadow-emerald-600/20"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Confirmer la Réception des Marchandises
                   </Button>
-                  <Button variant="danger" onClick={() => handleUpdateStatus(selectedTransfer.id, "CANCELLED")}>
-                    Annuler le transfert
+
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      setConfirmAction({
+                        id: selectedTransfer.id,
+                        status: "CANCELLED",
+                        title: "Annuler le Transfert",
+                        message: "Annuler ce transfert en transit ? Les quantités seront restituées à la boutique de départ.",
+                        confirmLabel: "Confirmer l'annulation",
+                        variant: "danger"
+                      });
+                    }}
+                    className="text-xs font-bold mt-1"
+                  >
+                    <XCircle className="h-4 w-4 mr-1.5" />
+                    Annuler le Transfert
                   </Button>
                 </>
               )}
             </div>
+
           </div>
         )}
       </Modal>
+
+      {/* ── CONFIRMATION MODAL POUR ÉVITER LES ERREURS SUR MOBILE ET DESKTOP ── */}
+      {confirmAction && (
+        <ConfirmModal
+          isOpen={true}
+          onClose={() => setConfirmAction(null)}
+          onConfirm={() => handleUpdateStatus(confirmAction.id, confirmAction.status)}
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          variant={confirmAction.variant}
+        />
+      )}
+
     </AppLayout>
   );
 }

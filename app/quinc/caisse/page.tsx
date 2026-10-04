@@ -19,10 +19,11 @@ import {
   Clock, Pause, X, LayoutGrid, List,
   Package, Banknote, Smartphone, CheckCircle2,
   Wallet, Scissors, User, ChevronUp, Wrench, Printer,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Camera,
 } from "lucide-react";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { POS_STYLES } from "@/types/post_caise_style";
+import { BarcodeScannerModal } from "@/components/ui/BarcodeScannerModal";
 
 
 const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(Math.round(n));
@@ -39,6 +40,7 @@ export default function QuincaillerieCaissePage() {
   const { isOnline } = useNetworkContext();
   const [lastSaleId, setLastSaleId] = useState("");
   const [showPrintConfirm, setShowPrintConfirm] = useState(false);
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
   const [saleCartSnapshot, setSaleCartSnapshot] = useState<CartItem[]>([]);
   const [currentShop, setCurrentShop] = useState<Shop | null>(null);
   const [saleTotalSnapshot, setSaleTotalSnapshot] = useState(0);
@@ -607,7 +609,7 @@ export default function QuincaillerieCaissePage() {
           <div className="qpos-catalog">
             {/* Header mobile */}
             <div className="qpos-mobile-header">
-              <div className="qpos-mobile-search-wrap">
+              <div className="qpos-mobile-search-wrap" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <Search />
                 <input
                   className="qpos-mobile-search"
@@ -616,6 +618,28 @@ export default function QuincaillerieCaissePage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setIsCameraScannerOpen(true)}
+                  style={{
+                    background: "var(--pos-primary, #059669)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "7px 11px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    flexShrink: 0
+                  }}
+                  title="Scanner avec la caméra"
+                >
+                  <Camera size={15} />
+                  <span>Scanner</span>
+                </button>
               </div>
               <div className="qpos-mobile-cats">
                 <button
@@ -634,7 +658,7 @@ export default function QuincaillerieCaissePage() {
 
             {/* Header desktop */}
             <div className="qpos-catalog-header">
-              <div className="qpos-search-wrap" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div className="qpos-search-wrap" style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <Search />
                 <input
                   className="qpos-search"
@@ -643,6 +667,28 @@ export default function QuincaillerieCaissePage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setIsCameraScannerOpen(true)}
+                  style={{
+                    background: "var(--pos-primary, #059669)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "8px 14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    flexShrink: 0
+                  }}
+                  title="Scanner avec la caméra"
+                >
+                  <Camera size={15} />
+                  <span>Scanner Caméra</span>
+                </button>
               </div>
               <div className="qpos-view-toggle">
                 <button
@@ -1162,9 +1208,31 @@ export default function QuincaillerieCaissePage() {
 
           {/* Barre recherche + catégories */}
           <div className="pdt-catbar">
-            <div className="pdt-search-box">
+            <div className="pdt-search-box" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Search size={14} />
               <input className="pdt-search" type="text" placeholder="Nom, SKU du matériau…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <button
+                type="button"
+                onClick={() => setIsCameraScannerOpen(true)}
+                style={{
+                  background: "var(--pos-primary, #059669)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "6px 12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  flexShrink: 0
+                }}
+                title="Scanner avec la caméra"
+              >
+                <Camera size={14} />
+                <span>Scanner Caméra</span>
+              </button>
             </div>
             <div className="pdt-cats">
               <button className={`pdt-cat-btn${!selectedCategory ? " active" : ""}`} onClick={() => setSelectedCategory(null)}>
@@ -1366,6 +1434,13 @@ export default function QuincaillerieCaissePage() {
           </div>
         </div>
       )}
+
+      {/* MODAL SCANNER CAMÉRA VIDÉO */}
+      <BarcodeScannerModal
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onScan={handleBarcodeScan}
+      />
     </AppLayout>
   );
 }
