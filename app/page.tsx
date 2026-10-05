@@ -63,25 +63,25 @@ export default function Home() {
       </div>
 
       {/* ── BARRE DE NAVIGATION FLOTTANTE (GLASSMORPHISM) ── */}
-      <header className="sticky top-4 z-50 w-full max-w-6xl mx-auto px-4 sm:px-6">
+      <header className="sticky top-2 sm:top-4 z-50 w-full max-w-6xl mx-auto px-3 sm:px-6">
         <motion.div 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="bg-slate-900/70 backdrop-blur-xl border border-slate-800/80 rounded-2xl px-5 py-3.5 flex justify-between items-center shadow-2xl shadow-black/40"
+          className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-2xl px-3 sm:px-5 py-2.5 sm:py-3.5 flex justify-between items-center shadow-2xl shadow-black/40 gap-2 sm:gap-4"
         >
           {/* Logo & Marque */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push("/")}>
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-rose-500 p-[1.5px] shadow-lg shadow-blue-500/20">
+          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer min-w-0" onClick={() => router.push("/")}>
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-rose-500 p-[1.5px] shadow-lg shadow-blue-500/20 shrink-0">
               <div className="w-full h-full bg-[#090d16] rounded-[10px] flex items-center justify-center">
-                <Layers className="h-5 w-5 text-blue-400" />
+                <Layers className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400" />
               </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-base font-black tracking-wider text-white flex items-center gap-1.5">
-                SPSERVICES <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">PRO</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm sm:text-base font-black tracking-wider text-white flex items-center gap-1.5 truncate">
+                SPSERVICES <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 shrink-0">PRO</span>
               </span>
-              <span className="text-[10px] text-slate-400 font-medium">Gestion Commerciale & Stocks</span>
+              <span className="hidden sm:inline text-[10px] text-slate-400 font-medium truncate">Gestion Commerciale & Stocks</span>
             </div>
           </div>
 
@@ -94,31 +94,32 @@ export default function Home() {
           </nav>
 
           {/* Bouton d'accès direct */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center shrink-0">
             <button
               onClick={navigateToLogin}
-              className="relative group overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs px-5 py-2.5 shadow-lg shadow-blue-600/25 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer border border-blue-400/30"
+              className="relative group overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs px-3.5 sm:px-5 py-2 sm:py-2.5 shadow-lg shadow-blue-600/25 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer border border-blue-400/30 whitespace-nowrap"
             >
-              <span>Se Connecter</span>
-              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+              <span className="inline sm:hidden">Connexion</span>
+              <span className="hidden sm:inline">Se Connecter</span>
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform shrink-0" />
             </button>
           </div>
         </motion.div>
       </header>
 
       {/* ── SECTION HERO ── */}
-      <section className="relative z-20 pt-16 sm:pt-20 pb-12 px-4 sm:px-6 max-w-6xl mx-auto w-full flex flex-col items-center text-center">
+      <section className="relative z-20 pt-12 sm:pt-20 pb-10 sm:pb-12 px-4 sm:px-6 max-w-6xl mx-auto w-full flex flex-col items-center text-center">
         
         {/* Badge d'annonce */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-800/80 border border-blue-500/30 text-blue-300 text-xs font-semibold mb-6 shadow-inner backdrop-blur-md"
+          className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-slate-800/80 border border-blue-500/30 text-blue-300 text-[11px] sm:text-xs font-semibold mb-6 shadow-inner backdrop-blur-md max-w-full text-center"
         >
-          <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-ping" />
-          <Sparkles className="h-3.5 w-3.5 text-blue-400" />
-          <span>Plateforme Unifiée • Supérette, Quincaillerie & Multi-Dépôts</span>
+          <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-ping shrink-0" />
+          <Sparkles className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+          <span className="truncate sm:overflow-visible">Plateforme Unifiée • Supérette & Quincaillerie</span>
         </motion.div>
 
         {/* Titre Principal accrocheur */}
@@ -126,7 +127,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.1] text-white max-w-4xl"
+          className="text-3xl xs:text-4xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.15] sm:leading-[1.1] text-white max-w-4xl"
         >
           Pilotez vos Stocks, Ventes & Boutiques avec{" "}
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-300 to-rose-400">
@@ -139,7 +140,7 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="mt-6 text-base sm:text-lg text-slate-300 font-medium max-w-2xl leading-relaxed"
+          className="mt-5 sm:mt-6 text-sm sm:text-lg text-slate-300 font-medium max-w-2xl leading-relaxed"
         >
           Une solution complète conçue pour accélérer les encaissements, sécuriser les inventaires, 
           contrôler les créances et synchroniser vos dépôts en temps réel, même sans connexion Internet.
@@ -150,21 +151,21 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-8 flex flex-wrap items-center justify-center gap-4 w-full"
+          className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-md sm:max-w-none"
         >
           <button
             onClick={navigateToLogin}
-            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-black tracking-wide shadow-xl shadow-blue-600/30 hover:shadow-blue-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 border border-blue-400/40 cursor-pointer"
+            className="w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-black tracking-wide shadow-xl shadow-blue-600/30 hover:shadow-blue-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 sm:gap-3 border border-blue-400/40 cursor-pointer"
           >
             <span>Accéder à l'application</span>
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 shrink-0" />
           </button>
 
           <a
             href="#preview"
-            className="w-full sm:w-auto px-6 py-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-sm font-bold border border-slate-700/80 hover:border-slate-600 transition-all flex items-center justify-center gap-2 cursor-pointer backdrop-blur-md"
+            className="w-full sm:w-auto px-5 sm:px-6 py-3.5 sm:py-4 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs sm:text-sm font-bold border border-slate-700/80 hover:border-slate-600 transition-all flex items-center justify-center gap-2 cursor-pointer backdrop-blur-md"
           >
-            <BarChart3 className="h-4 w-4 text-blue-400" />
+            <BarChart3 className="h-4 w-4 text-blue-400 shrink-0" />
             <span>Voir la Démo Interactive</span>
           </a>
         </motion.div>
@@ -174,81 +175,81 @@ export default function Home() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.5 }}
-          className="mt-10 flex flex-wrap items-center justify-center gap-6 text-xs font-semibold text-slate-400"
+          className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-[11px] sm:text-xs font-semibold text-slate-400"
         >
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            <span>Vitesse de scan &lt; 50ms</span>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400 shrink-0" />
+            <span>Vitesse &lt; 50ms</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Wifi className="h-4 w-4 text-blue-400" />
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Wifi className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-400 shrink-0" />
             <span>Mode Hors-Ligne & Sync PWA</span>
           </div>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-indigo-400" />
-            <span>Contrôle & Rôles Multi-Caisses</span>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-400 shrink-0" />
+            <span>Multi-Caisses & Rôles</span>
           </div>
         </motion.div>
 
       </section>
 
       {/* ── APERÇU INTERACTIF DU SYSTÈME (INTERACTIVE LIVE PREVIEW) ── */}
-      <section id="preview" className="relative z-20 py-10 px-4 sm:px-6 max-w-6xl mx-auto w-full">
+      <section id="preview" className="relative z-20 py-8 sm:py-10 px-3 sm:px-6 max-w-6xl mx-auto w-full">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7 }}
-          className="rounded-3xl bg-slate-900/60 border border-slate-800 backdrop-blur-xl p-4 sm:p-7 shadow-2xl shadow-blue-950/40 overflow-hidden"
+          className="rounded-3xl bg-slate-900/60 border border-slate-800 backdrop-blur-xl p-3.5 sm:p-7 shadow-2xl shadow-blue-950/40 overflow-hidden"
         >
           {/* En-tête du composant d'aperçu */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800/80">
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-rose-500/80" />
-                <div className="w-3 h-3 rounded-full bg-amber-500/80" />
-                <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-slate-800/80">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="flex gap-1.5 shrink-0">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-rose-500/80" />
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-amber-500/80" />
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500/80" />
               </div>
-              <span className="text-xs font-mono text-slate-400 pl-2 border-l border-slate-800">
+              <span className="text-[11px] sm:text-xs font-mono text-slate-400 pl-2 border-l border-slate-800 truncate">
                 terminal-caisse://spservices.pro/demo
               </span>
             </div>
 
             {/* Sélecteur d'onglet / Espace */}
-            <div className="flex items-center bg-slate-950/70 p-1 rounded-xl border border-slate-800">
+            <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar max-w-full gap-1">
               <button
                 onClick={() => setActiveTab("pos")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                   activeTab === "pos"
                     ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                <Store className="h-3.5 w-3.5" />
-                <span>Caisse Supérette</span>
+                <Store className="h-3.5 w-3.5 shrink-0" />
+                <span>Supérette</span>
               </button>
               
               <button
                 onClick={() => setActiveTab("hardware")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                   activeTab === "hardware"
                     ? "bg-rose-600 text-white shadow-md shadow-rose-600/30"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                <HardHat className="h-3.5 w-3.5" />
-                <span>Quincaillerie & Matériaux</span>
+                <HardHat className="h-3.5 w-3.5 shrink-0" />
+                <span>Quincaillerie</span>
               </button>
 
               <button
                 onClick={() => setActiveTab("analytics")}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0 whitespace-nowrap ${
                   activeTab === "analytics"
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                <TrendingUp className="h-3.5 w-3.5" />
+                <TrendingUp className="h-3.5 w-3.5 shrink-0" />
                 <span>Analyses & KPIs</span>
               </button>
             </div>
@@ -268,62 +269,62 @@ export default function Home() {
                 >
                   {/* Colonne gauche : Panier & Scan Caisse */}
                   <div className="lg:col-span-2 space-y-4">
-                    <div className="flex items-center justify-between bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                      <div className="flex items-center gap-3 text-xs text-slate-300">
-                        <QrCode className="h-4 w-4 text-blue-400" />
-                        <span className="font-mono">Code-barres actif : [ 340156002488 ]</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+                      <div className="flex items-center gap-2.5 text-xs text-slate-300 min-w-0">
+                        <QrCode className="h-4 w-4 text-blue-400 shrink-0" />
+                        <span className="font-mono truncate">Code-barres : [ 340156002488 ]</span>
                       </div>
-                      <span className="text-[10px] bg-emerald-500/10 text-emerald-400 font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                      <span className="self-start sm:self-auto text-[10px] bg-emerald-500/10 text-emerald-400 font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/20 shrink-0">
                         Scanner prêt
                       </span>
                     </div>
 
                     <div className="divide-y divide-slate-800/80 rounded-2xl bg-slate-950/40 border border-slate-800/80 overflow-hidden">
-                      <div className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold">
+                      <div className="p-3 sm:p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold shrink-0">
                             1
                           </div>
-                          <div>
-                            <div className="font-bold text-white">Lait Demi-Écrémé 1L (Pack x6)</div>
-                            <div className="text-[11px] text-slate-400">Lot: #LT-8941 • DLC: 18/11/2026</div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-white truncate">Lait Demi-Écrémé 1L (Pack x6)</div>
+                            <div className="text-[10px] sm:text-[11px] text-slate-400 truncate">Lot: #LT-8941 • DLC: 18/11/2026</div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-white">4 200 FCFA</div>
-                          <div className="text-[10px] text-slate-400">Qté: 2 × 2 100</div>
+                        <div className="text-right shrink-0">
+                          <div className="font-bold text-white whitespace-nowrap">4 200 FCFA</div>
+                          <div className="text-[10px] text-slate-400 whitespace-nowrap">Qté: 2 × 2 100</div>
                         </div>
                       </div>
 
-                      <div className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold">
+                      <div className="p-3 sm:p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold shrink-0">
                             2
                           </div>
-                          <div>
-                            <div className="font-bold text-white">Huile de Tournesol Pure 5L</div>
-                            <div className="text-[11px] text-slate-400">Lot: #LT-3210 • DLC: 04/09/2027</div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-white truncate">Huile de Tournesol Pure 5L</div>
+                            <div className="text-[10px] sm:text-[11px] text-slate-400 truncate">Lot: #LT-3210 • DLC: 04/09/2027</div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-white">7 500 FCFA</div>
-                          <div className="text-[10px] text-slate-400">Qté: 1</div>
+                        <div className="text-right shrink-0">
+                          <div className="font-bold text-white whitespace-nowrap">7 500 FCFA</div>
+                          <div className="text-[10px] text-slate-400 whitespace-nowrap">Qté: 1</div>
                         </div>
                       </div>
 
-                      <div className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold">
+                      <div className="p-3 sm:p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 font-bold shrink-0">
                             3
                           </div>
-                          <div>
-                            <div className="font-bold text-white">Riz Parfumé Supérieur 25Kg</div>
-                            <div className="text-[11px] text-emerald-400">Stock restant : 42 sacs</div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-white truncate">Riz Parfumé Supérieur 25Kg</div>
+                            <div className="text-[10px] sm:text-[11px] text-emerald-400 truncate">Stock restant : 42 sacs</div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-white">18 500 FCFA</div>
-                          <div className="text-[10px] text-slate-400">Qté: 1</div>
+                        <div className="text-right shrink-0">
+                          <div className="font-bold text-white whitespace-nowrap">18 500 FCFA</div>
+                          <div className="text-[10px] text-slate-400 whitespace-nowrap">Qté: 1</div>
                         </div>
                       </div>
                     </div>
@@ -391,62 +392,62 @@ export default function Home() {
                 >
                   {/* Colonne gauche : Commandes & Crédits clients */}
                   <div className="lg:col-span-2 space-y-4">
-                    <div className="flex items-center justify-between bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                      <div className="flex items-center gap-3 text-xs text-slate-300">
-                        <HardHat className="h-4 w-4 text-rose-400" />
-                        <span className="font-mono">Client : Entreprise BTP "Grand Ouest"</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+                      <div className="flex items-center gap-2.5 text-xs text-slate-300 min-w-0">
+                        <HardHat className="h-4 w-4 text-rose-400 shrink-0" />
+                        <span className="font-mono truncate">Client : Entreprise BTP "Grand Ouest"</span>
                       </div>
-                      <span className="text-[10px] bg-rose-500/10 text-rose-400 font-bold px-2.5 py-0.5 rounded-full border border-rose-500/20">
+                      <span className="self-start sm:self-auto text-[10px] bg-rose-500/10 text-rose-400 font-bold px-2.5 py-0.5 rounded-full border border-rose-500/20 shrink-0">
                         Plafond Crédit : 500 000 FCFA
                       </span>
                     </div>
 
                     <div className="divide-y divide-slate-800/80 rounded-2xl bg-slate-950/40 border border-slate-800/80 overflow-hidden">
-                      <div className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 font-bold">
+                      <div className="p-3 sm:p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 font-bold shrink-0">
                             FE
                           </div>
-                          <div>
-                            <div className="font-bold text-white">Fer à Béton Ø12 (Barres 12m)</div>
-                            <div className="text-[11px] text-slate-400">Emplacement : Dépôt Central B3</div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-white truncate">Fer à Béton Ø12 (Barres 12m)</div>
+                            <div className="text-[10px] sm:text-[11px] text-slate-400 truncate">Emplacement : Dépôt Central B3</div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-white">125 000 FCFA</div>
-                          <div className="text-[10px] text-slate-400">Qté: 25 barres</div>
+                        <div className="text-right shrink-0">
+                          <div className="font-bold text-white whitespace-nowrap">125 000 FCFA</div>
+                          <div className="text-[10px] text-slate-400 whitespace-nowrap">Qté: 25 barres</div>
                         </div>
                       </div>
 
-                      <div className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 font-bold">
+                      <div className="p-3 sm:p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 font-bold shrink-0">
                             CI
                           </div>
-                          <div>
-                            <div className="font-bold text-white">Ciment CPJ 42.5 (Sacs 50Kg)</div>
-                            <div className="text-[11px] text-slate-400">Emplacement : Quai de chargement</div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-white truncate">Ciment CPJ 42.5 (Sacs 50Kg)</div>
+                            <div className="text-[10px] sm:text-[11px] text-slate-400 truncate">Emplacement : Quai de chargement</div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-white">96 000 FCFA</div>
-                          <div className="text-[10px] text-slate-400">Qté: 20 sacs</div>
+                        <div className="text-right shrink-0">
+                          <div className="font-bold text-white whitespace-nowrap">96 000 FCFA</div>
+                          <div className="text-[10px] text-slate-400 whitespace-nowrap">Qté: 20 sacs</div>
                         </div>
                       </div>
 
-                      <div className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 font-bold">
+                      <div className="p-3 sm:p-3.5 flex items-center justify-between text-xs hover:bg-slate-800/20 transition-colors gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 font-bold shrink-0">
                             TU
                           </div>
-                          <div>
-                            <div className="font-bold text-white">Tuyau PVC Pression Ø110 PN10</div>
-                            <div className="text-[11px] text-emerald-400">Livraison partielle acceptée</div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-white truncate">Tuyau PVC Pression Ø110 PN10</div>
+                            <div className="text-[10px] sm:text-[11px] text-emerald-400 truncate">Livraison partielle acceptée</div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-white">44 000 FCFA</div>
-                          <div className="text-[10px] text-slate-400">Qté: 8 longueurs</div>
+                        <div className="text-right shrink-0">
+                          <div className="font-bold text-white whitespace-nowrap">44 000 FCFA</div>
+                          <div className="text-[10px] text-slate-400 whitespace-nowrap">Qté: 8 longueurs</div>
                         </div>
                       </div>
                     </div>
@@ -758,65 +759,65 @@ export default function Home() {
       </section>
 
       {/* ── STATISTIQUES D'IMPACT (METRICS) ── */}
-      <section id="metrics" className="relative z-20 py-12 px-4 sm:px-6 max-w-6xl mx-auto w-full">
-        <div className="rounded-3xl bg-gradient-to-r from-blue-900/30 via-indigo-900/20 to-purple-900/30 border border-blue-500/20 p-8 sm:p-10 backdrop-blur-xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div>
-              <div className="text-3xl sm:text-5xl font-black text-white tracking-tight">&lt; 0.2s</div>
-              <div className="text-xs text-blue-300 font-bold mt-2">Temps de Scan Article</div>
+      <section id="metrics" className="relative z-20 py-8 sm:py-12 px-4 sm:px-6 max-w-6xl mx-auto w-full">
+        <div className="rounded-3xl bg-gradient-to-r from-blue-900/30 via-indigo-900/20 to-purple-900/30 border border-blue-500/20 p-5 sm:p-10 backdrop-blur-xl">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 text-center">
+            <div className="p-2 sm:p-0">
+              <div className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight">&lt; 0.2s</div>
+              <div className="text-[11px] sm:text-xs text-blue-300 font-bold mt-1.5 sm:mt-2">Temps de Scan</div>
             </div>
-            <div>
-              <div className="text-3xl sm:text-5xl font-black text-white tracking-tight">100%</div>
-              <div className="text-xs text-indigo-300 font-bold mt-2">Disponibilité Hors-Ligne</div>
+            <div className="p-2 sm:p-0">
+              <div className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight">100%</div>
+              <div className="text-[11px] sm:text-xs text-indigo-300 font-bold mt-1.5 sm:mt-2">Disponibilité Offline</div>
             </div>
-            <div>
-              <div className="text-3xl sm:text-5xl font-black text-white tracking-tight">+35%</div>
-              <div className="text-xs text-emerald-300 font-bold mt-2">Rapidité en Caisse</div>
+            <div className="p-2 sm:p-0">
+              <div className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight">+35%</div>
+              <div className="text-[11px] sm:text-xs text-emerald-300 font-bold mt-1.5 sm:mt-2">Vitesse en Caisse</div>
             </div>
-            <div>
-              <div className="text-3xl sm:text-5xl font-black text-white tracking-tight">0%</div>
-              <div className="text-xs text-rose-300 font-bold mt-2">Écart de Caisse Inexpliqué</div>
+            <div className="p-2 sm:p-0">
+              <div className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight">0%</div>
+              <div className="text-[11px] sm:text-xs text-rose-300 font-bold mt-1.5 sm:mt-2">Écart Inexpliqué</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* ── BANNIÈRE D'APPEL À L'ACTION (CTA FINAL) ── */}
-      <section className="relative z-20 py-16 px-4 sm:px-6 max-w-4xl mx-auto w-full text-center">
-        <div className="rounded-3xl bg-slate-900/80 border border-slate-800 p-8 sm:p-12 relative overflow-hidden shadow-2xl">
+      <section className="relative z-20 py-10 sm:py-16 px-4 sm:px-6 max-w-4xl mx-auto w-full text-center">
+        <div className="rounded-3xl bg-slate-900/80 border border-slate-800 p-6 sm:p-12 relative overflow-hidden shadow-2xl">
           <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
           
-          <h3 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+          <h3 className="text-xl sm:text-4xl font-black text-white tracking-tight leading-snug">
             Prêt à transformer la gestion de votre commerce ?
           </h3>
-          <p className="text-slate-400 text-sm font-medium mt-3 max-w-xl mx-auto">
+          <p className="text-slate-400 text-xs sm:text-sm font-medium mt-3 max-w-xl mx-auto leading-relaxed">
             Connectez-vous dès maintenant pour accéder à vos caisses, consulter vos stocks et suivre vos indicateurs de vente.
           </p>
 
-          <div className="mt-8 flex justify-center">
+          <div className="mt-6 sm:mt-8 flex justify-center">
             <button
               onClick={navigateToLogin}
-              className="px-10 py-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-sm tracking-wide shadow-xl shadow-blue-600/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 cursor-pointer border border-blue-400/40"
+              className="w-full sm:w-auto px-6 sm:px-10 py-3.5 sm:py-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm tracking-wide shadow-xl shadow-blue-600/40 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 sm:gap-3 cursor-pointer border border-blue-400/40"
             >
               <span>Se Connecter à SP Services</span>
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 shrink-0" />
             </button>
           </div>
         </div>
       </section>
 
       {/* ── PIED DE PAGE (FOOTER) ── */}
-      <footer className="relative z-20 w-full border-t border-slate-900 bg-slate-950/80 py-8 px-4 sm:px-6 text-xs text-slate-500">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
+      <footer className="relative z-20 w-full border-t border-slate-900 bg-slate-950/80 py-6 sm:py-8 px-4 sm:px-6 text-xs text-slate-500">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4 text-center sm:text-left">
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
             <span className="font-black text-slate-300">SPSERVICES PRO</span>
             <span>•</span>
             <span>© {new Date().getFullYear()} Tous droits réservés.</span>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
               <span>Système Opérationnel</span>
             </div>
             <span className="text-slate-400">Version 2.5.0</span>
