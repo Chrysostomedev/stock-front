@@ -79,7 +79,10 @@ export default function InventoryPerimesPage() {
 
   // ── Chargement des alertes de péremption ──
   const loadAlerts = useCallback(async () => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoadingAlerts(false);
+      return;
+    }
     setLoadingAlerts(true);
     try {
       const data = await InventoryService.getExpiryAlerts(shopId, thresholdDays);
@@ -93,7 +96,10 @@ export default function InventoryPerimesPage() {
 
   // ── Chargement du rapport des pertes ──
   const loadLosses = useCallback(async () => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoadingLosses(false);
+      return;
+    }
     setLoadingLosses(true);
     try {
       const data = await ReportsService.getLosses({
@@ -460,6 +466,12 @@ export default function InventoryPerimesPage() {
                             Vérification des dates limites...
                           </td>
                         </tr>
+                      ) : !shopId ? (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-muted-foreground font-bold">
+                            Veuillez sélectionner une boutique dans la barre supérieure
+                          </td>
+                        </tr>
                       ) : filteredExpired.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="py-8 text-center text-emerald-600 font-bold">
@@ -558,6 +570,12 @@ export default function InventoryPerimesPage() {
                         <tr>
                           <td colSpan={6} className="py-8 text-center text-muted-foreground font-bold">
                             Analyse en cours...
+                          </td>
+                        </tr>
+                      ) : !shopId ? (
+                        <tr>
+                          <td colSpan={6} className="py-8 text-center text-muted-foreground font-bold">
+                            Veuillez sélectionner une boutique dans la barre supérieure
                           </td>
                         </tr>
                       ) : filteredExpiringSoon.length === 0 ? (

@@ -81,9 +81,9 @@ function ShopSelectorBar() {
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
-    <DashboardShopProvider>
+    <>
       <ShopSelectorBar />
       {children}
-    </DashboardShopProvider>
+    </>
   );
 }

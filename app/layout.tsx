@@ -5,6 +5,7 @@ import { SidebarProvider } from "@/contexts/SidebarContext";
 import { ShopSettingsProvider } from "@/contexts/ShopSettingsContext";
 // NetworkProvider : gestion offline, détection réseau, sync automatique
 import { NetworkProvider } from "@/contexts/NetworkContext";
+import { DashboardShopProvider } from "@/contexts/DashboardShopContext";
 import "./globals.css";
 import { AuthProvider } from "./context/useContext";
 import PwaRegister from "@/components/PwaRegister";
@@ -44,9 +45,11 @@ export default function RootLayout({
                   (pour avoir accès au token JWT lors des appels sync).
                 */}
                 <NetworkProvider>
-                  <SidebarProvider>
-                    {children}
-                  </SidebarProvider>
+                  <DashboardShopProvider>
+                    <SidebarProvider>
+                      {children}
+                    </SidebarProvider>
+                  </DashboardShopProvider>
                 </NetworkProvider>
               </ToastProvider>
             </ThemeProvider>
