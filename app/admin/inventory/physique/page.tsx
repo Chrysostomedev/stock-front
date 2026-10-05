@@ -85,7 +85,10 @@ export default function InventairePhysiquePage() {
 
   // ── Chargement des produits pour la boutique active ──
   const loadProducts = useCallback(async () => {
-    if (!shopId) return;
+    if (!shopId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const res = await ProductService.getAll({ shopId, limit: 200 });
@@ -593,6 +596,15 @@ export default function InventairePhysiquePage() {
                       <div className="flex flex-col items-center justify-center gap-2">
                         <RefreshCw className="h-6 w-6 animate-spin text-primary" />
                         <span>Chargement des articles de la boutique...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : !shopId ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-muted-foreground font-bold">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Building2 className="h-6 w-6 text-zinc-400" />
+                        <span>Veuillez sélectionner une boutique dans la barre supérieure pour démarrer l&apos;inventaire</span>
                       </div>
                     </td>
                   </tr>
