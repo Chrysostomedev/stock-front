@@ -301,15 +301,19 @@ export default function InventairePhysiquePage() {
       });
 
       setResultSummary(response);
+      const count = response?.adjustedCount ?? itemsToAdjust.length;
       showToast(
-        `Inventaire régularisé avec succès (${response.adjustedCount} article(s) mis à jour)`,
+        `Inventaire régularisé avec succès (${count} article(s) mis à jour)`,
         "success"
       );
       setIsConfirmModalOpen(false);
       // Recharger les stocks à jour depuis le backend
       loadProducts();
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Erreur lors de la régularisation des stocks";
+      const rawMessage = err?.response?.data?.message;
+      const message = Array.isArray(rawMessage)
+        ? rawMessage.join(", ")
+        : rawMessage || err?.message || "Erreur lors de la régularisation des stocks";
       showToast(message, "error");
     } finally {
       setIsSubmitting(false);
