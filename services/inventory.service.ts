@@ -126,8 +126,28 @@ const InventoryService = {
    * Régularise les écarts d'inventaire physique de manière atomique (Phase 6)
    */
   async adjustDiscrepancies(dto: AdjustDiscrepanciesDto): Promise<AdjustDiscrepanciesResponse> {
-    const res = await axiosInstance.post("/inventory/adjust-discrepancies", dto);
-    return res.data;
+    const payload = {
+      shopId: dto.shopId,
+      notes: dto.notes,
+      items: dto.items.map((i) => ({
+        productId: i.productId,
+        countedQuantity: Number(i.countedQuantity),
+        notes: i.notes || undefined,
+      })),
+    };
+
+    try {
+      const res = await axiosInstance.post("/inventory/adjust-discrepancies", payload);
+      return res.data;
+    } catch (err: any) {
+      // Si la route /inventory/adjust-discrepancies renvoie 404
+      // (ex: contrôleur déployé sous le préfixe /inventory-dashboard sur le backend Render)
+      if (err?.response?.status === 404) {
+        const fallbackRes = await axiosInstance.post("/inventory-dashboard/adjust-discrepancies", payload);
+        return fallbackRes.data;
+      }
+      throw err;
+    }
   },
 
   /**

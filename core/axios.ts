@@ -19,12 +19,12 @@ if (typeof window !== "undefined") {
   }
 }
 const axiosInstance = axios.create({
-  baseURL: API_URL,
+  baseURL: (API_URL || "").replace(/\/+$/, ""),
   headers: {
     "Content-Type": "application/json",
   },
 
-  timeout: 8000,
+  timeout: 25000,
 });
 
 // Debug : log le baseURL pour vérifier en Electron
