@@ -28,6 +28,7 @@ import {
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { POS_STYLES } from "@/types/post-caise-super";
 import { BarcodeScannerModal } from "@/components/ui/BarcodeScannerModal";
+import UnknownBarcodeModal from "@/components/pos/UnknownBarcodeModal";
 
 /* ─────────────────────────────────────────────────────────
    UTILITAIRES
@@ -51,6 +52,8 @@ export default function SuperCaissePage() {
 // États pour les paniers en attente
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
+  const [unknownBarcode, setUnknownBarcode] = useState<string>("");
+  const [isUnknownBarcodeModalOpen, setIsUnknownBarcodeModalOpen] = useState<boolean>(false);
   const [pendingCarts, setPendingCarts] = useState<{ id: string; name: string; items: CartItem[]; timestamp: string; total: number }[]>(() => {
     try {
       const saved = localStorage.getItem("super_pending_carts");
@@ -292,8 +295,10 @@ export default function SuperCaissePage() {
 
   const handleBarcodeScan = async (barcode: string) => {
     if (!user?.shopId) return;
+    const cleanBarcode = barcode.trim();
+    if (!cleanBarcode) return;
     try {
-      const product = await ProductService.getByBarcode(barcode, user.shopId);
+      const product = await ProductService.getByBarcode(cleanBarcode, user.shopId);
       if (product) {
         if (product.isActive === false) {
           showToast(`Le produit "${product.name}" est archivé/désactivé`, "error");
@@ -302,11 +307,20 @@ export default function SuperCaissePage() {
         addToCart(product);
         showToast(`${product.name} ajouté au panier`, "success");
       } else {
-        showToast(`Code-barres "${barcode}" introuvable`, "error");
+        // FAIL-SAFE MÉTIER : Pop-in rapide pour associer ou rechercher
+        setUnknownBarcode(cleanBarcode);
+        setIsUnknownBarcodeModalOpen(true);
       }
     } catch {
       showToast("Erreur lors de la recherche du code-barres", "error");
     }
+  };
+
+  const handleAssociateAndAddToCart = async (product: Product, newBarcode: string) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === product.id ? { ...p, barcode: newBarcode } : p))
+    );
+    addToCart(product);
   };
 
   useBarcodeScanner({ onScan: handleBarcodeScan, enabled: !!cashSession });
@@ -627,9 +641,16 @@ export default function SuperCaissePage() {
                 <input
                   className="pos-mobile-search"
                   type="text"
-                  placeholder="Rechercher un produit…"
+                  placeholder="Rechercher ou scanner (Entrée)…"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && searchTerm.trim().length >= 3) {
+                      e.preventDefault();
+                      handleBarcodeScan(searchTerm.trim());
+                      setSearchTerm("");
+                    }
+                  }}
                 />
                 <button
                   type="button"
@@ -679,9 +700,16 @@ export default function SuperCaissePage() {
                 <input
                   className="pos-search"
                   type="text"
-                  placeholder="Nom, SKU, code-barre…"
+                  placeholder="Nom, SKU, code-barre (scanner ou Entrée)…"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && searchTerm.trim().length >= 3) {
+                      e.preventDefault();
+                      handleBarcodeScan(searchTerm.trim());
+                      setSearchTerm("");
+                    }
+                  }}
                 />
                 <button
                   type="button"
@@ -1445,6 +1473,22 @@ export default function SuperCaissePage() {
         isOpen={isCameraScannerOpen}
         onClose={() => setIsCameraScannerOpen(false)}
         onScan={handleBarcodeScan}
+      />
+
+      {/* MODALE FAIL-SAFE PRODUIT NON TROUVÉ EN CAISSE */}
+      <UnknownBarcodeModal
+        isOpen={isUnknownBarcodeModalOpen}
+        onClose={() => setIsUnknownBarcodeModalOpen(false)}
+        scannedBarcode={unknownBarcode}
+        shopId={user?.shopId || ""}
+        onAssociateAndAddToCart={handleAssociateAndAddToCart}
+        onManualSearch={() => {
+          const input = document.querySelector<HTMLInputElement>(".pos-search, .pos-mobile-search");
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }}
       />
     </AppLayout>
   );

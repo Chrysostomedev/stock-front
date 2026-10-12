@@ -33,6 +33,10 @@ import {
   Archive,
   Clock,
   X,
+  Camera,
+  Printer,
+  Info,
+  Sparkles,
 } from "lucide-react";
 import ExportButton from "@/components/ui/ExportButton";
 import ProductBatchService from "@/services/super/productBatch.service";
@@ -40,6 +44,8 @@ import ProductComponentService from "@/services/productComponent.service";
 import { ProductBatch, ProductComponent, CreateProductBatchDto, CreateProductComponentDto } from "@/types/super";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
+import { BarcodeScannerModal } from "@/components/ui/BarcodeScannerModal";
+import ProductLabelModal from "@/components/products/ProductLabelModal";
 
 export default function AdminProduitsPage() {
   const { showToast } = useToast();
@@ -86,6 +92,10 @@ export default function AdminProduitsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingBarcode, setIsGeneratingBarcode] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isLabelModalOpen, setIsLabelModalOpen] = useState(false);
+  const [labelProduct, setLabelProduct] = useState<Partial<Product> | null>(null);
+  const [hasGeneratedCode, setHasGeneratedCode] = useState(false);
 
   // États pour les modales Lots & Kit
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
@@ -223,6 +233,7 @@ export default function AdminProduitsPage() {
         isActive: true,
       });
     }
+    setHasGeneratedCode(false);
     setIsModalOpen(true);
   };
 
@@ -264,8 +275,19 @@ export default function AdminProduitsPage() {
         setProducts(prev => prev.map(p => p.id === selectedProduct.id ? { ...p, ...updated } : p));
         showToast("Produit mis à jour", "success");
       } else {
-        await ProductService.create(payload as CreateProductDto);
+        const created = await ProductService.create(payload as CreateProductDto);
         showToast("Produit créé avec succès", "success");
+        // Si le produit a un code généré (ou préfixé 200), proposer l'impression d'étiquette
+        if (payload.barcode && (payload.barcode.startsWith("200") || hasGeneratedCode)) {
+          setLabelProduct({
+            name: payload.name,
+            barcode: payload.barcode,
+            sellingPrice: Number(payload.sellingPrice || 0),
+            sku: payload.sku,
+            shopId: payload.shopId,
+          });
+          setIsLabelModalOpen(true);
+        }
         // Recharge la page 1 pour faire apparaître le nouveau produit en tête de liste
         setPage(1);
         loadProducts();
@@ -293,6 +315,7 @@ export default function AdminProduitsPage() {
           ...prev,
           barcode: generated,
         }));
+        setHasGeneratedCode(true);
         showToast(`Code-barres GS1 généré : ${generated}`, "success");
       } else {
         throw new Error("Code-barres vide");
@@ -302,10 +325,12 @@ export default function AdminProduitsPage() {
       const randomDigits = Math.floor(Math.random() * 1000000000000)
         .toString()
         .padStart(12, "0");
+      const fallbackCode = `200${randomDigits.slice(3)}`;
       setFormData((prev) => ({
         ...prev,
-        barcode: `200${randomDigits.slice(3)}`,
+        barcode: fallbackCode,
       }));
+      setHasGeneratedCode(true);
       showToast("Code-barres de secours généré", "info");
     } finally {
       setIsGeneratingBarcode(false);
@@ -628,6 +653,18 @@ export default function AdminProduitsPage() {
               <Archive className="h-4 w-4" />
             </button>
           )}
+          {item.barcode && (
+            <button
+              onClick={() => {
+                setLabelProduct(item);
+                setIsLabelModalOpen(true);
+              }}
+              title="Imprimer l'étiquette code-barres"
+              className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg transition-colors text-emerald-600 dark:text-emerald-400"
+            >
+              <Printer className="h-4 w-4" />
+            </button>
+          )}
           <button
             onClick={() => {
               setSelectedProduct(item);
@@ -797,15 +834,29 @@ export default function AdminProduitsPage() {
                   <button
                     onClick={() => handleOpenModal(item)}
                     className="p-1.5 bg-zinc-50 dark:bg-zinc-800 rounded-lg text-zinc-500 flex items-center justify-center"
+                    title="Modifier"
                   >
                     <Edit2 className="h-3.5 w-3.5" />
                   </button>
+                  {item.barcode && (
+                    <button
+                      onClick={() => {
+                        setLabelProduct(item);
+                        setIsLabelModalOpen(true);
+                      }}
+                      className="p-1.5 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg text-emerald-600 flex items-center justify-center"
+                      title="Imprimer l'étiquette"
+                    >
+                      <Printer className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setSelectedProduct(item);
                       setIsConfirmOpen(true);
                     }}
                     className="p-1.5 bg-red-50 dark:bg-red-950/20 rounded-lg text-red-500 flex items-center justify-center"
+                    title="Supprimer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -906,32 +957,76 @@ export default function AdminProduitsPage() {
               />
             </div>
 
+            {/* CHAMP CODE-BARRES INTELLIGENT AVEC ACTIONS RAPIDES */}
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-1">
                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
-                  Code-barres <span className="text-red-500">*</span>
+                  Code-barres / QR Code <span className="text-red-500">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={generateBarcode}
-                  disabled={isGeneratingBarcode}
-                  className="flex items-center gap-1.5 text-[10px] font-black text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                  title="Générer un code-barres unique GS1 (200...)"
-                >
-                  <RefreshCw className={`h-3 w-3 ${isGeneratingBarcode ? "animate-spin" : ""}`} />
-                  <span>⚡ Générer GS1</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsScannerOpen(true)}
+                    className="flex items-center gap-1 text-[10px] font-black text-zinc-600 dark:text-zinc-300 hover:text-primary bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                    title="Scanner l'article avec la caméra ou webcam"
+                  >
+                    <Camera className="h-3 w-3 text-primary" />
+                    <span>📷 Scanner l&apos;article</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={generateBarcode}
+                    disabled={isGeneratingBarcode}
+                    className="flex items-center gap-1 text-[10px] font-black text-primary hover:text-primary/80 bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    title="Générer un code interne unique GS1 (200...)"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${isGeneratingBarcode ? "animate-spin" : ""}`} />
+                    <span>⚡ Générer code interne</span>
+                  </button>
+                </div>
               </div>
               <div className="relative">
                 <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
                 <input
                   type="text"
-                  placeholder="Scanner ou générer..."
+                  placeholder="Ex: 6181234567890 (scannez l'article ou générez un code)"
                   value={formData.barcode}
                   onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2.5 md:py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 md:py-3 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs font-bold outline-none focus:border-primary transition-all placeholder:text-zinc-400"
                 />
               </div>
+
+              {/* Indicateur / Alerte visuelle pour code interne généré */}
+              {(formData.barcode?.startsWith("200") || hasGeneratedCode) && (
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs animate-in fade-in duration-200 mt-1">
+                  <Info className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold leading-relaxed">
+                      Ce produit utilise un code interne généré. Pensez à imprimer son étiquette pour pouvoir le scanner en rayon ou en caisse.
+                    </p>
+                    {formData.barcode && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLabelProduct({
+                            name: formData.name || "Nouveau produit",
+                            barcode: formData.barcode,
+                            sellingPrice: Number(formData.sellingPrice || 0),
+                            sku: formData.sku,
+                            shopId: formData.shopId,
+                          });
+                          setIsLabelModalOpen(true);
+                        }}
+                        className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-200/70 dark:bg-amber-900/60 text-amber-900 dark:text-amber-100 font-black text-[10px] uppercase tracking-wider hover:bg-amber-300/70 transition-colors cursor-pointer"
+                      >
+                        <Printer className="h-3 w-3" />
+                        <span>🖨️ Prévisualiser & imprimer l&apos;étiquette</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -1352,6 +1447,27 @@ export default function AdminProduitsPage() {
           </form>
         </div>
       </Modal>
+
+      {/* ── MODALE SCANNER DE CODE-BARRES (Webcam / Caméra Smartphone) ── */}
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={(code) => {
+          setFormData((prev) => ({ ...prev, barcode: code }));
+          setIsScannerOpen(false);
+          showToast(`Code-barres scanné avec succès : ${code}`, "success");
+        }}
+        title="Scanner l'article"
+        subtitle="Visez le code-barres ou QR code présent sur le produit physique"
+      />
+
+      {/* ── MODALE D'IMPRESSION D'ÉTIQUETTE CODE-BARRES / QR CODE ── */}
+      <ProductLabelModal
+        isOpen={isLabelModalOpen}
+        onClose={() => setIsLabelModalOpen(false)}
+        product={labelProduct}
+        shopName={shops.find((s) => s.id === (labelProduct?.shopId || formData.shopId))?.name}
+      />
     </AppLayout>
   );
 }

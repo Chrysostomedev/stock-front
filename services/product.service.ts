@@ -269,11 +269,30 @@ const ProductService = {
 
   /** Génération automatique de Code-barres Interne Magasin (Format GS1 200XXXXXXXXX). */
   async generateBarcode(shopId: string): Promise<string> {
-    const response = await axiosInstance.get("/products/generate-barcode", {
-      params: { shopId },
-    });
-    if (typeof response.data === "string") return response.data;
-    return response.data?.barcode || response.data?.data?.barcode || "";
+    try {
+      const response = await axiosInstance.get(`/products/generate-barcode/${shopId}`);
+      if (typeof response.data === "string") return response.data;
+      const bc = response.data?.barcode || response.data?.data?.barcode;
+      if (bc) return bc;
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        // Fallback avec query param
+        try {
+          const response2 = await axiosInstance.get("/products/generate-barcode", {
+            params: { shopId },
+          });
+          if (typeof response2.data === "string") return response2.data;
+          const bc2 = response2.data?.barcode || response2.data?.data?.barcode;
+          if (bc2) return bc2;
+        } catch {
+          // Ignorer et passer au fallback local
+        }
+      }
+    }
+
+    // Fallback optimiste hors-ligne standard GS1 interne préfixé 200
+    const randomPart = Math.floor(100000000 + Math.random() * 900000000);
+    return `200${randomPart}`;
   },
 };
 

@@ -1,7 +1,7 @@
 import axios from "axios";
 
-const DEFAULT_API_URL = "https://back-spservice.onrender.com/api/v1";
-// const DEFAULT_API_URL = " http://localhost:3001/api/v1";
+// const DEFAULT_API_URL = "https://back-spservice.onrender.com/api/v1";
+const DEFAULT_API_URL = " http://localhost:3000/api/v1";
 
 const rawEnvUrl = typeof process !== "undefined" ? process.env?.NEXT_PUBLIC_API_URL : undefined;
 // Si l'environnement pointe encore vers l'ancien Railway, on force Render
