@@ -336,6 +336,7 @@ export default function SuperProduitsPage() {
                     }}
                     className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-2 py-1.5 text-xs font-bold outline-none cursor-pointer focus:border-primary transition-colors"
                   >
+                    <option value="5">5</option>
                     <option value="10">10</option>
                     <option value="20">20</option>
                     <option value="50">50</option>

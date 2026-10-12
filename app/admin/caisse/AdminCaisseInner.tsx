@@ -625,7 +625,7 @@ export default function AdminCaisseInner() {
                       <div className="flex items-center gap-1">
                         <span className="text-[9px] uppercase font-black tracking-widest text-zinc-400">Taille:</span>
                         <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }} className="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-1.5 py-1 text-[10px] font-bold outline-none cursor-pointer focus:border-primary">
-                          <option value="12">12</option><option value="24">24</option><option value="48">48</option><option value="96">96</option>
+                          <option value="4">4</option><option value="8">8</option><option value="12">12</option><option value="24">24</option><option value="48">48</option><option value="96">96</option>
                         </select>
                       </div>
                       <div className="flex items-center gap-1">

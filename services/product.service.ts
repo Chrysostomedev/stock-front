@@ -154,7 +154,13 @@ const ProductService = {
     }
 
     const fallbackList = searchInProductCache(params);
-    return { data: fallbackList, total: fallbackList.length, page: 1, limit: fallbackList.length, totalPages: 1 };
+    const p = Math.max(1, Number(params?.page) || 1);
+    const l = Math.max(1, Number(params?.limit) || 20);
+    const total = fallbackList.length;
+    const totalPages = Math.ceil(total / l) || 1;
+    const start = (p - 1) * l;
+    const pagedData = fallbackList.slice(start, start + l);
+    return { data: pagedData, total, page: p, limit: l, totalPages };
   },
 
   /** Récupérer un produit par ID. OFFLINE : cache. */
