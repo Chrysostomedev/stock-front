@@ -40,6 +40,7 @@ type Module = {
   badge: string;
   badgeType: "success" | "info" | "warning" | "purple" | "blue";
   Icon: React.FC<{ className?: string }>;
+  icon3d?: string;
   href: string;
   mobileGrad: string;
   gradient: string;
@@ -47,6 +48,47 @@ type Module = {
   statLabel: string;
   disabled?: boolean;
 };
+
+// Composant d'icône 3D avec repli automatique (Claymorphism relief) sans image brisée
+function Module3DIcon({
+  src,
+  alt,
+  fallbackIcon: FallbackIcon,
+  mobileGrad,
+  className = "h-11 w-11",
+}: {
+  src?: string;
+  alt: string;
+  fallbackIcon: React.FC<{ className?: string }>;
+  mobileGrad: string;
+  className?: string;
+}) {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  if (src && !imgFailed) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        onError={() => setImgFailed(true)}
+        className={`${className} object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.18)] select-none transition-transform duration-200 group-hover:scale-105 group-active:scale-95`}
+        loading="lazy"
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`flex items-center justify-center h-11 w-11 rounded-2xl bg-gradient-to-br ${mobileGrad} text-white shadow-md transition-all`}
+      style={{
+        boxShadow:
+          "0 8px 16px -4px rgba(0,0,0,0.22), inset 0 2px 2px rgba(255,255,255,0.45), inset 0 -2px 2px rgba(0,0,0,0.2)",
+      }}
+    >
+      <FallbackIcon className="h-5 w-5 drop-shadow" />
+    </div>
+  );
+}
 
 export default function AdminDashboardPage() {
   const [showQuincNotice, setShowQuincNotice] = useState(false);
@@ -64,6 +106,7 @@ export default function AdminDashboardPage() {
       badge: "Temps Réel",
       badgeType: "purple",
       Icon: BarChart2,
+      icon3d: "/icons/3d/dashboard.png",
       href: "/admin/dashboard",
       mobileGrad: "from-violet-600 to-indigo-700",
       gradient: "from-violet-600 via-indigo-600 to-purple-700",
@@ -80,6 +123,7 @@ export default function AdminDashboardPage() {
       badge: "Multi-Sites",
       badgeType: "blue",
       Icon: Building2,
+      icon3d: "/icons/3d/boutiques.png",
       href: "/admin/boutiques",
       mobileGrad: "from-blue-600 to-blue-800",
       gradient: "from-blue-600 to-cyan-600",
@@ -96,6 +140,7 @@ export default function AdminDashboardPage() {
       badge: "Caisse Rapide",
       badgeType: "success",
       Icon: ShoppingCart,
+      icon3d: "/icons/3d/superette.png",
       href: "/super",
       mobileGrad: "from-emerald-500 to-emerald-700",
       gradient: "from-emerald-500 to-teal-600",
@@ -112,6 +157,7 @@ export default function AdminDashboardPage() {
       badge: "Gérant Requis",
       badgeType: "warning",
       Icon: Wrench,
+      icon3d: "/icons/3d/quincaillerie.png",
       href: "/quinc",
       mobileGrad: "from-amber-500 to-amber-700",
       gradient: "from-amber-500 to-orange-600",
@@ -129,6 +175,7 @@ export default function AdminDashboardPage() {
       badge: "Centralisé",
       badgeType: "blue",
       Icon: Package,
+      icon3d: "/icons/3d/produits.png",
       href: "/admin/produits",
       mobileGrad: "from-teal-500 to-teal-700",
       gradient: "from-teal-500 to-emerald-600",
@@ -145,6 +192,7 @@ export default function AdminDashboardPage() {
       badge: "Taxonomie",
       badgeType: "info",
       Icon: Tag,
+      icon3d: "/icons/3d/categories.png",
       href: "/admin/categories",
       mobileGrad: "from-cyan-600 to-blue-700",
       gradient: "from-cyan-600 to-blue-600",
@@ -161,6 +209,7 @@ export default function AdminDashboardPage() {
       badge: "Audit Stock",
       badgeType: "warning",
       Icon: BarChart3,
+      icon3d: "/icons/3d/inventory.png",
       href: "/admin/inventory",
       mobileGrad: "from-orange-500 to-orange-700",
       gradient: "from-orange-500 to-amber-600",
@@ -177,6 +226,7 @@ export default function AdminDashboardPage() {
       badge: "Bons Signés",
       badgeType: "purple",
       Icon: Layers,
+      icon3d: "/icons/3d/transferts.png",
       href: "/admin/transferts",
       mobileGrad: "from-purple-600 to-indigo-800",
       gradient: "from-purple-600 to-indigo-600",
@@ -193,6 +243,7 @@ export default function AdminDashboardPage() {
       badge: "Solvabilité",
       badgeType: "warning",
       Icon: UserCheck,
+      icon3d: "/icons/3d/clients.png",
       href: "/admin/clients",
       mobileGrad: "from-rose-500 to-red-700",
       gradient: "from-rose-500 to-red-600",
@@ -209,6 +260,7 @@ export default function AdminDashboardPage() {
       badge: "Flux Fournisseurs",
       badgeType: "info",
       Icon: ClipboardList,
+      icon3d: "/icons/3d/devis.png",
       href: "/admin/devis",
       mobileGrad: "from-indigo-500 to-indigo-700",
       gradient: "from-indigo-600 to-sky-600",
@@ -225,6 +277,7 @@ export default function AdminDashboardPage() {
       badge: "Approvisionnement",
       badgeType: "blue",
       Icon: Truck,
+      icon3d: "/icons/3d/fournisseurs.png",
       href: "/admin/fournisseurs",
       mobileGrad: "from-sky-500 to-sky-700",
       gradient: "from-sky-600 to-blue-700",
@@ -241,6 +294,7 @@ export default function AdminDashboardPage() {
       badge: "Sécurité Rôles",
       badgeType: "blue",
       Icon: Users,
+      icon3d: "/icons/3d/utilisateurs.png",
       href: "/admin/utilisateurs",
       mobileGrad: "from-blue-500 to-blue-700",
       gradient: "from-blue-600 to-indigo-600",
@@ -257,6 +311,7 @@ export default function AdminDashboardPage() {
       badge: "Conformité",
       badgeType: "purple",
       Icon: Shield,
+      icon3d: "/icons/3d/logs.png",
       href: "/admin/logs",
       mobileGrad: "from-slate-700 to-zinc-900",
       gradient: "from-slate-700 to-zinc-900",
@@ -273,6 +328,7 @@ export default function AdminDashboardPage() {
       badge: "Configuration",
       badgeType: "info",
       Icon: Settings,
+      icon3d: "/icons/3d/settings.png",
       href: "/admin/settings",
       mobileGrad: "from-zinc-600 to-slate-800",
       gradient: "from-zinc-600 to-slate-800",
@@ -289,6 +345,7 @@ export default function AdminDashboardPage() {
       badge: "Mon Compte",
       badgeType: "info",
       Icon: UserCircle,
+      icon3d: "/icons/3d/profile.png",
       href: "/profile",
       mobileGrad: "from-zinc-500 to-zinc-700",
       gradient: "from-zinc-500 to-zinc-700",
@@ -420,41 +477,138 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* ── VUE MOBILE DÉDIÉE : GRILLE D'ACCUEIL STYLE SMARTPHONE (3 COLONNES) ── */}
-      <div className="grid grid-cols-3 gap-2.5 sm:gap-3 md:hidden mb-6">
-        {modules.map((mod) => {
-          const { Icon } = mod;
-          const cardMobile = (
-            <div
-              className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${mod.mobileGrad} flex min-h-[96px] flex-col items-center justify-center gap-2 p-2.5 shadow-md shadow-black/10 border border-white/20 active:scale-95 transition-transform cursor-pointer`}
+      {/* ── SECTION RECHERCHE & CATÉGORIES MOBILE (NOUVEAU) ──────── */}
+      <div className="flex md:hidden flex-col gap-2.5 mb-4">
+        {/* Recherche Mobile */}
+        <div className="relative w-full">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Rechercher un module..."
+            className="w-full rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 pl-10 pr-9 py-2 text-xs font-bold text-foreground placeholder-zinc-400 outline-none focus:border-blue-500 shadow-sm transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-600 rounded-md"
             >
-              {mod.disabled && (
-                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-amber-300 ring-2 ring-white/50 animate-pulse" />
-              )}
-              <div className="flex items-center justify-center rounded-xl bg-white/20 p-2.5 backdrop-blur-md shadow-inner">
-                <Icon className="h-5 w-5 text-white" />
-              </div>
-              <span className="line-clamp-2 text-center text-[10.5px] font-black leading-tight text-white drop-shadow-sm px-0.5">
-                {mod.shortTitle}
-              </span>
-            </div>
-          );
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
 
-          if (mod.disabled) {
+        {/* Filtres Catégories Défilants Mobile */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+          {categories.map((cat) => {
+            const isActive = activeCategory === cat.id;
             return (
-              <div key={mod.id} onClick={() => setShowQuincNotice(true)}>
-                {cardMobile}
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer border shrink-0 ${
+                  isActive
+                    ? "bg-blue-600 text-white border-blue-500 shadow-sm shadow-blue-600/30"
+                    : "bg-white dark:bg-zinc-900/90 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800"
+                }`}
+              >
+                <span>{cat.label}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
+                  }`}
+                >
+                  {cat.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── VUE MOBILE DÉDIÉE : GRILLE D'ACCUEIL STYLE SMARTPHONE (3 COLONNES) AVEC ICÔNES 3D ── */}
+      {filteredModules.length === 0 ? (
+        <div className="md:hidden rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-800 p-8 text-center mb-6">
+          <Search className="h-6 w-6 text-zinc-400 mx-auto mb-2" />
+          <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+            Aucun module trouvé
+          </p>
+          <button
+            onClick={() => {
+              setSearchQuery("");
+              setActiveCategory("all");
+            }}
+            className="mt-3 px-3.5 py-1.5 rounded-xl bg-blue-600 text-white text-[11px] font-bold"
+          >
+            Réinitialiser
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-3 md:hidden mb-6">
+          {filteredModules.map((mod) => {
+            const cardMobile = (
+              <div
+                className="group relative overflow-hidden rounded-2xl bg-white/95 dark:bg-zinc-900/95 flex min-h-[106px] flex-col items-center justify-between p-2.5 shadow-sm hover:shadow-md border border-zinc-200/80 dark:border-zinc-800/80 active:scale-95 transition-all cursor-pointer"
+              >
+                {/* Lueur d'ambiance 3D subtile */}
+                <div
+                  className="pointer-events-none absolute -top-8 -right-8 h-16 w-16 rounded-full opacity-25 blur-xl"
+                  style={{ backgroundColor: mod.accentColor }}
+                />
+
+                {/* Indicateur discret si module restreint */}
+                {mod.disabled && (
+                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-amber-400/30 animate-pulse" />
+                )}
+
+                {/* Emplacement Icône 3D avec Fallback Sécurisé */}
+                <div className="flex items-center justify-center pt-1">
+                  <Module3DIcon
+                    src={mod.icon3d}
+                    alt={mod.shortTitle}
+                    fallbackIcon={mod.Icon}
+                    mobileGrad={mod.mobileGrad}
+                    className="h-11 w-11"
+                  />
+                </div>
+
+                {/* Titre et Catégorie */}
+                <div className="text-center w-full px-0.5">
+                  <span className="line-clamp-1 block text-center text-[11px] font-extrabold text-zinc-800 dark:text-zinc-100 leading-tight">
+                    {mod.shortTitle}
+                  </span>
+                  <span className="block text-[9.5px] font-semibold text-zinc-400 dark:text-zinc-500 truncate mt-0.5">
+                    {mod.categoryLabel.split(" ")[0]}
+                  </span>
+                </div>
+
+                {/* Liseré inférieur accentué */}
+                <div
+                  className="absolute bottom-0 left-2.5 right-2.5 h-[2px] rounded-full opacity-70"
+                  style={{ backgroundColor: mod.accentColor }}
+                />
               </div>
             );
-          }
 
-          return (
-            <Link key={mod.id} href={mod.href} className="block">
-              {cardMobile}
-            </Link>
-          );
-        })}
-      </div>
+            if (mod.disabled) {
+              return (
+                <div key={mod.id} onClick={() => setShowQuincNotice(true)}>
+                  {cardMobile}
+                </div>
+              );
+            }
+
+            return (
+              <Link key={mod.id} href={mod.href} className="block">
+                {cardMobile}
+              </Link>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── VUE DESKTOP DÉDIÉE : NOUVELLES CARTES PRO ────────────────── */}
       {filteredModules.length === 0 ? (
@@ -507,8 +661,14 @@ export default function AdminDashboardPage() {
                     <div
                       className={`relative flex items-center justify-center h-12 w-12 rounded-2xl bg-gradient-to-br ${mod.gradient} p-[1.5px] shadow-md transition-transform duration-300 group-hover:scale-105`}
                     >
-                      <div className="w-full h-full bg-white dark:bg-zinc-950 rounded-[14px] flex items-center justify-center">
-                        <Icon className="h-5 w-5 text-zinc-800 dark:text-white transition-colors group-hover:text-blue-500" />
+                      <div className="w-full h-full bg-white dark:bg-zinc-950 rounded-[14px] flex items-center justify-center p-1 overflow-hidden">
+                        <Module3DIcon
+                          src={mod.icon3d}
+                          alt={mod.title}
+                          fallbackIcon={Icon}
+                          mobileGrad={mod.mobileGrad}
+                          className="h-8 w-8"
+                        />
                       </div>
                     </div>
 
