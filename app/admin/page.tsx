@@ -71,7 +71,7 @@ function Module3DIcon({
         src={src}
         alt={alt}
         onError={() => setImgFailed(true)}
-        className={`${className} object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.18)] select-none transition-transform duration-200 group-hover:scale-105 group-active:scale-95`}
+        className={`${className} object-contain select-none transition-transform duration-200 group-hover:scale-110 group-active:scale-95`}
         loading="lazy"
       />
     );
@@ -106,7 +106,7 @@ export default function AdminDashboardPage() {
       badge: "Temps Réel",
       badgeType: "purple",
       Icon: BarChart2,
-      icon3d: "/icons/3d/dashboard.png",
+      icon3d: "/icons_3d/evolute.jpg",
       href: "/admin/dashboard",
       mobileGrad: "from-violet-600 to-indigo-700",
       gradient: "from-violet-600 via-indigo-600 to-purple-700",
@@ -123,7 +123,7 @@ export default function AdminDashboardPage() {
       badge: "Multi-Sites",
       badgeType: "blue",
       Icon: Building2,
-      icon3d: "/icons/3d/boutiques.png",
+      icon3d: "/icons_3d/entrepot.jpg",
       href: "/admin/boutiques",
       mobileGrad: "from-blue-600 to-blue-800",
       gradient: "from-blue-600 to-cyan-600",
@@ -140,7 +140,7 @@ export default function AdminDashboardPage() {
       badge: "Caisse Rapide",
       badgeType: "success",
       Icon: ShoppingCart,
-      icon3d: "/icons/3d/superette.png",
+      icon3d: "/icons_3d/caisse.jpg",
       href: "/super",
       mobileGrad: "from-emerald-500 to-emerald-700",
       gradient: "from-emerald-500 to-teal-600",
@@ -157,7 +157,7 @@ export default function AdminDashboardPage() {
       badge: "Gérant Requis",
       badgeType: "warning",
       Icon: Wrench,
-      icon3d: "/icons/3d/quincaillerie.png",
+      icon3d: "/icons_3d/settings.jpg",
       href: "/quinc",
       mobileGrad: "from-amber-500 to-amber-700",
       gradient: "from-amber-500 to-orange-600",
@@ -175,7 +175,7 @@ export default function AdminDashboardPage() {
       badge: "Centralisé",
       badgeType: "blue",
       Icon: Package,
-      icon3d: "/icons/3d/produits.png",
+      icon3d: "/icons_3d/code_bar.jpg",
       href: "/admin/produits",
       mobileGrad: "from-teal-500 to-teal-700",
       gradient: "from-teal-500 to-emerald-600",
@@ -192,7 +192,7 @@ export default function AdminDashboardPage() {
       badge: "Taxonomie",
       badgeType: "info",
       Icon: Tag,
-      icon3d: "/icons/3d/categories.png",
+      icon3d: "/icons_3d/shopping.jpg",
       href: "/admin/categories",
       mobileGrad: "from-cyan-600 to-blue-700",
       gradient: "from-cyan-600 to-blue-600",
@@ -209,7 +209,7 @@ export default function AdminDashboardPage() {
       badge: "Audit Stock",
       badgeType: "warning",
       Icon: BarChart3,
-      icon3d: "/icons/3d/inventory.png",
+      icon3d: "/icons_3d/alert_stock.jpg",
       href: "/admin/inventory",
       mobileGrad: "from-orange-500 to-orange-700",
       gradient: "from-orange-500 to-amber-600",
@@ -226,7 +226,7 @@ export default function AdminDashboardPage() {
       badge: "Bons Signés",
       badgeType: "purple",
       Icon: Layers,
-      icon3d: "/icons/3d/transferts.png",
+      icon3d: "/icons_3d/inventaire.jpg",
       href: "/admin/transferts",
       mobileGrad: "from-purple-600 to-indigo-800",
       gradient: "from-purple-600 to-indigo-600",
@@ -243,7 +243,7 @@ export default function AdminDashboardPage() {
       badge: "Solvabilité",
       badgeType: "warning",
       Icon: UserCheck,
-      icon3d: "/icons/3d/clients.png",
+      icon3d: "/icons_3d/invoice.jpg",
       href: "/admin/clients",
       mobileGrad: "from-rose-500 to-red-700",
       gradient: "from-rose-500 to-red-600",
@@ -260,7 +260,7 @@ export default function AdminDashboardPage() {
       badge: "Flux Fournisseurs",
       badgeType: "info",
       Icon: ClipboardList,
-      icon3d: "/icons/3d/devis.png",
+      icon3d: "/icons_3d/approvisionnement.jpg",
       href: "/admin/devis",
       mobileGrad: "from-indigo-500 to-indigo-700",
       gradient: "from-indigo-600 to-sky-600",
@@ -277,7 +277,7 @@ export default function AdminDashboardPage() {
       badge: "Approvisionnement",
       badgeType: "blue",
       Icon: Truck,
-      icon3d: "/icons/3d/fournisseurs.png",
+      icon3d: "/icons_3d/supplier.jpg",
       href: "/admin/fournisseurs",
       mobileGrad: "from-sky-500 to-sky-700",
       gradient: "from-sky-600 to-blue-700",
@@ -294,7 +294,7 @@ export default function AdminDashboardPage() {
       badge: "Sécurité Rôles",
       badgeType: "blue",
       Icon: Users,
-      icon3d: "/icons/3d/utilisateurs.png",
+      icon3d: "/icons_3d/user.jpg",
       href: "/admin/utilisateurs",
       mobileGrad: "from-blue-500 to-blue-700",
       gradient: "from-blue-600 to-indigo-600",
@@ -311,7 +311,7 @@ export default function AdminDashboardPage() {
       badge: "Conformité",
       badgeType: "purple",
       Icon: Shield,
-      icon3d: "/icons/3d/logs.png",
+      icon3d: "/icons_3d/invoice.jpg",
       href: "/admin/logs",
       mobileGrad: "from-slate-700 to-zinc-900",
       gradient: "from-slate-700 to-zinc-900",
@@ -328,7 +328,7 @@ export default function AdminDashboardPage() {
       badge: "Configuration",
       badgeType: "info",
       Icon: Settings,
-      icon3d: "/icons/3d/settings.png",
+      icon3d: "/icons_3d/settings.jpg",
       href: "/admin/settings",
       mobileGrad: "from-zinc-600 to-slate-800",
       gradient: "from-zinc-600 to-slate-800",
@@ -345,7 +345,7 @@ export default function AdminDashboardPage() {
       badge: "Mon Compte",
       badgeType: "info",
       Icon: UserCircle,
-      icon3d: "/icons/3d/profile.png",
+      icon3d: "/icons_3d/user.jpg",
       href: "/profile",
       mobileGrad: "from-zinc-500 to-zinc-700",
       gradient: "from-zinc-500 to-zinc-700",
@@ -566,13 +566,15 @@ export default function AdminDashboardPage() {
 
                 {/* Emplacement Icône 3D avec Fallback Sécurisé */}
                 <div className="flex items-center justify-center pt-1">
-                  <Module3DIcon
-                    src={mod.icon3d}
-                    alt={mod.shortTitle}
-                    fallbackIcon={mod.Icon}
-                    mobileGrad={mod.mobileGrad}
-                    className="h-11 w-11"
-                  />
+                  <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center p-1 border border-zinc-100 dark:border-zinc-800/80">
+                    <Module3DIcon
+                      src={mod.icon3d}
+                      alt={mod.shortTitle}
+                      fallbackIcon={mod.Icon}
+                      mobileGrad={mod.mobileGrad}
+                      className="h-10 w-10"
+                    />
+                  </div>
                 </div>
 
                 {/* Titre et Catégorie */}
@@ -661,13 +663,13 @@ export default function AdminDashboardPage() {
                     <div
                       className={`relative flex items-center justify-center h-12 w-12 rounded-2xl bg-gradient-to-br ${mod.gradient} p-[1.5px] shadow-md transition-transform duration-300 group-hover:scale-105`}
                     >
-                      <div className="w-full h-full bg-white dark:bg-zinc-950 rounded-[14px] flex items-center justify-center p-1 overflow-hidden">
+                      <div className="w-full h-full bg-white dark:bg-white rounded-[14px] flex items-center justify-center p-0.5 overflow-hidden">
                         <Module3DIcon
                           src={mod.icon3d}
                           alt={mod.title}
                           fallbackIcon={Icon}
                           mobileGrad={mod.mobileGrad}
-                          className="h-8 w-8"
+                          className="h-9 w-9"
                         />
                       </div>
                     </div>
