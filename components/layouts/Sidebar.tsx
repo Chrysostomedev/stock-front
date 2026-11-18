@@ -49,6 +49,11 @@ export default function Sidebar() {
     }
   }, []);
 
+  // Fermer automatiquement le menu mobile/tablette lors d'un changement de route
+  useEffect(() => {
+    close();
+  }, [pathname]);
+
   const toggleCollapsed = () => {
     setCollapsed((prev) => {
       const next = !prev;
@@ -136,21 +141,21 @@ export default function Sidebar() {
       {isOpen && (
         <div
           onClick={close}
-          className="lg:hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-all cursor-pointer"
+          className="lg:hidden fixed inset-0 z-[210] bg-black/50 backdrop-blur-sm transition-all cursor-pointer"
         />
       )}
 
       {/* ── SIDEBAR ─────────────────────────────────────────────────── */}
       <aside
         className={[
-          "fixed lg:static top-0 bottom-0 left-0 z-[70]",
+          "fixed lg:static top-0 bottom-0 left-0 z-[220]",
           "bg-card border-r border-border",
-          "flex flex-col justify-between",
+          "flex-col justify-between",
           "transition-all duration-300 ease-in-out select-none overflow-hidden",
           // Largeur : réduite sur desktop si collapsed, pleine w-64 sur mobile/tablette
           collapsed ? "lg:w-[68px] w-64 shadow-2xl lg:shadow-none" : "w-64 shadow-2xl lg:shadow-none",
-          // Translation mobile & tablette
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          // Affichage & translation mobile/tablette (hidden quand fermé sur <1024px pour compatibilité totale Android/Chrome)
+          isOpen ? "flex translate-x-0" : "hidden lg:flex -translate-x-full lg:translate-x-0",
         ].join(" ")}
       >
         {/* ── Haut : logo + navigation ──────────────────────────────── */}
@@ -210,11 +215,11 @@ export default function Sidebar() {
                     "flex items-center rounded-xl font-bold text-sm transition-all cursor-pointer",
                     collapsed ? "lg:justify-center p-3" : "gap-3.5 px-3.5 py-3",
                     isActive
-                      ? "bg-primary/10 text-primary shadow-sm"
+                      ? "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 shadow-sm"
                       : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-200",
                   ].join(" ")}
                 >
-                  <span className={`flex-shrink-0 ${isActive ? "text-primary" : "text-zinc-400"}`}>
+                  <span className={`flex-shrink-0 ${isActive ? "text-blue-700 dark:text-blue-300" : "text-zinc-400"}`}>
                     {link.icon}
                   </span>
                   <span className={collapsed ? "lg:hidden truncate" : "truncate"}>{link.label}</span>
@@ -256,7 +261,7 @@ export default function Sidebar() {
                   isActive ? "text-primary font-black scale-105" : "text-zinc-400 dark:text-zinc-500 font-medium"
                 }`}
               >
-                <div className={`p-1.5 rounded-xl transition-colors ${isActive ? "bg-primary/10 text-primary" : "text-inherit"}`}>
+                <div className={`p-1.5 rounded-xl transition-colors ${isActive ? "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300" : "text-inherit"}`}>
                   {link.icon}
                 </div>
                 <span className="text-[10px] tracking-tight text-center truncate max-w-[65px]">
@@ -270,10 +275,10 @@ export default function Sidebar() {
             type="button"
             onClick={toggle}
             className={`flex flex-col items-center justify-center gap-1 py-1 flex-1 transition-all ${
-              isOpen ? "text-primary font-black scale-105" : "text-zinc-400 dark:text-zinc-500 font-medium"
+              isOpen ? "text-blue-700 dark:text-blue-300 font-black scale-105" : "text-zinc-400 dark:text-zinc-500 font-medium"
             }`}
           >
-            <div className={`p-1.5 rounded-xl transition-colors ${isOpen ? "bg-primary/10 text-primary" : "text-inherit"}`}>
+            <div className={`p-1.5 rounded-xl transition-colors ${isOpen ? "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300" : "text-inherit"}`}>
               <Menu className="h-5 w-5" />
             </div>
             <span className="text-[10px] tracking-tight text-center">Plus</span>

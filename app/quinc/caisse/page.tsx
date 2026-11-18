@@ -1041,7 +1041,7 @@ export default function QuincaillerieCaissePage() {
             background: "var(--pos-surface)",
             borderTop: "1px solid var(--pos-border)",
             display: "flex", alignItems: "center", gap: 12,
-            zIndex: 99,
+            zIndex: 40,
           }}
         >
           <span style={{ fontWeight: 700, fontSize: 15, fontVariantNumeric: "tabular-nums" }}>
