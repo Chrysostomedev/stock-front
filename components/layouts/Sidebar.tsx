@@ -247,7 +247,8 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      {/* ── BOTTOM NAV MOBILE ───────────────────────────────────────── */}
+      {/* ── BOTTOM NAV MOBILE (Masqué sur les pages de caisse qui ont leur propre barre Panier en bas) ── */}
+      {!pathname?.includes("/caisse") && (
       <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-t border-zinc-100 dark:border-zinc-800/80 px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+6px)] shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
         <nav className="flex items-center justify-between w-full max-w-md mx-auto px-1">
           {bottomNavLinks.map((link, idx) => {
@@ -285,6 +286,7 @@ export default function Sidebar() {
           </button>
         </nav>
       </div>
+      )}
 
       <ConfirmModal
         isOpen={showLogoutConfirm}

@@ -1097,7 +1097,7 @@ export default function SuperCaissePage() {
             background: "var(--pos-surface)",
             borderTop: "1px solid var(--pos-border)",
             display: "flex", alignItems: "center", gap: 12,
-            zIndex: 40,
+            zIndex: 100,
           }}
         >
           <span style={{ fontWeight: 700, fontSize: 15, fontVariantNumeric: "tabular-nums" }}>

@@ -185,11 +185,12 @@ export const POS_STYLES = `
 /* ── Panier : toujours drawer fixé en bas ── */
 .pos-cart {
   background: var(--cart-bg); color: var(--cart-text);
-  display: flex; flex-direction: column; overflow: hidden;
+  display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
   position: fixed;
   bottom: 0; left: 0; right: 0;
   z-index: 200;
-  max-height: 90dvh;
+  max-height: 88vh;
+  max-height: 88dvh;
   border-radius: 20px 20px 0 0;
 }
 .pos-cart-head {
@@ -220,7 +221,7 @@ export const POS_STYLES = `
 .pos-cust-clear:hover { color: var(--pos-danger); }
 
 /* Articles panier */
-.pos-cart-items { flex: 1; min-height: 0; overflow-y: auto; padding: 0 20px; }
+.pos-cart-items { flex: 1; min-height: 110px; overflow-y: auto; padding: 0 20px; }
 .pos-cart-empty {
   height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 8px;
@@ -409,8 +410,10 @@ export const POS_STYLES = `
     left: calc(50% - 240px);
     right: auto;
     width: 480px;
-    height: 90dvh;
-    max-height: 90dvh;
+    height: 88vh;
+    height: 88dvh;
+    max-height: 88vh;
+    max-height: 88dvh;
   }
 }
 
